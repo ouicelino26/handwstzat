@@ -1,0 +1,408 @@
+@using System.Globalization
+
+<div class="kpi-shell">
+    <div class="map-toolbar">
+        <div>
+            <p class="map-kicker">Spatial match</p>
+            <h4>Lecture rapide des zones et des déclenchements</h4>
+        </div>
+
+        <div class="map-mode-toggle" role="group" aria-label="Filtre spatial">
+            <button type="button"
+                    class="map-mode-button @(IsViewModeActive(ViewModeBoth) ? "is-active" : string.Empty)"
+                    aria-pressed="@(IsViewModeActive(ViewModeBoth))"
+                    @onclick="() => SetViewModeAsync(ViewModeBoth)">
+                Les deux
+            </button>
+            <button type="button"
+                    class="map-mode-button @(IsViewModeActive(ViewModeGoal) ? "is-active" : string.Empty)"
+                    aria-pressed="@(IsViewModeActive(ViewModeGoal))"
+                    @onclick="() => SetViewModeAsync(ViewModeGoal)">
+                Buts
+            </button>
+            <button type="button"
+                    class="map-mode-button @(IsViewModeActive(ViewModeTrigger) ? "is-active" : string.Empty)"
+                    aria-pressed="@(IsViewModeActive(ViewModeTrigger))"
+                    @onclick="() => SetViewModeAsync(ViewModeTrigger)">
+                Déclenchements
+            </button>
+        </div>
+    </div>
+
+    @if (ShowGoalMap)
+    {
+        <section class="map-panel">
+            <div class="map-head">
+                <div>
+                    <p class="map-kicker">But</p>
+                    <h4>Precision par secteur</h4>
+                </div>
+
+                <div class="heat-legend">
+                    <span>@LegendStartLabel</span>
+                    <span>@LegendMiddleLabel</span>
+                    <span>@LegendEndLabel</span>
+                </div>
+            </div>
+
+            <div class="goal-map-wrap">
+                <svg class="goal-map" viewBox="0 0 804 440" role="img" aria-label="Carte de precision du but">
+                    <rect x="0" y="0" width="804" height="440" rx="24" class="goal-bg" />
+
+                    @foreach (var zone in GoalGeometries)
+                    {
+                        var stat = GetGoalZone(zone.Key);
+                        if (zone.Shape == SvgShape.Rect)
+                        {
+                            <rect x="@Format(zone.X)"
+                                  y="@Format(zone.Y)"
+                                  width="@Format(zone.Width)"
+                                  height="@Format(zone.Height)"
+                                  rx="6"
+                                  class="zone-shape @(IsActive(zone.Key) ? "zone-active" : string.Empty)"
+                                  fill="@GetGoalFillColor(stat)"
+                                  stroke="@GetStrokeColor(zone.Key)"
+                                  stroke-width="@GetStrokeWidth(zone.Key)"
+                                  @onclick="() => SelectZoneAsync(zone.Key)">
+                                <title>@GetTooltip(zone.Key, stat)</title>
+                            </rect>
+                        }
+                        else if (zone.Shape == SvgShape.Path)
+                        {
+                            <path d="@zone.Data"
+                                  class="zone-shape @(IsActive(zone.Key) ? "zone-active" : string.Empty)"
+                                  fill="@GetGoalFillColor(stat)"
+                                  stroke="@GetStrokeColor(zone.Key)"
+                                  stroke-width="@GetStrokeWidth(zone.Key)"
+                                  @onclick="() => SelectZoneAsync(zone.Key)">
+                                <title>@GetTooltip(zone.Key, stat)</title>
+                            </path>
+                        }
+                        else
+                        {
+                            <polygon points="@zone.Data"
+                                     class="zone-shape @(IsActive(zone.Key) ? "zone-active" : string.Empty)"
+                                     fill="@GetGoalFillColor(stat)"
+                                     stroke="@GetStrokeColor(zone.Key)"
+                                     stroke-width="@GetStrokeWidth(zone.Key)"
+                                     @onclick="() => SelectZoneAsync(zone.Key)">
+                                <title>@GetTooltip(zone.Key, stat)</title>
+                            </polygon>
+                        }
+
+                        <foreignObject x="@Format(zone.LabelX - 24)"
+                                       y="@Format(zone.LabelY - 10)"
+                                       width="48"
+                                       height="20">
+                            <div xmlns="http://www.w3.org/1999/xhtml" class="zone-label">
+                                @GetLabel(stat)
+                            </div>
+                        </foreignObject>
+                    }
+                </svg>
+            </div>
+        </section>
+    }
+
+    @if (ShowTriggerMap)
+    {
+        <section class="map-panel">
+            <div class="map-head">
+                <div>
+                    <p class="map-kicker">Terrain</p>
+                    <h4>Declenchements et angles</h4>
+                </div>
+            </div>
+
+            <div class="pitch-map-wrap">
+                <svg class="pitch-map" viewBox="0 0 706 464" role="img" aria-label="Carte terrain des declenchements">
+                    <image href="/design/pitch-map-template.svg"
+                           x="0"
+                           y="0"
+                           width="706"
+                           height="464"
+                           preserveAspectRatio="none" />
+
+                    @foreach (var zone in TriggerGeometries)
+                    {
+                        var stat = GetTriggerZone(zone.Key);
+                        <path d="@zone.Data"
+                              class="zone-shape trigger-zone @(IsActive(zone.Key) ? "zone-active" : string.Empty)"
+                              fill="@GetTriggerFillColor(stat)"
+                              stroke="@GetStrokeColor(zone.Key)"
+                              stroke-width="@GetStrokeWidth(zone.Key)"
+                              @onclick="() => SelectZoneAsync(zone.Key)">
+                            <title>@GetTooltip(zone.Key, stat)</title>
+                        </path>
+                    }
+                </svg>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ZoneStat> GoalZones { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<ZoneStat> TriggerZones { get; set; } = [];
+
+    [Parameter]
+    public string? ActiveZoneKey { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnZoneSelected { get; set; }
+
+    [Parameter]
+    public bool IsGoalkeeper { get; set; }
+
+    [Parameter]
+    public string ViewMode { get; set; } = ViewModeBoth;
+
+    [Parameter]
+    public EventCallback<string> ViewModeChanged { get; set; }
+
+    private const string NeutralGoalZoneFill = "#D9D9D9";
+    private const string ViewModeBoth = "both";
+    private const string ViewModeGoal = "goal";
+    private const string ViewModeTrigger = "trigger";
+
+    private static readonly ZoneGeometry[] GoalGeometries =
+    [
+        new("BG12", SvgShape.Path, "M1.77525 2.52883C0.330891 1.33665 1.17066 -1.00901 3.04348 -1.0136L402.995 -1.99508C404.102 -1.9978 405 -1.10157 405 0.00491405V82C405 83.1046 404.105 84 403 84H101.198C100.733 84 100.283 83.8382 99.9248 83.5424L1.77525 2.52883Z", 0, 0, 0, 0, 226, 43),
+        new("BD12", SvgShape.Path, "M405 -0.994974C405 -1.54922 405.451 -1.99774 406.005 -1.99496L801.347 -0.0132989C802.269 -0.00867558 802.694 1.13589 801.998 1.74121L708.283 83.2539C708.101 83.4126 707.867 83.4998 707.625 83.4994L405.998 83.0016C405.447 83.0007 405 82.5533 405 82.0016V-0.994974Z", 0, 0, 0, 0, 579, 43),
+        new("BG11", SvgShape.Path, "M103.671 87.4561C102.352 86.2147 103.231 84 105.042 84H403C404.105 84 405 84.8954 405 86V133C405 134.105 404.105 135 403 135H154.96C154.45 135 153.96 134.805 153.589 134.456L103.671 87.4561Z", 0, 0, 0, 0, 251, 109),
+        new("BD11", SvgShape.Path, "M405 86C405 84.8954 405.895 84 407 84H703.093C704.886 84 705.773 86.1769 704.491 87.4301L656.416 134.43C656.043 134.795 655.541 135 655.018 135H407C405.895 135 405 134.105 405 133V86Z", 0, 0, 0, 0, 530, 109),
+        new("BG8", SvgShape.Path, "M272 136H159C155.686 136 153 138.729 153 142.096V231.504C153 234.871 155.686 237.6 159 237.6H272C275.314 237.6 278 234.871 278 231.504V142.096C278 138.729 275.314 136 272 136Z", 0, 0, 0, 0, 216, 197),
+        new("BG7", SvgShape.Path, "M399 136H286C282.686 136 280 138.729 280 142.096V231.504C280 234.871 282.686 237.6 286 237.6H399C402.314 237.6 405 234.871 405 231.504V142.096C405 138.729 402.314 136 399 136Z", 0, 0, 0, 0, 342, 197),
+        new("BD7", SvgShape.Path, "M525 136H413C409.686 136 407 138.729 407 142.096V231.504C407 234.871 409.686 237.6 413 237.6H525C528.314 237.6 531 234.871 531 231.504V142.096C531 138.729 528.314 136 525 136Z", 0, 0, 0, 0, 469, 197),
+        new("BD8", SvgShape.Path, "M651 136H539C535.686 136 533 138.729 533 142.096V231.504C533 234.871 535.686 237.6 539 237.6H651C654.314 237.6 657 234.871 657 231.504V142.096C657 138.729 654.314 136 651 136Z", 0, 0, 0, 0, 595, 197),
+        new("BG10", SvgShape.Path, "M4.2989 3.61751C3.00085 2.50888 1 3.43128 1 5.13833V286.8C1 287.905 1.89543 288.8 3 288.8H97C98.1046 288.8 99 287.905 99 286.8V85.422C99 84.8369 98.7438 84.2812 98.2989 83.9012L4.2989 3.61751Z", 0, 0, 0, 0, 50, 176),
+        new("BG9", SvgShape.Path, "M102.364 88.6368C101.085 87.4445 99 88.3512 99 90.0996V287.64C99 288.745 99.8954 289.64 101 289.64H149C150.105 289.64 151 288.745 151 287.64V134.858C151 134.304 150.77 133.774 150.364 133.396L102.364 88.6368Z", 0, 0, 0, 0, 124, 215),
+        new("BG6", SvgShape.Path, "M272 238H159C155.686 238 153 240.729 153 244.096V333.504C153 336.871 155.686 339.6 159 339.6H272C275.314 339.6 278 336.871 278 333.504V244.096C278 240.729 275.314 238 272 238Z", 0, 0, 0, 0, 216, 297),
+        new("BG5", SvgShape.Path, "M399 238H286C282.686 238 280 240.729 280 244.096V333.504C280 336.871 282.686 339.6 286 339.6H399C402.314 339.6 405 336.871 405 333.504V244.096C405 240.729 402.314 238 399 238Z", 0, 0, 0, 0, 342, 297),
+        new("BD5", SvgShape.Path, "M525 239H413C409.686 239 407 241.729 407 245.096V334.504C407 337.871 409.686 340.6 413 340.6H525C528.314 340.6 531 337.871 531 334.504V245.096C531 241.729 528.314 239 525 239Z", 0, 0, 0, 0, 469, 297),
+        new("BD6", SvgShape.Path, "M651 238H539C535.686 238 533 240.729 533 244.096V333.504C533 336.871 535.686 339.6 539 339.6H651C654.314 339.6 657 336.871 657 333.504V244.096C657 240.729 654.314 238 651 238Z", 0, 0, 0, 0, 595, 297),
+        new("BD10", SvgShape.Path, "M803.672 0.954254C804.962 -0.191021 807 0.724816 807 2.44991V288C807 289.105 806.105 290 805 290H711C709.895 290 709 289.105 709 288V85.8989C709 85.3272 709.245 84.7828 709.672 84.4032L803.672 0.954254Z", 0, 0, 0, 0, 757, 176),
+        new("BD9", SvgShape.Path, "M704.08 86.1336C705.316 84.8199 707.523 85.6858 707.536 87.4899L708.985 286.985C708.993 288.096 708.096 289 706.985 289H659C657.895 289 657 288.105 657 287V136.947C657 136.437 657.194 135.947 657.544 135.576L704.08 86.1336Z", 0, 0, 0, 0, 683, 215),
+        new("BG4", SvgShape.Path, "M93 290H7C3.68629 290 1 292.729 1 296.096V436.304C1 439.671 3.68629 442.4 7 442.4H93C96.3137 442.4 99 439.671 99 436.304V296.096C99 292.729 96.3137 290 93 290Z", 0, 0, 0, 0, 47, 373),
+        new("BG3", SvgShape.Path, "M145 290H105C101.686 290 99 292.729 99 296.096V436.304C99 439.671 101.686 442.4 105 442.4H145C148.314 442.4 151 439.671 151 436.304V296.096C151 292.729 148.314 290 145 290Z", 0, 0, 0, 0, 123, 373),
+        new("BG2", SvgShape.Path, "M272 340H159C155.686 340 153 342.729 153 346.096V435.504C153 438.871 155.686 441.6 159 441.6H272C275.314 441.6 278 438.871 278 435.504V346.096C278 342.729 275.314 340 272 340Z", 0, 0, 0, 0, 216, 395),
+        new("BG1", SvgShape.Path, "M399 340H286C282.686 340 280 342.729 280 346.096V435.504C280 438.871 282.686 441.6 286 441.6H399C402.314 441.6 405 438.871 405 435.504V346.096C405 342.729 402.314 340 399 340Z", 0, 0, 0, 0, 342, 395),
+        new("BD1", SvgShape.Path, "M525 340H413C409.686 340 407 342.729 407 346.096V435.504C407 438.871 409.686 441.6 413 441.6H525C528.314 441.6 531 438.871 531 435.504V346.096C531 342.729 528.314 340 525 340Z", 0, 0, 0, 0, 469, 395),
+        new("BD2", SvgShape.Path, "M651 340H539C535.686 340 533 342.729 533 346.096V435.504C533 438.871 535.686 441.6 539 441.6H651C654.314 441.6 657 438.871 657 435.504V346.096C657 342.729 654.314 340 651 340Z", 0, 0, 0, 0, 595, 395),
+        new("BD3", SvgShape.Path, "M703 289.4H663C659.686 289.4 657 292.14 657 295.52V436.28C657 439.66 659.686 442.4 663 442.4H703C706.314 442.4 709 439.66 709 436.28V295.52C709 292.14 706.314 289.4 703 289.4Z", 0, 0, 0, 0, 683, 373),
+        new("BD4", SvgShape.Path, "M801 290H715C711.686 290 709 292.722 709 296.08V435.92C709 439.278 711.686 442 715 442H801C804.314 442 807 439.278 807 435.92V296.08C807 292.722 804.314 290 801 290Z", 0, 0, 0, 0, 757, 373)
+    ];
+
+    private static readonly ZoneGeometry[] TriggerGeometries =
+    [
+        new("TG6", SvgShape.Path, "M169.12 0H112.7L95 176L90 226.5L93 220L97.5 214L107.5 202L123.5 186.5L132.5 178L135 176L142 170L152 163L162 156.5L180.7 148L188.7 146L191.5 145.5L197.5 144.5L202 144L209.5 143.5L215.5 143L220.5 142.5L226.5 142H232L169.12 0Z", 0, 0, 0, 0, 146, 101),
+        new("TG9", SvgShape.Path, "M353 1.5L171 2L233 142L237.5 141.5L241 141L256.5 140.5L270.5 140L283 139.5L295 139H311L324 138.5H338.5L352.5 138L353 1.5Z", 0, 0, 0, 0, 307, 70),
+        new("TD9", SvgShape.Path, "M354 1.5H539L475.5 139L464 138L448 137L431.5 136.5H415.5H399H384.5L371 137L353.28 138L354 1.5Z", 0, 0, 0, 0, 431, 70),
+        new("TD6", SvgShape.Path, "M539.58 1H596L616 223L613 217L605 206.5L599.5 200.5L596 196.5L585.5 185.5L572.5 174.5L565 169L556 162.5L543.5 155.5L528 149L520 147L505 143.5L496.5 142L484 140L478.5 139.5L476 139L539.58 1Z", 0, 0, 0, 0, 555, 101),
+        new("TG5", SvgShape.Path, "M232 143.5L257.5 198.171L219.5 201L191 203.5L165 211.839L149 225L116.5 196L132.5 181L149 168L175 152.106L203 146L232 143.5Z", 0, 0, 0, 0, 146, 158),
+        new("TG8", SvgShape.Path, "M234 143.5L351.5 140V196L258.5 198.5L234 143.5Z", 0, 0, 0, 0, 305, 173),
+        new("TD8", SvgShape.Path, "M353.5 140.5L388.5 139.5H403.5H417.5H432L453 140.5L465 141L475 142.43L449 197.5L410 196H353.5V140.5Z", 0, 0, 0, 0, 395, 173),
+        new("TD5", SvgShape.Path, "M475.5 141L496.5 144L507 145.5L516.5 148L526 150.5L535 154L547.5 160L559.5 167L578 181.5L593.5 196L561 224L553 217.5L535 208L512.5 202L492.5 199L450.5 195L475.5 141Z", 0, 0, 0, 0, 533, 158),
+        new("TG3", SvgShape.Path, "M116.5 196.5L148.5 225L136 237L126 248L115 260L104.5 274L97 284.5L89.5 296.5L81.5 309V305.5L89.5 228L91.5 225.5L95.5 220L98.5 216L104.5 209L110 202L116.5 196.5Z", 0, 0, 0, 0, 107, 223),
+        new("TG4", SvgShape.Path, "M226 202L242 201.25L258 200.5L260 205.5L263.5 213L267.5 222L274 236L244 237.5L221.5 242L203.5 249.5L187 259.5L149 226.423L163.5 216.5L180 208L190 205.5L226 202Z", 0, 0, 0, 0, 213, 219),
+        new("TG7", SvgShape.Path, "M259 200.5L305.5 198.5L352 198V236L275 237L259 200.5Z", 0, 0, 0, 0, 310, 209),
+        new("TD7", SvgShape.Path, "M353 198.513L363 197.5H377H402H449L430.5 237H352.5L353 198.513Z", 0, 0, 0, 0, 393, 209),
+        new("TD4", SvgShape.Path, "M449.5 197L486 200L516 205L535 210.5L547.5 217L560 225.5L522 259L512.5 253L504 248.5L490 243L476 239L456.5 236H431.5L449.5 197Z", 0, 0, 0, 0, 497, 219),
+        new("TD3", SvgShape.Path, "M593.5 196.5L602 206.5L610 216.5L616 223L623.5 305.5V308.5L611 284L605 274.5L598.5 265L589 252L577 238.5L571.5 232.5L562 224.5L593.5 196.5Z", 0, 0, 0, 0, 596, 223),
+        new("TG1", SvgShape.Path, "M81.5 311L84.5 307L252 371.5H74.5L81.5 311Z", 0, 0, 0, 0, 109, 351),
+        new("TG2", SvgShape.Path, "M149.5 226.5L187 260.5L172 275L162.5 287L152 306.5L144.5 329L84.5 306.5L105 275.5L122 253.5L137 238L149.5 226.5Z", 0, 0, 0, 0, 139, 284),
+        new("TD2", SvgShape.Path, "M562.5 226L575.5 237.5L586 249L603.5 272L623.5 306.5L569.5 326.5L564.5 312L556 294L543.5 277.5L524 260L562.5 226Z", 0, 0, 0, 0, 593, 284),
+        new("TD1", SvgShape.Path, "M624.5 313L629.5 371.5H451L621.5 306.5L624.5 313Z", 0, 0, 0, 0, 595, 351)
+    ];
+
+    private static readonly HeatColorStop[] HeatPalette =
+    [
+        new(0, "#B56A63"),
+        new(8, "#C47668"),
+        new(16, "#D18470"),
+        new(24, "#DB9378"),
+        new(32, "#E4A481"),
+        new(40, "#EABA8C"),
+        new(48, "#EFC997"),
+        new(56, "#F2D7A1"),
+        new(64, "#F2E4AC"),
+        new(72, "#E7E7A9"),
+        new(80, "#CCE0A0"),
+        new(88, "#AFD196"),
+        new(94, "#8CC388"),
+        new(100, "#5FA377")
+    ];
+
+    private ZoneStat GetGoalZone(string key) => GoalZones.FirstOrDefault(zone => zone.Key == key) ?? Empty(key);
+
+    private ZoneStat GetTriggerZone(string key) => TriggerZones.FirstOrDefault(zone => zone.Key == key) ?? Empty(key);
+
+    private static ZoneStat Empty(string key) => new(key, key, 0, 0, 0, Array.Empty<OutcomeCount>());
+
+    private string GetLabel(ZoneStat zone)
+    {
+        return zone.Attempts == 0
+            ? "0%"
+            : zone.Rate.ToString("0.#", CultureInfo.GetCultureInfo("fr-FR")) + "%";
+    }
+
+    private bool IsActive(string key)
+    {
+        return string.Equals(ActiveZoneKey, key, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task SelectZoneAsync(string key)
+    {
+        if (OnZoneSelected.HasDelegate)
+        {
+            await OnZoneSelected.InvokeAsync(key);
+        }
+    }
+
+    private bool ShowGoalMap => string.Equals(ViewMode, ViewModeBoth, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(ViewMode, ViewModeGoal, StringComparison.OrdinalIgnoreCase);
+
+    private bool ShowTriggerMap => string.Equals(ViewMode, ViewModeBoth, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(ViewMode, ViewModeTrigger, StringComparison.OrdinalIgnoreCase);
+
+    private bool IsViewModeActive(string mode) => string.Equals(ViewMode, mode, StringComparison.OrdinalIgnoreCase);
+
+    private async Task SetViewModeAsync(string mode)
+    {
+        ViewMode = mode;
+
+        if (ViewModeChanged.HasDelegate)
+        {
+            await ViewModeChanged.InvokeAsync(mode);
+        }
+    }
+
+    private string GetTooltip(string key, ZoneStat stat)
+    {
+        return $"{key} - {stat.Rate.ToString("0.#", CultureInfo.GetCultureInfo("fr-FR"))}%\n" +
+               $"Volume : {stat.Attempts}\n" +
+               $"Succes : {stat.Successes}\n" +
+               $"Echecs : {stat.Failures}";
+    }
+
+    private string LegendStartLabel => IsGoalkeeper
+        ? $"{SpatialZoneVisuals.GoalkeeperHeatMinRate:0}%"
+        : "0%";
+
+    private string LegendMiddleLabel => IsGoalkeeper
+        ? $"{((SpatialZoneVisuals.GoalkeeperHeatMinRate + SpatialZoneVisuals.GoalkeeperHeatMaxRate) / 2d):0}%"
+        : "50%";
+
+    private string LegendEndLabel => IsGoalkeeper
+        ? $"{SpatialZoneVisuals.GoalkeeperHeatMaxRate:0}%+"
+        : "100%";
+
+    private string GetGoalFillColor(ZoneStat zone)
+    {
+        return zone.Attempts == 0
+            ? NeutralGoalZoneFill
+            : GetFillColor(GetPaletteRate(zone.Rate));
+    }
+
+    private double GetPaletteRate(double rawRate) => SpatialZoneVisuals.ToPaletteRate(rawRate, IsGoalkeeper);
+
+    private static string GetFillColor(double rate)
+    {
+        var boundedRate = Math.Clamp(rate, 0, 100);
+
+        for (var index = 1; index < HeatPalette.Length; index++)
+        {
+            var previous = HeatPalette[index - 1];
+            var current = HeatPalette[index];
+
+            if (boundedRate <= current.Stop)
+            {
+                var span = current.Stop - previous.Stop;
+                var progress = span <= 0 ? 0 : (boundedRate - previous.Stop) / span;
+                return InterpolateColor(previous.Color, current.Color, progress);
+            }
+        }
+
+        return HeatPalette[^1].Color;
+    }
+
+    private string GetTriggerFillColor(ZoneStat zone)
+    {
+        return zone.Attempts == 0 ? "transparent" : GetFillColor(GetPaletteRate(zone.Rate));
+    }
+
+    private static string InterpolateColor(string startHex, string endHex, double progress)
+    {
+        var boundedProgress = Math.Clamp(progress, 0, 1);
+        var (startR, startG, startB) = ParseHexColor(startHex);
+        var (endR, endG, endB) = ParseHexColor(endHex);
+
+        var red = (int)Math.Round(startR + ((endR - startR) * boundedProgress), MidpointRounding.AwayFromZero);
+        var green = (int)Math.Round(startG + ((endG - startG) * boundedProgress), MidpointRounding.AwayFromZero);
+        var blue = (int)Math.Round(startB + ((endB - startB) * boundedProgress), MidpointRounding.AwayFromZero);
+
+        return $"#{red:X2}{green:X2}{blue:X2}";
+    }
+
+    private static (int Red, int Green, int Blue) ParseHexColor(string hex)
+    {
+        return (
+            int.Parse(hex.Substring(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+            int.Parse(hex.Substring(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+            int.Parse(hex.Substring(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
+    }
+
+    private string GetStrokeColor(string key)
+    {
+        if (IsTriggerKey(key))
+        {
+            return IsActive(key) ? "#17303D" : "transparent";
+        }
+
+        return IsActive(key) ? "#0b2330" : "#0f1f28";
+    }
+
+    private string GetStrokeWidth(string key)
+    {
+        if (IsTriggerKey(key))
+        {
+            return IsActive(key) ? "3.5" : "0";
+        }
+
+        return IsActive(key) ? "4" : "2";
+    }
+
+    private static bool IsTriggerKey(string key)
+    {
+        return key.StartsWith("TG", StringComparison.OrdinalIgnoreCase)
+            || key.StartsWith("TD", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Format(double value)
+    {
+        return value.ToString("0.###", CultureInfo.InvariantCulture);
+    }
+
+    private sealed record ZoneGeometry(
+        string Key,
+        SvgShape Shape,
+        string Data,
+        double X,
+        double Y,
+        double Width,
+        double Height,
+        double LabelX,
+        double LabelY);
+
+    private enum SvgShape
+    {
+        Rect,
+        Polygon,
+        Path
+    }
+
+    private sealed record HeatColorStop(double Stop, string Color);
+}

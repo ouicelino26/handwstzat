@@ -1,0 +1,45 @@
+@using HandWStat.Models.Analytics
+
+<section class="audience-selector">
+    <div class="audience-selector-copy">
+        <p class="section-kicker">@Kicker</p>
+        <h4>@Title</h4>
+        <p class="page-subtitle">@Subtitle</p>
+    </div>
+
+    <div class="audience-selector-row">
+        @foreach (var option in AudienceLens.Options)
+        {
+            <button type="button"
+                    class="audience-selector-button @(Value == option.Value ? "is-active" : string.Empty)"
+                    aria-pressed="@(Value == option.Value)"
+                    @onclick="() => ChangeAsync(option.Value)">
+                <span>@option.Label</span>
+                <small>@option.Description</small>
+            </button>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter]
+    public string Kicker { get; set; } = "Mode de lecture";
+
+    [Parameter]
+    public string Title { get; set; } = "Choisissez le bon niveau de lecture";
+
+    [Parameter]
+    public string Subtitle { get; set; } = "Chaque mode adapte la densité de l’écran à l’usage.";
+
+    [Parameter]
+    public string Value { get; set; } = AudienceLens.Club;
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    private Task ChangeAsync(string value)
+    {
+        Value = value;
+        return ValueChanged.InvokeAsync(value);
+    }
+}

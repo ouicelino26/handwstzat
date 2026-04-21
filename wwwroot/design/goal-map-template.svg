@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <title>Goal Map Template</title>
+  <desc>Template du but avec zones BG et BD pour edition Figma.</desc>
+
+  <rect x="0" y="0" width="800" height="500" rx="28" fill="#f7f3ea"/>
+  <rect x="0" y="0" width="800" height="500" rx="28" fill="none" stroke="#0a1f2b" stroke-width="4"/>
+
+  <polygon id="BG12" points="100,5 495,5 495,130 198,130" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <polygon id="BD12" points="400,5 798,5 699,130 400,130" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <polygon id="BG11" points="100,80 400,80 400,130 150,130" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <polygon id="BD11" points="400,80 700,80 650,130 400,130" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <polygon id="BG10" points="0,40 0,340 98,340 98,150" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <polygon id="BG9" points="98,100 98,390 150,390 150,150" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BG8" x="150" y="132" width="125" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BG7" x="275" y="132" width="125" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BD7" x="400" y="132" width="124" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BD8" x="524" y="132" width="124" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <polygon id="BD9" points="702,100 702,390 650,390 650,150" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <polygon id="BD10" points="800,40 800,340 702,340 702,150" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BG6" x="150" y="232" width="125" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BG5" x="275" y="232" width="125" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BD5" x="400" y="232" width="124" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BD6" x="524" y="232" width="124" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BG4" x="0" y="280" width="98" height="150" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BG3" x="98" y="280" width="52" height="150" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BD3" x="650" y="280" width="52" height="150" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BD4" x="702" y="280" width="98" height="150" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BG2" x="150" y="331" width="125" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BG1" x="275" y="331" width="125" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BD1" x="400" y="331" width="124" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+  <rect id="BD2" x="524" y="331" width="124" height="100" rx="6" fill="#f2efe7" stroke="#0f1f28" stroke-width="2"/>
+
+  <g fill="#17303d" font-size="18" font-family="Aptos, Segoe UI, Arial, sans-serif" text-anchor="middle">
+    <text x="295" y="56">BG12</text>
+    <text x="592" y="56">BD12</text>
+    <text x="252" y="107">BG11</text>
+    <text x="549" y="107">BD11</text>
+    <text x="58" y="194">BG10</text>
+    <text x="122" y="244">BG9</text>
+    <text x="212" y="182">BG8</text>
+    <text x="338" y="182">BG7</text>
+    <text x="462" y="182">BD7</text>
+    <text x="586" y="182">BD8</text>
+    <text x="676" y="244">BD9</text>
+    <text x="742" y="194">BD10</text>
+    <text x="212" y="282">BG6</text>
+    <text x="338" y="282">BG5</text>
+    <text x="462" y="282">BD5</text>
+    <text x="586" y="282">BD6</text>
+    <text x="49" y="355">BG4</text>
+    <text x="124" y="355">BG3</text>
+    <text x="676" y="355">BD3</text>
+    <text x="751" y="355">BD4</text>
+    <text x="212" y="381">BG2</text>
+    <text x="338" y="381">BG1</text>
+    <text x="462" y="381">BD1</text>
+    <text x="586" y="381">BD2</text>
+  </g>
+</svg>

@@ -1,0 +1,244 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject IApiAuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="app-shell @(IsSidebarCollapsed ? "is-collapsed" : string.Empty) @(IsSidebarOpen ? "is-sidebar-open" : string.Empty)">
+    <aside class="app-sidebar">
+        <div class="brand-block">
+            <div class="brand-row">
+                <button type="button" class="icon-button sidebar-toggle" @onclick="ToggleSidebar" aria-label="Replier ou deplier le menu">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 7h16M4 12h16M4 17h10" />
+                    </svg>
+                </button>
+
+                <div class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 56 56">
+                        <circle cx="28" cy="28" r="26" class="brand-ball" />
+                        <path d="M14 20h8v22h-8zM24 14h8v28h-8zM34 26h8v16h-8z" class="brand-bars" />
+                        <path d="M16 16c6 3 18 3 24 0M14 28c10-6 18-6 28 0M16 40c6-3 18-3 24 0" class="brand-lines" />
+                    </svg>
+                </div>
+
+                @if (!IsSidebarCollapsed || IsSidebarOpen)
+                {
+                    <div class="brand-copy">
+                        <p class="brand-kicker">Handball analytics</p>
+                        <h1>HandWStat</h1>
+                        <p class="brand-text">Lecture claire des matchs, des joueuses et des équipes.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <NavMenu Collapsed="IsSidebarCollapsed && !IsSidebarOpen" OnNavigate="HandleNavigationAsync" />
+
+        <div class="sidebar-meta">
+            <div class="status-chip">
+                <span class="status-dot"></span>
+                <strong>Session active</strong>
+            </div>
+
+            @if (!IsSidebarCollapsed || IsSidebarOpen)
+            {
+                <p>
+                    @(AuthService.Session.IsAuthenticated
+                        ? $"Connecté en tant que {AuthService.Session.Username ?? "utilisateur"}."
+                        : "Connectez-vous pour ouvrir les vues live.")
+                </p>
+            }
+        </div>
+    </aside>
+
+    <div class="app-stage">
+        <header class="app-topbar">
+            <div class="topbar-leading">
+                <button type="button" class="icon-button mobile-nav-toggle" @onclick="ToggleSidebarOnMobile" aria-label="Ouvrir ou fermer la navigation">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 7h16M4 12h16M4 17h16" />
+                    </svg>
+                </button>
+
+                <div class="topbar-copy">
+                    <p class="topbar-kicker">Vue en cours</p>
+                    <h2>@CurrentPageTitle</h2>
+                    <p>@CurrentPageSubtitle</p>
+                </div>
+            </div>
+
+            <div class="topbar-actions">
+                <div class="user-pill">
+                    <span>@(AuthService.Session.Role ?? "Live")</span>
+                    <strong>@(AuthService.Session.Username ?? "Session")</strong>
+                </div>
+
+                <button type="button" class="ghost-button topbar-button" @onclick="GoToDemo">
+                    Démo
+                </button>
+
+                <button type="button" class="primary-button topbar-button" @onclick="LogoutAsync">
+                    Déconnexion
+                </button>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <article class="app-content">
+                @Body
+            </article>
+        </main>
+    </div>
+
+    <nav class="mobile-nav-rail" aria-label="Navigation principale mobile">
+        @foreach (var item in MobileNavItems)
+        {
+            <NavLink class="mobile-nav-link" href="@item.Href" Match="@item.Match" @onclick="HandleNavigationAsync" title="@item.Title">
+                <span class="mobile-nav-icon" aria-hidden="true">@((MarkupString)item.IconMarkup)</span>
+                <span class="mobile-nav-label">@item.Title</span>
+            </NavLink>
+        }
+    </nav>
+
+    <button class="shell-overlay" @onclick="CloseSidebar" aria-label="Fermer le menu"></button>
+</div>
+
+@code {
+    private static readonly Dictionary<string, (string Title, string Subtitle)> PageCatalog =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["dashboard"] = ("Tableau de bord", "Suivez la sélection, les tendances et les priorités du moment sans surcharge."),
+            ["players"] = ("Joueuses", "Recherchez une fiche, ouvrez ses indicateurs et gardez le contexte de lecture."),
+            ["compare"] = ("Comparaison", "Mettez plusieurs profils face à face sur un périmètre identique."),
+            ["teams"] = ("Équipes", "Lisez un collectif, son effectif et ses rencontres dans un même cadre."),
+            ["matches"] = ("Matchs", "Parcourez les rencontres puis ouvrez le détail quand c'est utile.")
+        };
+
+    private static readonly IReadOnlyList<MobileNavItem> MobileNavItems =
+    [
+        new(
+            "dashboard",
+            "Tableau",
+            NavLinkMatch.All,
+            """
+            <svg viewBox="0 0 24 24"><path d="M4 13h4v7H4zM10 9h4v11h-4zM16 5h4v15h-4zM4 4h16" /></svg>
+            """),
+        new(
+            "players",
+            "Joueuses",
+            NavLinkMatch.Prefix,
+            """
+            <svg viewBox="0 0 24 24"><path d="M12 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM5 20a7 7 0 0 1 14 0M3 10l4 2m14-2-4 2" /></svg>
+            """),
+        new(
+            "compare",
+            "Comparer",
+            NavLinkMatch.Prefix,
+            """
+            <svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 9h4v10h-4zM4 20h16M9 5V3m6 6V3" /></svg>
+            """),
+        new(
+            "teams",
+            "Équipes",
+            NavLinkMatch.Prefix,
+            """
+            <svg viewBox="0 0 24 24"><path d="M12 3l8 4v6c0 4.5-3.3 7.6-8 8-4.7-.4-8-3.5-8-8V7l8-4Z" /><path d="M8.5 12h7" /></svg>
+            """),
+        new(
+            "matches",
+            "Matchs",
+            NavLinkMatch.Prefix,
+            """
+            <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM5 9h14M9 5v14" /></svg>
+            """)
+    ];
+
+    private bool IsSidebarCollapsed { get; set; }
+
+    private bool IsSidebarOpen { get; set; }
+
+    private string CurrentPageTitle { get; set; } = "Tableau de bord";
+
+    private string CurrentPageSubtitle { get; set; } = "Suivez la saison et ouvrez les vues qui vous intéressent sans surcharge.";
+
+    protected override void OnInitialized()
+    {
+        UpdatePageContext();
+        Navigation.LocationChanged += HandleLocationChanged;
+        AuthService.SessionChanged += HandleSessionChanged;
+    }
+
+    private void ToggleSidebar()
+    {
+        IsSidebarCollapsed = !IsSidebarCollapsed;
+    }
+
+    private void ToggleSidebarOnMobile()
+    {
+        IsSidebarOpen = !IsSidebarOpen;
+    }
+
+    private void CloseSidebar()
+    {
+        IsSidebarOpen = false;
+    }
+
+    private Task HandleNavigationAsync()
+    {
+        CloseSidebar();
+        return Task.CompletedTask;
+    }
+
+    private void GoToDemo()
+    {
+        Navigation.NavigateTo("/demo");
+    }
+
+    private void LogoutAsync()
+    {
+        AuthService.Logout();
+        Navigation.NavigateTo("/");
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        UpdatePageContext();
+        CloseSidebar();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleSessionChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdatePageContext()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+        var firstSegment = string.IsNullOrWhiteSpace(relative)
+            ? "dashboard"
+            : relative.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? "dashboard";
+
+        if (PageCatalog.TryGetValue(firstSegment, out var page))
+        {
+            CurrentPageTitle = page.Title;
+            CurrentPageSubtitle = page.Subtitle;
+            return;
+        }
+
+        CurrentPageTitle = "HandWStat";
+        CurrentPageSubtitle = "Navigation et lecture simplifiées pour les statistiques du handball féminin.";
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+        AuthService.SessionChanged -= HandleSessionChanged;
+    }
+
+    private sealed record MobileNavItem(
+        string Href,
+        string Title,
+        NavLinkMatch Match,
+        string IconMarkup);
+}

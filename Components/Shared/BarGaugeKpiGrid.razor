@@ -1,0 +1,17 @@
+@if (Items.Count > 0)
+{
+    <section class="@CssClass">
+        @foreach (var item in Items)
+        {
+            <BarGaugeKpiCard @key="item.Label" Item="item" />
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<BarGaugeKpiItem> Items { get; set; } = [];
+
+    [Parameter]
+    public string CssClass { get; set; } = "gauge-kpi-grid";
+}

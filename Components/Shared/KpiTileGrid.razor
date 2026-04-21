@@ -1,0 +1,38 @@
+@if (Items.Count > 0)
+{
+    <section class="@CssClass">
+        @foreach (var item in Items)
+        {
+            <article class="mini-card kpi-tile @(GetToneClass(item.Tone))">
+                <span>@item.Label</span>
+                <strong>@item.Value</strong>
+                @if (!string.IsNullOrWhiteSpace(item.Context))
+                {
+                    <small class="kpi-context">@item.Context</small>
+                }
+                <p>@item.Caption</p>
+            </article>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<KpiTile> Items { get; set; } = [];
+
+    [Parameter]
+    public string CssClass { get; set; } = "kpi-tile-grid";
+
+    private static string GetToneClass(string tone)
+    {
+        return tone?.ToLowerInvariant() switch
+        {
+            "positive" => "is-positive",
+            "good" => "is-good",
+            "warning" => "is-warning",
+            "danger" => "is-danger",
+            "neutral" => "is-neutral",
+            _ => string.Empty
+        };
+    }
+}

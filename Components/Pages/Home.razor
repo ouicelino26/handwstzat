@@ -1,0 +1,152 @@
+@page "/"
+@layout PublicLayout
+@inject IApiAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Connexion</PageTitle>
+
+<div class="landing-shell">
+    <section class="landing-story page-hero">
+        <div class="landing-brand">
+            <div class="landing-mark" aria-hidden="true">
+                <svg viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="26" class="landing-ball" />
+                    <path d="M14 20h8v22h-8zM24 14h8v28h-8zM34 26h8v16h-8z" class="landing-bars" />
+                    <path d="M16 16c6 3 18 3 24 0M14 28c10-6 18-6 28 0M16 40c6-3 18-3 24 0" class="landing-lines" />
+                </svg>
+            </div>
+
+            <div class="landing-brand-copy">
+                <p class="section-kicker">Handball analytics</p>
+                <h1>Un cockpit clair pour suivre le handball.</h1>
+                <p class="page-subtitle">
+                    Joueuses, matchs, équipes et zones de tir dans une interface pensée pour lire vite,
+                    comparer facilement et garder le contexte sans surcharge.
+                </p>
+            </div>
+        </div>
+
+        <div class="landing-highlight-grid">
+            <article class="landing-highlight">
+                <span>Lecture globale</span>
+                <strong>Des KPI lisibles en un coup d’œil</strong>
+                <p>Le tableau de bord met en avant les chiffres vraiment utiles, sans bruit visuel.</p>
+            </article>
+
+            <article class="landing-highlight">
+                <span>Fiches joueuses</span>
+                <strong>Ouvrir, filtrer et comprendre rapidement</strong>
+                <p>Chaque fiche garde le même cadre de lecture pour éviter les allers-retours inutiles.</p>
+            </article>
+
+            <article class="landing-highlight">
+                <span>Comparaison</span>
+                <strong>Mettre plusieurs profils face à face</strong>
+                <p>Benchmarks, graphiques et tableaux partagent les mêmes repères de contexte.</p>
+            </article>
+        </div>
+
+        <div class="landing-demo-card">
+            <div>
+                <p class="section-kicker">Mode démo</p>
+                <h3>Explorer l’interface avant de se connecter</h3>
+                <p>Découvrez la structure, les cartes et la logique d’analyse sans utiliser la session live.</p>
+            </div>
+
+            <button type="button" class="ghost-button" @onclick="OpenDemo">
+                Ouvrir la démo
+            </button>
+        </div>
+    </section>
+
+    <section class="login-card">
+        <div class="login-card-head">
+            <div>
+                <p class="section-kicker">Accès live</p>
+                <h2>Connectez-vous pour ouvrir l’espace complet.</h2>
+                <p class="page-subtitle page-subtitle-inverse">
+                    Accès réservé à la session authentifiée pour les statistiques détaillées et les vues live.
+                </p>
+            </div>
+
+            <span class="hero-badge">API live</span>
+        </div>
+
+        <div class="connection-grid light-grid">
+            <label class="filter-field login-field">
+                <span>Identifiant</span>
+                <input @bind="UsernameInput" autocomplete="username" placeholder="Votre identifiant" />
+            </label>
+
+            <label class="filter-field login-field">
+                <span>Mot de passe</span>
+                <input @bind="PasswordInput" type="password" autocomplete="current-password" placeholder="Votre mot de passe" />
+            </label>
+        </div>
+
+        <div class="connection-actions">
+            <button type="button" class="primary-button" @onclick="LoginAsync" disabled="@IsBusy">
+                @(IsBusy ? "Connexion..." : "Se connecter")
+            </button>
+
+            <button type="button" class="ghost-button" @onclick="OpenDemo" disabled="@IsBusy">
+                Voir l’aperçu
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(StatusMessage))
+        {
+            <p class="status-note-inline">@StatusMessage</p>
+        }
+
+        <div class="login-note">
+            <strong>Lecture rapide, sans friction</strong>
+            <p>La démo permet de découvrir l’expérience complète avant de saisir vos identifiants.</p>
+        </div>
+    </section>
+</div>
+
+@code {
+    private bool IsBusy { get; set; }
+
+    private string UsernameInput { get; set; } = string.Empty;
+
+    private string PasswordInput { get; set; } = string.Empty;
+
+    private string? StatusMessage { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (AuthService.Session.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/dashboard");
+        }
+    }
+
+    private async Task LoginAsync()
+    {
+        try
+        {
+            IsBusy = true;
+            StatusMessage = null;
+
+            var session = await AuthService.LoginAsync(UsernameInput, PasswordInput);
+            StatusMessage = session.Message;
+            PasswordInput = string.Empty;
+
+            if (session.IsAuthenticated)
+            {
+                Navigation.NavigateTo("/dashboard");
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void OpenDemo()
+    {
+        Navigation.NavigateTo("/demo");
+    }
+}

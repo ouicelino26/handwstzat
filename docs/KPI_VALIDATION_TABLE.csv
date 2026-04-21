@@ -1,0 +1,119 @@
+KPI / Action;Formule actuelle;Validation metier / a modifier
+Dictionnaire BB - But;evenement classe dans Goals;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - But sur penalty;evenement classe dans PenaltyGoals;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Tir a cote;evenement classe dans ShotMisses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Tir sur poteau;evenement classe dans ShotMisses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Tir arrete;evenement classe dans ShotMisses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Tir rate;evenement classe dans ShotMisses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Tir contre;evenement classe dans ShotMisses et detail TirContre;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Penalty sur poteau;evenement classe dans PenaltyMisses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Penalty rate;evenement classe dans PenaltyMisses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Penalty arrete;evenement classe dans PenaltyMisses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Passe decisive;evenement classe dans Assists / PasseDecisive;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Mauvaise passe;evenement classe dans BadPasses / MauvaisePasse;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Perte de balle;evenement classe dans BallLosses / PerteDeBalle;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Faute de pied;evenement classe dans TechnicalFaults;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Marcher;evenement classe dans TechnicalFaults;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Zone;evenement classe dans TechnicalFaults;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Reprise de dribble;evenement classe dans TechnicalFaults;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Refus de jeu;evenement classe dans TechnicalFaults;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Passage en force;evenement classe dans PassageEnForce;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Interception;evenement classe dans Interceptions;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Contre Reussi;evenement classe dans CounterSuccesses / Contres;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Neutralise l'attaquant;evenement classe dans Neutralisations;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Provoque Passage force;evenement classe dans ForcedPassages / PassageForce;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Exclusion;evenement classe dans Exclusions;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Avertissement;evenement classe dans Warnings / Avertissements;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Deux minutes;evenement classe dans TwoMinutes / DeuxMinutes;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Penalty concede;evenement classe dans PenaltyConceded / PenaltyConcede;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Gardien arrete le tir;evenement classe dans GoalkeeperSaves / Arrets;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Gardien arrete le penalty;evenement classe dans GoalkeeperPenaltySaves / ArretsPenalty;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Gardien prend un but;evenement classe dans GoalkeeperGoalsConceded / ButsPris;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dictionnaire BB - Gardien prend le penalty;evenement classe dans GoalkeeperPenaltyGoalsConceded / ButsPenalty;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Agregat - TotalGoals;Goals + PenaltyGoals;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Agregat - Tirs;TotalGoals + ShotMisses + PenaltyMisses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Agregat - TirsLoupes;ShotMisses + PenaltyMisses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Agregat - TotalTurnovers;BadPasses + BallLosses + TechnicalFaults + PassageEnForce;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Agregat - DefensiveImpact;Interceptions + Contres + Neutralisations + PassageForce;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Agregat - GoalkeeperStops;Arrets + ArretsPenalty;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Agregat - TirsSubis;Arrets + ArretsPenalty + ButsPris + ButsPenalty;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Agregat - SanctionCount;Exclusions + Avertissements + DeuxMinutes + PenaltyConcede;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Agregat - DirectContributions;TotalGoals + AssistCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Taux de base - TauxReussiteTir;Goals / (Goals + ShotMisses) * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Taux de base - TauxReussitePenalty;PenaltyGoals / (PenaltyGoals + PenaltyMisses) * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Taux de base - TauxArret;(Arrets + ArretsPenalty) / (Arrets + ArretsPenalty + ButsPris + ButsPenalty) * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Taux de base - SuccessRate zone spatiale;SuccessCount / Attempts * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard - Equipes actives;Overview.TeamCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard - Cadence offensive;Overview.GoalCount / Overview.MatchCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard - Jeu prepare;Overview.AssistCount / Overview.GoalCount * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard - Buts / match;Overview.GoalCount / Overview.MatchCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard - Buts prepares;Overview.AssistCount / Overview.GoalCount * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard - Interceptions / match;Overview.InterceptionCount / Overview.MatchCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard - Arrets / match;Overview.SaveCount / Overview.MatchCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard - Pertes / match;Overview.TurnoverCount / Overview.MatchCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard - Sanctions / match;Overview.SanctionCount / Overview.MatchCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard spotlight - Actions directes / match;(TotalGoals + Assists) / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard spotlight - Ballons valorises;Assists / (Assists + Turnovers) * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard spotlight - Impact def. / match;DefensiveImpact / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard spotlight - Arrets / match;GoalkeeperStops / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard spotlight - Taux de tir;ShootingRate API;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard spotlight - Taux d'arret;Goalkeeper.TauxArret;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard spotlight - Tirs rates / match;MissedShots / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard spotlight - Buts pris / match;(ButsPris + ButsPenalty) / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Dashboard spotlight - Sanctions / match;TotalSanctions / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses - Matchs;Profile.MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses - Buts;Global.TotalGoals;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses - Passes;Global.AssistCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses - Interceptions;Global.InterceptionCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses - Arrets;Global.SaveCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses - Pertes;Global.TurnoverCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses - Tir;Global.ShotSuccessRate;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses - Penalty;Global.PenaltySuccessRate;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses KPI - Actions directes / match;(Global.TotalGoals + Global.AssistCount) / Global.MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses KPI - Ballons valorises;Passing.PasseDecisive / (Passing.PasseDecisive + Passing.TotalPertes) * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses KPI - Impact def. / match;DefensiveImpact / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses KPI - Arrets / match;GoalkeeperStops / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses KPI - Taux de tir;Offense.TauxReussiteTir;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses KPI - Taux d'arret;Goalkeeper.TauxArret;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses KPI - Tirs rates / match;(Offense.TirsRates + Offense.PenaltyRate) / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses KPI - Buts pris / match;(Goalkeeper.ButsPris + Goalkeeper.ButsPenalty) / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Joueuses KPI - Sanctions / match;TotalSanctions / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Comparaison - Directes / match;(TotalGoals + AssistCount) / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Comparaison - Ballons valorises;PasseDecisive / (PasseDecisive + TotalPertes) * 100 avec fallback AssistCount / (AssistCount + TurnoverCount) * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Comparaison - Impact def. / match;DefensiveImpact / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Comparaison - Arrets / match;GoalkeeperStops / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Comparaison - Taux de tir;Offense.TauxReussiteTir sinon ShotSuccessRate;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Comparaison - Taux d'arret;Goalkeeper.TauxArret;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Comparaison - Sanctions / match;TotalSanctions / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes - Matchs;MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes - Victoires;Wins;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes - Nuls;Draws;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes - Defaites;Losses;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes - Buts pour;GoalsFor;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes - Buts contre;GoalsAgainst;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes KPI - Points / match;((Wins * 2) + Draws) / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes KPI - Taux de victoire;Wins / MatchesPlayed * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes KPI - Diff. buts / match;(GoalsFor - GoalsAgainst) / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes KPI - Buts marques / match;GoalsFor / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes KPI - Buts encaisses / match;GoalsAgainst / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes KPI - Ballons valorises;Overview.AssistCount / (Overview.AssistCount + Overview.TurnoverCount) * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes KPI - Arrets / match;Overview.SaveCount / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Equipes KPI - Sanctions / match;Overview.SanctionCount / MatchesPlayed;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs - Buts cumules;Team1Score final + Team2Score final;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs - Ecart final;abs(Team1Score final - Team2Score final);[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs - Jeu prepare;AssistCount / totalScore * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs - Ballons valorises;AssistCount / (AssistCount + TurnoverCount) * 100;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs - Actions def.;InterceptionCount + SaveCount;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs - Scoreuses a 3+ buts;count players where TotalGoals >= 3;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs scenario - Score a la pause;dernier snapshot score <= 30:00;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs scenario - Ecart final;Team1Score final - Team2Score final;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs scenario - Lead max eq. 1;max(Team1Score - Team2Score);[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs scenario - Lead max eq. 2;max(Team2Score - Team1Score);[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs scenario - Renversements;nombre de changements de leader hors egalites;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs scenario - Run max eq. 1;plus grande serie sans reponse equipe 1;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs scenario - Run max eq. 2;plus grande serie sans reponse equipe 2;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs scenario - Buts 2e MT;(score final eq1 - score pause eq1) + (score final eq2 - score pause eq2);[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs insight - 1re mi-temps;score a 30:00;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs insight - 2e mi-temps;score final - score pause;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs insight - Dernier 10';score final - score au point <= 50:00;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter
+Matchs insight - Run cle;meilleure serie sans reponse;[ ] OK [ ] Renommer [ ] Corriger formule [ ] A discuter

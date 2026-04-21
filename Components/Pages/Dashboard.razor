@@ -1,0 +1,491 @@
+@page "/dashboard"
+@inherits HomeBase
+
+<PageTitle>Tableau de bord</PageTitle>
+
+@if (IsBusy && Snapshot is null)
+{
+    <StateCard Kicker="Chargement"
+               Title="Mise à jour du tableau de bord"
+               Message="Préparation des classements, de la joueuse suivie et des cartes de tir."
+               Tone="loading" />
+}
+else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <StateCard Kicker="Erreur"
+               Title="Impossible de charger le tableau de bord"
+               Message="@ErrorMessage"
+               Tone="error"
+               Actions="@RetryActions" />
+}
+else if (Snapshot is not null)
+{
+    <div class="dashboard-shell">
+        <section class="dashboard-hero">
+            <div class="dashboard-hero-copy">
+                <p class="section-kicker">Tableau de bord</p>
+                <h2>Vue globale sur les statistiques de la ligue</h2>
+
+                <div class="hero-badges">
+                    <span class="hero-badge">@Snapshot.DataOrigin</span>
+                    <span class="hero-badge">@Snapshot.RequestedRankingLabel</span>
+                    <span class="hero-badge">@Snapshot.Overview.MatchCount matchs</span>
+                </div>
+            </div>
+
+            <div class="dashboard-hero-side">
+                <div class="hero-stat-grid">
+                    <article class="hero-stat-card">
+                        <span>Equipes actives</span>
+                        <strong>@Snapshot.Overview.TeamCount</strong>
+                        <small>clubs dans le perimetre filtre</small>
+                    </article>
+
+                    <article class="hero-stat-card">
+                        <span>Cadence offensive</span>
+                        <strong>@((Snapshot.Overview.MatchCount == 0 ? 0 : Snapshot.Overview.GoalCount / (double)Snapshot.Overview.MatchCount).ToString("0.0"))</strong>
+                        <small>buts par match sur la selection</small>
+                    </article>
+
+                    <article class="hero-stat-card">
+                        <span>Jeu prepare</span>
+                        <strong>@((Snapshot.Overview.GoalCount == 0 ? 0 : Snapshot.Overview.AssistCount * 100d / Snapshot.Overview.GoalCount).ToString("0"))%</strong>
+                        <small>buts amenes par une passe decisive</small>
+                    </article>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="page-panel filter-strip">
+            <div class="panel-head panel-head-wrap">
+                <div>
+                    <p class="section-kicker">Filtres</p>
+                    <h3>Pilotez la vue ligue sans changer de page</h3>
+                </div>
+
+                <div class="toolbar">
+                    <button type="button" class="primary-button" @onclick="ApplyFiltersAsync" disabled="@IsBusy">Appliquer</button>
+                    <button type="button" class="ghost-button filter-ghost" @onclick="ResetFiltersAsync" disabled="@IsBusy">Reinitialiser</button>
+                </div>
+            </div>
+
+            <details class="filter-drawer">
+                <summary>
+                    <div>
+                        <strong>Afficher les filtres dashboard</strong>
+                        <span>Compétition, équipe, saison, journée et lecture de classement.</span>
+                    </div>
+                </summary>
+
+                <div class="filter-drawer-body">
+                    <div class="page-filters">
+                        <label class="filter-field">
+                            <span>Competition</span>
+                            <select @bind="Filters.CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
+                                <option value="">Toutes</option>
+                                @foreach (var competition in AvailableCompetitions)
+                                {
+                                    <option value="@competition.CompetitionId">@competition.CompetitionName</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="filter-field">
+                            <span>Equipe</span>
+                            <select @bind="Filters.TeamId" @bind:after="OnScopeSelectionChangedAsync">
+                                <option value="">Toutes</option>
+                                @foreach (var team in AvailableTeams)
+                                {
+                                    <option value="@team.TeamId">@team.TeamName</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="filter-field">
+                            <span>Saison</span>
+                            <select @bind="Filters.Season" @bind:after="OnScopeSelectionChangedAsync">
+                                <option value="">Toutes</option>
+                                @foreach (var season in SeasonOptions)
+                                {
+                                    <option value="@season">@season</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="filter-field">
+                            <span>Journee</span>
+                            <select @bind="Filters.Day" @bind:after="OnScopeSelectionChangedAsync">
+                                <option value="">Toutes</option>
+                                @foreach (var day in DayOptions)
+                                {
+                                    <option value="@day">@day</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="filter-field">
+                            <span>Classement</span>
+                            <select @bind="Filters.RankingMetric">
+                                @foreach (var metric in RankingMetrics)
+                                {
+                                    <option value="@metric.Value">@metric.Label</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="filter-field">
+                            <span>Top</span>
+                            <select @bind="Filters.Top">
+                                <option value="5">Top 5</option>
+                                <option value="8">Top 8</option>
+                                <option value="10">Top 10</option>
+                                <option value="12">Top 12</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+            </details>
+
+        </section>
+
+        @if (!string.IsNullOrWhiteSpace(Snapshot.WarningMessage))
+        {
+            <section class="warning-banner">
+                <strong>Information</strong>
+                <span>@Snapshot.WarningMessage</span>
+            </section>
+        }
+
+        @if (Snapshot.Players.Count == 0 || Snapshot.Spotlight.PlayerId <= 0)
+        {
+            <StateCard Kicker="Aucune joueuse"
+                       Title="Aucune joueuse dans cette sélection"
+                       Message="Essayez une autre compétition, une autre équipe ou réinitialisez les filtres."
+                       Tone="empty" />
+        }
+        else
+        {
+            <div class="page-section-switch">
+                <button type="button" class="section-chip @(ActiveDashboardSection == "league" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("league")'>
+                    Ligue
+                    <small>Pilotage global</small>
+                </button>
+                <button type="button" class="section-chip @(ActiveDashboardSection == "spotlight" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("spotlight")'>
+                    Focus joueuse
+                    <small>Profil et spatial</small>
+                </button>
+                <button type="button" class="section-chip @(ActiveDashboardSection == "recent" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("recent")'>
+                    Activite recente
+                    <small>Matchs et feuilles</small>
+                </button>
+            </div>
+
+            @if (ActiveDashboardSection == "league")
+            {
+                <section class="stats-grid">
+                    <div class="mini-card"><span>Joueuses</span><strong>@Snapshot.Overview.PlayerCount</strong></div>
+                    <div class="mini-card"><span>Matchs</span><strong>@Snapshot.Overview.MatchCount</strong></div>
+                    <div class="mini-card"><span>Buts</span><strong>@Snapshot.Overview.GoalCount</strong></div>
+                    <div class="mini-card"><span>Passes</span><strong>@Snapshot.Overview.AssistCount</strong></div>
+                    <div class="mini-card"><span>Interceptions</span><strong>@Snapshot.Overview.InterceptionCount</strong></div>
+                    <div class="mini-card"><span>Arrets</span><strong>@Snapshot.Overview.SaveCount</strong></div>
+                </section>
+
+                @if (ShowLeagueKpis)
+                {
+                    <section class="page-panel">
+                        <div class="panel-head">
+                            <div>
+                                <p class="section-kicker">Lecture staff</p>
+                                <h3>Les KPI qui structurent le contexte de la selection</h3>
+                            </div>
+                        </div>
+
+                        <KpiTileGrid Items="@LeagueKpis" />
+                    </section>
+                }
+
+                @if (ShowRankingPanel)
+                {
+                    <section class="page-panel">
+                        <div class="panel-head">
+                            <div>
+                                <p class="section-kicker">Classement</p>
+                                <h3>@Snapshot.RequestedRankingLabel</h3>
+                            </div>
+                            <span class="panel-pill">Top @Filters.Top</span>
+                        </div>
+
+                        <ApexChart TItem="PlayerRankingItem" Title="@Snapshot.RequestedRankingLabel" Height="300">
+                            <ApexPointSeries TItem="PlayerRankingItem"
+                                             Items="@Snapshot.RequestedRanking"
+                                             Name="@Snapshot.RequestedRankingLabel"
+                                             SeriesType="SeriesType.Bar"
+                                             XValue="item => item.PlayerName"
+                                             YValue="item => (decimal?)item.Value" />
+                        </ApexChart>
+
+                        <div class="compact-list">
+                            @foreach (var item in Snapshot.EfficiencyRanking.Take(5))
+                            {
+                                <div class="outcome-row">
+                                    <span>@item.PlayerName</span>
+                                    <strong>@item.ValueLabel</strong>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                }
+            }
+            else if (ActiveDashboardSection == "spotlight")
+            {
+                <section class="page-panel">
+                    <div class="panel-head panel-head-wrap">
+                        <div>
+                            <p class="section-kicker">Joueuse suivie</p>
+                            <h3>@Snapshot.Spotlight.FullName</h3>
+                            <p class="page-subtitle">
+                                @Snapshot.Spotlight.TeamName - @Snapshot.Spotlight.PositionName
+                                @if (Snapshot.Spotlight.Age.HasValue)
+                                {
+                                    <span>- @Snapshot.Spotlight.Age.Value ans</span>
+                                }
+                            </p>
+                        </div>
+
+                        <label class="filter-field compact-select">
+                            <span>Changer de joueuse</span>
+                            <select value="@Filters.SpotlightPlayerId" @onchange="OnPlayerChangedAsync">
+                                @foreach (var player in Snapshot.Players)
+                                {
+                                    <option value="@player.Id">@player.FullName</option>
+                                }
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="badge-row">
+                        <div class="mini-card"><span>Matchs</span><strong>@Snapshot.Spotlight.MatchesPlayed</strong></div>
+                        <div class="mini-card"><span>Buts</span><strong>@Snapshot.Spotlight.TotalGoals</strong></div>
+                        <div class="mini-card"><span>Passes</span><strong>@Snapshot.Spotlight.Assists</strong></div>
+                        <div class="mini-card"><span>@(Snapshot.Spotlight.IsGoalkeeper ? "Arrets" : "Impact def.")</span><strong>@(Snapshot.Spotlight.IsGoalkeeper ? Snapshot.Spotlight.Saves : Snapshot.Spotlight.DefensiveStops)</strong></div>
+                    </div>
+
+                    <KpiTileGrid Items="@SpotlightKpis" />
+
+                    @if (ShowSpotlightDeepDive)
+                    {
+                        <div class="dual-grid">
+                            <section class="page-panel dashboard-nested-panel">
+                                <p class="section-kicker">Profil d'activite</p>
+                                <h4>Repartition des actions</h4>
+                                <ApexChart TItem="SliceValue" Title="Volume d'actions" Height="280">
+                                    <ApexPointSeries TItem="SliceValue"
+                                                     Items="@Snapshot.Spotlight.Distribution"
+                                                     Name="Actions"
+                                                     SeriesType="SeriesType.Donut"
+                                                     XValue="slice => slice.Label"
+                                                     YValue="slice => (decimal?)slice.Value" />
+                                </ApexChart>
+                            </section>
+
+                            <section class="page-panel dashboard-nested-panel">
+                                <p class="section-kicker">Lecture rapide</p>
+                                <h4>Impact dans la selection</h4>
+                                <div class="compact-list">
+                                    <div class="outcome-row">
+                                        <span>Taux de tir ouvert</span>
+                                        <strong>@FormatRate(Snapshot.Spotlight.ShootingRate)%</strong>
+                                    </div>
+                                    <div class="outcome-row">
+                                        <span>Tirs engages</span>
+                                        <strong>@Snapshot.Spotlight.ShotAttempts</strong>
+                                    </div>
+                                    <div class="outcome-row">
+                                        <span>Conversion globale</span>
+                                        <strong>@FormatRate(Snapshot.Spotlight.OverallShotSuccessRate)%</strong>
+                                    </div>
+                                    <div class="outcome-row">
+                                        <span>Dechet tir</span>
+                                        <strong>@Snapshot.Spotlight.ShotWaste</strong>
+                                    </div>
+                                    <div class="outcome-row">
+                                        <span>Passes / pertes</span>
+                                        <strong>@Snapshot.Spotlight.Assists / @Snapshot.Spotlight.Turnovers</strong>
+                                    </div>
+                                    <div class="outcome-row">
+                                        <span>Pertes techniques</span>
+                                        <strong>@Snapshot.Spotlight.TechnicalLosses</strong>
+                                    </div>
+                                    <div class="outcome-row">
+                                        <span>Defense</span>
+                                        <strong>@Snapshot.Spotlight.Defense.Interceptions int. / @Snapshot.Spotlight.Defense.Contres contres</strong>
+                                    </div>
+                                    @if (Snapshot.Spotlight.IsGoalkeeper)
+                                    {
+                                        <div class="outcome-row">
+                                            <span>Stop 7m</span>
+                                            <strong>@FormatRate(Snapshot.Spotlight.PenaltyStopRate)%</strong>
+                                        </div>
+                                    }
+                                    <div class="outcome-row">
+                                        <span>Sanctions</span>
+                                        <strong>@Snapshot.Spotlight.Sanctions.DeuxMinutes deux min.</strong>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    }
+                </section>
+
+                @if (ShowSpatialSection)
+                {
+                    <section class="dashboard-grid">
+                        <article class="page-panel">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="section-kicker">Lecture spatiale</p>
+                                    <h3>But et declenchements</h3>
+                                </div>
+                            </div>
+
+                            <GoalKpi GoalZones="@Snapshot.Spotlight.GoalZones"
+                                     TriggerZones="@Snapshot.Spotlight.TriggerZones"
+                                     IsGoalkeeper="@Snapshot.Spotlight.IsGoalkeeper"
+                                     ActiveZoneKey="@SelectedZoneKey"
+                                     OnZoneSelected="HandleZoneSelectionAsync" />
+                        </article>
+
+                        <article class="page-panel">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="section-kicker">Zone active</p>
+                                    <h3>@(CurrentZone?.Label ?? "Selectionnez une zone")</h3>
+                                </div>
+                                @if (CurrentZone is not null)
+                                {
+                                    <span class="panel-pill">@FormatRate(CurrentZone.Rate)%</span>
+                                }
+                            </div>
+
+                            @if (CurrentZone is not null)
+                            {
+                                <div class="badge-row">
+                                    <div class="mini-card"><span>Volume</span><strong>@CurrentZone.Attempts</strong></div>
+                                    <div class="mini-card"><span>Succes</span><strong>@CurrentZone.Successes</strong></div>
+                                    <div class="mini-card"><span>Echecs</span><strong>@CurrentZone.Failures</strong></div>
+                                </div>
+
+                                <div class="compact-list">
+                                    @if (CurrentZone.Outcomes.Count == 0)
+                                    {
+                                        <p class="empty-hint">Aucun evenement sur cette zone pour la selection courante.</p>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var outcome in CurrentZone.Outcomes)
+                                        {
+                                            <div class="outcome-row">
+                                                <span>@outcome.Label</span>
+                                                <strong>@outcome.Count</strong>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            }
+                        </article>
+                    </section>
+                }
+            }
+            else
+            {
+                <section class="page-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="section-kicker">Derniers reperes</p>
+                            <h3>Gardez le fil de la selection sans tout lire en meme temps</h3>
+                        </div>
+                    </div>
+
+                    <div class="dual-grid">
+                        <section class="page-panel dashboard-nested-panel">
+                            <p class="section-kicker">Matchs recents</p>
+                            <div class="list-stack">
+                                @foreach (var match in Snapshot.RecentMatches)
+                                {
+                                    <MatchCard @key="match.MatchId"
+                                               Title="@match.Poster"
+                                               Score="@match.Score"
+                                               Meta="@match.SeasonDayLabel"
+                                               Badge="@match.DayLabel"
+                                               DetailsHref="@($"/matches?matchId={match.MatchId}")"
+                                               DetailsLabel="Voir plus" />
+                                }
+                            </div>
+                        </section>
+
+                        <section class="page-panel dashboard-nested-panel">
+                            <p class="section-kicker">Dernieres feuilles</p>
+                            <div class="list-stack">
+                                @foreach (var match in Snapshot.Spotlight.Matches.Take(4))
+                                {
+                                    <MatchCard @key="match.MatchId"
+                                               Title="@($"{match.Team1Name ?? "Equipe A"} vs {match.Team2Name ?? "Equipe B"}")"
+                                               Score="@($"{match.Team1Score ?? 0} - {match.Team2Score ?? 0}")"
+                                               Meta="@(match.CompetitionName ?? "Competition")"
+                                               SecondaryMeta="@MatchFilterCatalog.FormatSeasonDay(match)"
+                                               DetailsHref="@($"/matches?matchId={match.MatchId}")"
+                                               DetailsLabel="Voir plus">
+                                        <span class="match-card-chip is-positive">Buts @match.Goals</span>
+                                        <span class="match-card-chip is-good">Passes @match.Assists</span>
+                                    </MatchCard>
+                                }
+                            </div>
+                        </section>
+                    </div>
+                </section>
+            }
+        }
+    </div>
+}
+
+@code {
+    private RenderFragment RetryActions => builder =>
+    {
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "type", "button");
+        builder.AddAttribute(2, "class", "primary-button");
+        builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, RefreshAsync));
+        builder.AddContent(4, "Réessayer");
+        builder.CloseElement();
+    };
+
+    private string ActiveLens { get; set; } = AudienceLens.Club;
+    private string ActiveDashboardSection { get; set; } = "league";
+
+    private bool ShowLeagueKpis => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
+
+    private bool ShowRankingPanel => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
+
+    private bool ShowSpotlightDeepDive => ActiveLens is AudienceLens.Analyst or AudienceLens.Player;
+
+    private bool ShowSpatialSection => ActiveLens is AudienceLens.Analyst or AudienceLens.Player;
+
+    private Task SetDashboardSection(string section)
+    {
+        ActiveDashboardSection = section;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task SetActiveLens(string lens)
+    {
+        ActiveLens = lens;
+        if (lens == AudienceLens.Player && ActiveDashboardSection == "league")
+        {
+            ActiveDashboardSection = "spotlight";
+        }
+
+        return InvokeAsync(StateHasChanged);
+    }
+}

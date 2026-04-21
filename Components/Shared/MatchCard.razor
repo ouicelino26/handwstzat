@@ -1,0 +1,98 @@
+<article class="mini-card match-card @(IsSelected ? "is-selected" : string.Empty)">
+    <div class="match-card-main">
+        <div class="match-card-head">
+            <div class="match-card-copy">
+                @if (!string.IsNullOrWhiteSpace(Kicker))
+                {
+                    <p class="match-card-kicker">@Kicker</p>
+                }
+
+                <h4 class="match-card-title">@Title</h4>
+
+                @if (!string.IsNullOrWhiteSpace(Meta))
+                {
+                    <p class="match-card-meta">@Meta</p>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(SecondaryMeta))
+                {
+                    <p class="match-card-meta match-card-secondary">@SecondaryMeta</p>
+                }
+            </div>
+
+            <div class="match-card-score">
+                <strong>@Score</strong>
+
+                @if (!string.IsNullOrWhiteSpace(Badge))
+                {
+                    <span>@Badge</span>
+                }
+            </div>
+        </div>
+
+                @if (ChildContent is not null)
+        {
+            <div class="match-card-extra">
+                @ChildContent
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(DetailsHref) || OnCardClick.HasDelegate)
+    {
+        <div class="match-card-actions">
+            @if (!string.IsNullOrWhiteSpace(DetailsHref))
+            {
+                <a class="ghost-button filter-ghost match-card-button" href="@DetailsHref">@DetailsLabel</a>
+            }
+            else
+            {
+                <button type="button"
+                        class="ghost-button filter-ghost match-card-button"
+                        @onclick="HandleCardClickAsync">
+                    @DetailsLabel
+                </button>
+            }
+        </div>
+    }
+</article>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "Match";
+
+    [Parameter]
+    public string Score { get; set; } = "-";
+
+    [Parameter]
+    public string? Kicker { get; set; }
+
+    [Parameter]
+    public string? Meta { get; set; }
+
+    [Parameter]
+    public string? SecondaryMeta { get; set; }
+
+    [Parameter]
+    public string? Badge { get; set; }
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public string DetailsHref { get; set; } = string.Empty;
+
+    [Parameter]
+    public string DetailsLabel { get; set; } = "Voir plus";
+
+    [Parameter]
+    public EventCallback OnCardClick { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private Task HandleCardClickAsync()
+    {
+        return OnCardClick.HasDelegate ? OnCardClick.InvokeAsync() : Task.CompletedTask;
+    }
+}

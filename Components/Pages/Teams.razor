@@ -1,0 +1,861 @@
+@page "/teams"
+@inject ReferenceDataService ReferenceDataService
+@inject StatsApiClient StatsApiClient
+@inject MatchesApiClient MatchesApiClient
+@inject MatchEventsApiClient MatchEventsApiClient
+@inject IApiAuthService AuthService
+
+<PageTitle>Équipes</PageTitle>
+
+<div class="page-shell teams-page">
+    @if (!AuthService.Session.IsAuthenticated)
+    {
+        <AccessRequiredCard Message="Connectez-vous pour ouvrir les bilans d'equipe et la production des joueuses." />
+    }
+    else
+    {
+        <section class="page-panel teams-directory-panel">
+            <div class="panel-head panel-head-wrap">
+                <div>
+                    <p class="section-kicker">Bilan collectif</p>
+                    <h3>Chargez une équipe puis basculez entre synthèse, effectif et matchs</h3>
+                    <p class="page-subtitle">Un seul bloc de filtres pour garder le meme contexte partout.</p>
+                </div>
+
+                <div class="toolbar">
+                    <button type="button" class="primary-button" @onclick="LoadTeamAsync" disabled="@IsBusy">Charger</button>
+                    <button type="button" class="ghost-button filter-ghost" @onclick="ResetAsync" disabled="@IsBusy">Reinitialiser</button>
+                </div>
+            </div>
+
+            <details class="filter-drawer">
+                <summary>
+                    <div>
+                        <strong>Afficher les filtres équipe</strong>
+                        <span>Équipe, compétition, saison, journée et poste effectif si besoin.</span>
+                    </div>
+                </summary>
+
+                <div class="filter-drawer-body">
+                    <div class="page-filters">
+                        <label class="filter-field">
+                            <span>Equipe</span>
+                            <select @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
+                                <option value="">Selectionner</option>
+                                @foreach (var team in AvailableTeams)
+                                {
+                                    <option value="@team.TeamId">@team.TeamName</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="filter-field">
+                            <span>Competition</span>
+                            <select @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
+                                <option value="">Toutes</option>
+                                @foreach (var competition in AvailableCompetitions)
+                                {
+                                    <option value="@competition.CompetitionId">@competition.CompetitionName</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="filter-field">
+                            <span>Saison</span>
+                            <select @bind="Season" @bind:after="OnScopeSelectionChangedAsync">
+                                <option value="">Toutes</option>
+                                @foreach (var season in SeasonOptions)
+                                {
+                                    <option value="@season">@season</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="filter-field">
+                            <span>Journee</span>
+                            <select @bind="Day" @bind:after="OnScopeSelectionChangedAsync">
+                                <option value="">Toutes</option>
+                                @foreach (var day in DayOptions)
+                                {
+                                    <option value="@day">@day</option>
+                                }
+                            </select>
+                        </label>
+
+                        @if (ActiveSection == "roster")
+                        {
+                            <label class="filter-field">
+                                <span>Poste effectif</span>
+                                <select @bind="PositionId" @bind:after="OnRosterScopeChangedAsync">
+                                    <option value="">Tous</option>
+                                    @foreach (var position in AvailablePositions)
+                                    {
+                                        <option value="@position.Id">@position.Name</option>
+                                    }
+                                </select>
+                            </label>
+                        }
+                    </div>
+                </div>
+            </details>
+
+        
+        </section>
+
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <StateCard Kicker="Erreur"
+                       Title="Impossible de charger l’équipe"
+                       Message="@ErrorMessage"
+                       Tone="error" />
+        }
+        else if (TeamStats is null)
+        {
+            <StateCard Kicker="Aucune équipe"
+                       Title="Choisissez une équipe pour charger son bilan"
+                       Message="Les joueuses et les matchs se chargeront dans le même contexte."
+                       Tone="empty" />
+        }
+        else
+        {
+            <section class="page-panel">
+                <div class="panel-head panel-head-wrap">
+                    <div>
+                        <p class="section-kicker">Equipe</p>
+                        <h3>@TeamStats.TeamName</h3>
+                        <p class="page-subtitle">Code @(TeamStats.TeamCode ?? "-") - @TeamStats.MatchesPlayed matchs dans la selection.</p>
+                    </div>
+
+                    <span class="hero-badge">@TeamPlayers.Count joueuses</span>
+                </div>
+
+            
+
+                <AudienceLensSelector Value="@ActiveLens"
+                                      ValueChanged="SetActiveLens"
+                                      Title="Choisissez la bonne lecture d’équipe"
+                                      Subtitle="Club pour piloter vite, Analyste pour lire plus finement, Joueuse pour situer les repères du collectif." />
+
+                <div class="tab-strip">
+                    <button type="button" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Synthese</button>
+                    <button type="button" class="tab-button @(ActiveSection == "roster" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("roster")'>Effectif</button>
+                    <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Matchs</button>
+                </div>
+
+                @if (ActiveSection == "summary")
+                {
+                    <div class="stats-grid">
+                        <div class="mini-card"><span>Matchs</span><strong>@TeamStats.MatchesPlayed</strong></div>
+                        <div class="mini-card"><span>Victoires</span><strong>@TeamStats.Wins</strong></div>
+                        <div class="mini-card"><span>Nuls</span><strong>@TeamStats.Draws</strong></div>
+                        <div class="mini-card"><span>Defaites</span><strong>@TeamStats.Losses</strong></div>
+                        <div class="mini-card"><span>Buts pour</span><strong>@TeamStats.GoalsFor</strong></div>
+                        <div class="mini-card"><span>Buts contre</span><strong>@TeamStats.GoalsAgainst</strong></div>
+                        <div class="mini-card"><span>Passes</span><strong>@TeamStats.Overview.AssistCount</strong></div>
+                        <div class="mini-card"><span>Interceptions</span><strong>@TeamStats.Overview.InterceptionCount</strong></div>
+                    </div>
+
+                    @if (ShowTeamSummaryKpis)
+                    {
+                        <KpiTileGrid Items="@TeamKpis" />
+                    }
+
+                    @if (ShowTeamSummaryCharts)
+                    {
+                        <div class="dual-grid">
+                            <article class="page-panel">
+                                <p class="section-kicker">Repartition collective</p>
+                                <h4>Contribution directe par joueuse</h4>
+                                <ApexChart @key="TeamId" TItem="SliceValue" Title="Contribution directe" Height="310" Options="@GetTeamContributionChartOptions()">
+                                    <ApexPointSeries TItem="SliceValue"
+                                                     Items="@TeamContributionDistribution"
+                                                     Name="Contribution"
+                                                     SeriesType="SeriesType.Donut"
+                                                     XValue="slice => slice.Label"
+                                                     YValue="slice => (decimal?)slice.Value" />
+                                </ApexChart>
+                            </article>
+
+                            <article class="page-panel">
+                                <p class="section-kicker">Lecture rapide</p>
+                                <h4>Joueuses qui concentrent l'impact</h4>
+                                <div class="compact-list">
+                                    @foreach (var player in TeamPlayers.OrderByDescending(item => HandballKpiHelper.DirectContributions(item)).Take(5))
+                                    {
+                                        <div class="outcome-row">
+                                            <span>@player.FullName</span>
+                                            <strong>@HandballKpiHelper.DirectContributions(player)</strong>
+                                        </div>
+                                    }
+                                </div>
+                            </article>
+                        </div>
+                    }
+
+                    <div class="dual-grid">
+                        <article class="page-panel">
+                            <p class="section-kicker">Bilan</p>
+                            <h4>Production collective</h4>
+                            <div class="badge-row">
+                                <div class="mini-card"><span>Buts</span><strong>@(TeamStats.Overview.GoalCount + TeamStats.Overview.PenaltyGoalCount)</strong></div>
+                                <div class="mini-card"><span>Arrets</span><strong>@TeamStats.Overview.SaveCount</strong></div>
+                                <div class="mini-card"><span>Pertes</span><strong>@TeamStats.Overview.TurnoverCount</strong></div>
+                                <div class="mini-card"><span>Sanctions</span><strong>@TeamStats.Overview.SanctionCount</strong></div>
+                            </div>
+                        </article>
+
+                        <article class="page-panel">
+                            <p class="section-kicker">Top internes</p>
+                            <h4>Production des joueuses</h4>
+                            <div class="list-stack">
+                                @foreach (var player in TeamPlayers.OrderByDescending(item => item.TotalGoals).Take(5))
+                                {
+                                    <div class="list-item">
+                                        <div class="key-metric">
+                                            <strong>@player.FullName</strong>
+                                            <span>@player.TotalGoals buts</span>
+                                        </div>
+                                        <p class="tiny-note">@player.TeamName - @FormatRate(player.ShotSuccessRate)% au tir</p>
+                                    </div>
+                                }
+                            </div>
+                        </article>
+                    </div>
+
+                    @if (ShowTeamAnalystPanels)
+                    {
+                        <div class="triple-grid">
+                            <article class="page-panel">
+                                <p class="section-kicker">Profil collectif</p>
+                                <h4>Volumes moyens par match</h4>
+                                <ApexChart TItem="MetricPlotPoint" Title="Profil collectif" Height="310">
+                                    <ApexPointSeries TItem="MetricPlotPoint"
+                                                     Items="@TeamProfileSeries"
+                                                     Name="@TeamStats.TeamName"
+                                                     SeriesType="SeriesType.Bar"
+                                                     XValue="point => point.Label"
+                                                     YValue="point => (decimal?)point.Value" />
+                                </ApexChart>
+                            </article>
+
+                            <article class="page-panel">
+                                <p class="section-kicker">Joueuses decisives</p>
+                                <h4>Actions directes dans la selection</h4>
+                                <ApexChart TItem="MetricPlotPoint" Title="Implication offensive" Height="310">
+                                    <ApexPointSeries TItem="MetricPlotPoint"
+                                                     Items="@TeamPlayerImpactSeries"
+                                                     Name="Actions directes"
+                                                     SeriesType="SeriesType.Bar"
+                                                     XValue="point => point.Label"
+                                                     YValue="point => (decimal?)point.Value" />
+                                </ApexChart>
+                            </article>
+                        </div>
+                    }
+                }
+                else if (ActiveSection == "roster")
+                {
+                    <section class="page-panel">
+                        <div class="panel-head">
+                            <div>
+                                <p class="section-kicker">Effectif productif</p>
+                                <h4>@RosterPlayers.Count joueuses dans le filtre</h4>
+                            </div>
+                        </div>
+
+                        <div class="table-toolbar">
+                            <label class="filter-field table-search">
+                                <span>Filtrer le tableau</span>
+                                <input value="@RosterSearch" @oninput="OnRosterSearchChanged" placeholder="Joueuse, poste ou equipe" />
+                            </label>
+                        </div>
+
+                        @{
+                            var rosterRows = FilteredRosterPlayers.ToArray();
+                        }
+
+                        <div class="table-wrap">
+                            <table class="stat-table">
+                                <thead>
+                                    <tr>
+                                        <th>@TableHeader("name", "Joueuse", SetRosterSort)</th>
+                                        <th>@TableHeader("position", "Poste", SetRosterSort)</th>
+                                        <th>@TableHeader("matches", "Matchs", SetRosterSort)</th>
+                                        <th>@TableHeader("goals", "Buts", SetRosterSort)</th>
+                                        <th>@TableHeader("assists", "Passes", SetRosterSort)</th>
+                                        <th>@TableHeader("interceptions", "Interceptions", SetRosterSort)</th>
+                                        <th>@TableHeader("saves", "Arrets", SetRosterSort)</th>
+                                        <th>@TableHeader("turnovers", "Pertes", SetRosterSort)</th>
+                                        <th>@TableHeader("shot", "Taux tir", SetRosterSort)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var player in rosterRows)
+                                    {
+                                        <tr>
+                                            <td>@player.FullName</td>
+                                            <td>@(player.PositionCode ?? player.PositionName ?? "-")</td>
+                                            <td>@player.MatchesPlayed</td>
+                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.TotalGoals, player)">@player.TotalGoals</td>
+                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.AssistCount, player)">@player.AssistCount</td>
+                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.InterceptionCount, player)">@player.InterceptionCount</td>
+                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.SaveCount, player)">@player.SaveCount</td>
+                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.TurnoverCount, player, higherIsBetter: false)">@player.TurnoverCount</td>
+                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.ShotSuccessRate, player)">@FormatRate(player.ShotSuccessRate)%</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                }
+                else
+                {
+                    <section class="workspace-grid workspace-grid-single">
+                        <article class="page-panel selection-column">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="section-kicker">Matchs</p>
+                                    <h4>@TeamMatches.Count rencontres</h4>
+                                    <p class="page-subtitle">Chaque carte ouvre la fiche complete du match via Voir plus.</p>
+                                </div>
+                            </div>
+
+                            @if (TeamMatches.Count == 0)
+                            {
+                                <StateCard Kicker="Aucun match"
+                                           Title="La sélection courante ne retourne aucune rencontre"
+                                           Message="Essayez une autre équipe, une autre saison ou un autre jour."
+                                           Tone="empty"
+                                           CssClass="empty-card-inline" />
+                            }
+                            else
+                            {
+                                <div class="match-mosaic">
+                                    @foreach (var match in TeamMatches)
+                                    {
+                                        <MatchCard @key="match.MatchId"
+                                                   Title="@($"{match.Team1Name ?? "Equipe A"} vs {match.Team2Name ?? "Equipe B"}")"
+                                                   Score="@($"{match.Team1Score ?? 0} - {match.Team2Score ?? 0}")"
+                                                   Meta="@(match.CompetitionName ?? "Competition")"
+                                                   SecondaryMeta="@MatchFilterCatalog.FormatSeasonDay(match)"
+                                                   DetailsHref="@($"/matches?matchId={match.MatchId}")"
+                                                   DetailsLabel="Voir plus" />
+                                    }
+                                </div>
+                            }
+                        </article>
+                    </section>
+                }
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private AnalyticsReferenceData ReferenceData { get; set; } = AnalyticsReferenceData.Empty;
+    private TeamStatsDto? TeamStats { get; set; }
+    private MatchSummaryDto? SelectedMatchSummary { get; set; }
+    private IReadOnlyList<PlayerGlobalStatsDto> TeamPlayers { get; set; } = [];
+    private IReadOnlyList<PlayerGlobalStatsDto> RosterPlayers { get; set; } = [];
+    private IReadOnlyList<MatchListItemDto> CompetitionOptionMatches { get; set; } = [];
+    private IReadOnlyList<MatchListItemDto> TeamOptionMatches { get; set; } = [];
+    private IReadOnlyList<MatchListItemDto> ScopedMatches { get; set; } = [];
+    private IReadOnlyList<MatchListItemDto> TeamMatches { get; set; } = [];
+    private IReadOnlyList<ScoreTimelinePoint> SelectedMatchTimeline { get; set; } = [];
+    private bool IsBusy { get; set; }
+    private bool IsSelectedMatchLoading { get; set; }
+    private string? ErrorMessage { get; set; }
+    private int? TeamId { get; set; }
+    private int? CompetitionId { get; set; }
+    private int? PositionId { get; set; }
+    private int? Year { get; set; }
+    private string? Season { get; set; }
+    private string? Day { get; set; }
+    private int? SelectedMatchId { get; set; }
+    private long SelectedMatchLoadToken { get; set; }
+    private string ActiveSection { get; set; } = "summary";
+    private string ActiveLens { get; set; } = AudienceLens.Club;
+    private string RosterSearch { get; set; } = string.Empty;
+    private TableSortState RosterSort { get; set; } = new("goals", SortDirection.Desc);
+
+    private MatchListItemDto? SelectedMatch => TeamMatches.FirstOrDefault(match => match.MatchId == SelectedMatchId);
+    private IReadOnlyList<string> SeasonOptions => MatchFilterCatalog.GetSeasons(ScopedMatches);
+    private IReadOnlyList<string> DayOptions => MatchFilterCatalog.GetDays(ScopedMatches, Season);
+    private IReadOnlyList<CompetitionDto> AvailableCompetitions => SmartFilterCatalog.GetCompetitions(
+        ReferenceData,
+        MatchFilterCatalog.ApplySeasonAndDay(CompetitionOptionMatches, Season, Day),
+        TeamId.HasValue || !string.IsNullOrWhiteSpace(Season) || !string.IsNullOrWhiteSpace(Day));
+    private IReadOnlyList<TeamDto> AvailableTeams => SmartFilterCatalog.GetTeams(
+        ReferenceData,
+        MatchFilterCatalog.ApplySeasonAndDay(TeamOptionMatches, Season, Day),
+        CompetitionId.HasValue || !string.IsNullOrWhiteSpace(Season) || !string.IsNullOrWhiteSpace(Day));
+    private IReadOnlyList<LookupItemDto> AvailablePositions => SmartFilterCatalog.GetPositions(ReferenceData.Positions, RosterPlayers, PositionId.HasValue || TeamPlayers.Count > 0);
+    private IReadOnlyList<ScopeSummaryItem> TeamScopeItems =>
+    [
+        new(
+            "Equipe",
+            TeamId.HasValue
+                ? AvailableTeams.FirstOrDefault(item => item.TeamId == TeamId.Value)?.TeamName ?? "Selection"
+                : "Selectionner"),
+        new(
+            "Competition",
+            CompetitionId.HasValue
+                ? AvailableCompetitions.FirstOrDefault(item => item.CompetitionId == CompetitionId.Value)?.CompetitionName ?? "Selection"
+                : "Toutes"),
+        new("Saison", string.IsNullOrWhiteSpace(Season) ? "Toutes" : Season),
+        new("Journee", string.IsNullOrWhiteSpace(Day) ? "Toutes" : Day),
+        new("Onglet", ActiveSection == "summary" ? "Synthese" : ActiveSection == "roster" ? "Effectif" : "Matchs")
+    ];
+    private IReadOnlyList<ScopeSummaryItem> SelectedTeamScopeItems => TeamStats is null
+        ? []
+        :
+        [
+            new("Equipe", TeamStats.TeamName ?? "Equipe"),
+            new("Matchs", TeamStats.MatchesPlayed.ToString()),
+            new("Buts pour", TeamStats.GoalsFor.ToString()),
+            new("Buts contre", TeamStats.GoalsAgainst.ToString()),
+            new("Effectif", TeamPlayers.Count.ToString()),
+            new("Sections", ActiveSection == "summary" ? "Vue staff" : ActiveSection == "roster" ? "Vue effectif" : "Vue match")
+        ];
+    private bool ShowTeamSummaryKpis => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
+    private bool ShowTeamSummaryCharts => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
+    private bool ShowTeamAnalystPanels => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
+    private bool ShowTeamMatchKpis => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
+    private bool ShowTeamMatchInsights => ActiveLens == AudienceLens.Analyst;
+    private IReadOnlyList<KpiTile> TeamKpis => BuildTeamKpis();
+    private IReadOnlyList<KpiTile> SelectedMatchKpis => MatchKpiCatalog.BuildSummaryKpis(SelectedMatchSummary, SelectedMatch, TeamPlayers);
+    private IReadOnlyList<KpiTile> TimelineKpis => MatchScenarioAnalyzer.BuildTimelineKpis(SelectedMatchTimeline, SelectedMatch?.Team1Name, SelectedMatch?.Team2Name);
+    private IReadOnlyList<MatchTimelineInsight> TimelineInsights => MatchScenarioAnalyzer.BuildPhaseInsights(SelectedMatchTimeline, SelectedMatch?.Team1Name, SelectedMatch?.Team2Name);
+    private IReadOnlyList<MatchTimelineMoment> TimelineMoments => MatchScenarioAnalyzer.BuildKeyMoments(SelectedMatchTimeline, SelectedMatch?.Team1Name, SelectedMatch?.Team2Name);
+    private IReadOnlyList<MetricPlotPoint> TeamProfileSeries => BuildTeamProfileSeries();
+    private IReadOnlyList<MetricPlotPoint> TeamPlayerImpactSeries => BuildTeamPlayerImpactSeries();
+    private IReadOnlyList<PlayerGlobalStatsDto> FilteredRosterPlayers => GetFilteredRosterPlayers();
+
+    private string FinalScoreLabel => SelectedMatch is null
+        ? "-"
+        : $"{SelectedMatch.Team1Score ?? SelectedMatchTimeline.LastOrDefault()?.Team1Score ?? 0} - {SelectedMatch.Team2Score ?? SelectedMatchTimeline.LastOrDefault()?.Team2Score ?? 0}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.Session.IsAuthenticated)
+        {
+            return;
+        }
+
+        ReferenceData = await ReferenceDataService.GetReferenceDataAsync();
+        TeamId = ReferenceData.Teams.FirstOrDefault()?.TeamId;
+
+        if (TeamId.HasValue)
+        {
+            await LoadTeamAsync();
+        }
+    }
+
+    private async Task ResetAsync()
+    {
+        CompetitionId = null;
+        PositionId = null;
+        Year = null;
+        Season = null;
+        Day = null;
+        RosterSearch = string.Empty;
+        RosterSort = new TableSortState("goals", SortDirection.Desc);
+        TeamId = ReferenceData.Teams.FirstOrDefault()?.TeamId;
+        ActiveSection = "summary";
+        await LoadTeamAsync();
+    }
+
+    private Task OnScopeSelectionChangedAsync()
+    {
+        return LoadTeamAsync();
+    }
+
+    private Task SetActiveLens(string lens)
+    {
+        ActiveLens = lens;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnRosterScopeChangedAsync()
+    {
+        return LoadTeamAsync();
+    }
+
+    private Task OnRosterSearchChanged(ChangeEventArgs args)
+    {
+        RosterSearch = args.Value?.ToString() ?? string.Empty;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task SetActiveSection(string section)
+    {
+        ActiveSection = section;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadTeamAsync()
+    {
+        if (!TeamId.HasValue)
+        {
+            TeamStats = null;
+            TeamPlayers = [];
+            RosterPlayers = [];
+            TeamMatches = [];
+            SelectedMatchId = null;
+            SelectedMatchSummary = null;
+            SelectedMatchTimeline = [];
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            ErrorMessage = null;
+            await InvokeAsync(StateHasChanged);
+            await Task.Yield();
+
+            var summaryOptions = new StatsQueryOptionsDto
+            {
+                CompetitionId = CompetitionId,
+                Year = Year,
+                Season = Season,
+                Day = Day
+            };
+
+            var rosterOptions = new StatsQueryOptionsDto
+            {
+                CompetitionId = CompetitionId,
+                PositionId = PositionId,
+                Year = Year,
+                Season = Season,
+                Day = Day
+            };
+
+            var teamTask = StatsApiClient.GetTeamStatsAsync(TeamId.Value, summaryOptions);
+            var playersTask = StatsApiClient.GetTeamPlayersAsync(TeamId.Value, summaryOptions);
+            var rosterTask = StatsApiClient.GetTeamPlayersAsync(TeamId.Value, rosterOptions);
+            var competitionScopeTask = MatchesApiClient.GetMatchesAsync(
+                teamId: TeamId,
+                year: Year,
+                page: 1,
+                pageSize: 500);
+            var teamScopeTask = MatchesApiClient.GetMatchesAsync(
+                competitionId: CompetitionId,
+                year: Year,
+                page: 1,
+                pageSize: 500);
+            var matchesTask = MatchesApiClient.GetMatchesAsync(
+                competitionId: CompetitionId,
+                teamId: TeamId,
+                year: Year,
+                page: 1,
+                pageSize: 500);
+
+            await Task.WhenAll(teamTask, playersTask, rosterTask, competitionScopeTask, teamScopeTask, matchesTask);
+
+            TeamStats = teamTask.Result;
+            TeamPlayers = playersTask.Result;
+            RosterPlayers = rosterTask.Result;
+            CompetitionOptionMatches = competitionScopeTask.Result;
+            TeamOptionMatches = teamScopeTask.Result;
+            ScopedMatches = matchesTask.Result.OrderByDescending(match => match.Date).ToList();
+
+            var filtersAdjusted = false;
+
+            if (CompetitionId.HasValue && AvailableCompetitions.All(item => item.CompetitionId != CompetitionId.Value))
+            {
+                CompetitionId = null;
+                filtersAdjusted = true;
+            }
+
+            if (TeamId.HasValue && AvailableTeams.All(item => item.TeamId != TeamId.Value))
+            {
+                TeamId = null;
+                filtersAdjusted = true;
+            }
+
+            if (filtersAdjusted)
+            {
+                await LoadTeamAsync();
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Season) && !SeasonOptions.Contains(Season, StringComparer.OrdinalIgnoreCase))
+            {
+                Season = null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Day) && !DayOptions.Contains(Day, StringComparer.OrdinalIgnoreCase))
+            {
+                Day = null;
+            }
+
+            TeamMatches = MatchFilterCatalog.ApplySeasonAndDay(ScopedMatches, Season, Day)
+                .OrderByDescending(match => match.Date)
+                .ToList();
+            SelectedMatchId = null;
+            SelectedMatchSummary = null;
+            SelectedMatchTimeline = [];
+            IsSelectedMatchLoading = false;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private long BeginSelectedMatchLoad()
+    {
+        SelectedMatchLoadToken++;
+        return SelectedMatchLoadToken;
+    }
+
+    private async Task LoadSelectedMatchTimelineAsync(long loadToken)
+    {
+        if (!SelectedMatchId.HasValue)
+        {
+            SelectedMatchSummary = null;
+            SelectedMatchTimeline = [];
+            IsSelectedMatchLoading = false;
+            return;
+        }
+
+        IsSelectedMatchLoading = true;
+        SelectedMatchSummary = null;
+        SelectedMatchTimeline = [];
+        await InvokeAsync(StateHasChanged);
+        await Task.Yield();
+
+        try
+        {
+            var summaryTask = StatsApiClient.GetAnalyticsMatchSummaryAsync(SelectedMatchId.Value);
+            var eventsTask = MatchEventsApiClient.GetMatchEventsAsync(SelectedMatchId.Value);
+
+            await Task.WhenAll(summaryTask, eventsTask);
+
+            if (loadToken != SelectedMatchLoadToken)
+            {
+                return;
+            }
+
+            SelectedMatchSummary = summaryTask.Result;
+            SelectedMatchTimeline = MatchScenarioAnalyzer.BuildScoreTimeline(eventsTask.Result, SelectedMatch);
+            ErrorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            if (loadToken != SelectedMatchLoadToken)
+            {
+                return;
+            }
+
+            SelectedMatchSummary = null;
+            SelectedMatchTimeline = [];
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            if (loadToken == SelectedMatchLoadToken)
+            {
+                IsSelectedMatchLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private IReadOnlyList<KpiTile> BuildTeamKpis()
+    {
+        if (TeamStats is null)
+        {
+            return [];
+        }
+
+        var matches = TeamStats.MatchesPlayed;
+        var points = (TeamStats.Wins * 2) + TeamStats.Draws;
+        var goalDiff = TeamStats.GoalsFor - TeamStats.GoalsAgainst;
+        var technical = TeamStats.Technical;
+
+        return
+        [
+            new KpiTile("Points / match", HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(points, matches)), "Repere resultat sur le cycle filtre.", "positive", HandballKpiHelper.FormatPerMatchContext(points, matches, "points")),
+            new KpiTile("Taux de victoire", HandballKpiHelper.FormatPercent(HandballKpiHelper.Share(TeamStats.Wins, matches)), "Capacite a transformer les matchs en resultats.", HandballKpiHelper.HigherIsBetterTone(HandballKpiHelper.Share(TeamStats.Wins, matches)), $"{TeamStats.Wins} victoires sur {matches} matchs"),
+            new KpiTile("Diff. buts / match", HandballKpiHelper.FormatSigned(HandballKpiHelper.PerMatch(goalDiff, matches)), "Mesure la maitrise collective score apres score.", goalDiff >= 0 ? "positive" : "warning", $"{HandballKpiHelper.FormatSigned(goalDiff)} sur l'ensemble du cycle"),
+            new KpiTile("Buts marques / match", HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(TeamStats.GoalsFor, matches)), "Volume offensif moyen.", "positive", HandballKpiHelper.FormatPerMatchContext(TeamStats.GoalsFor, matches, "buts")),
+            new KpiTile("Buts encaisses / match", HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(TeamStats.GoalsAgainst, matches)), "Solidite defensive du collectif.", HandballKpiHelper.GoalkeeperConcededGoalsTone(HandballKpiHelper.PerMatch(TeamStats.GoalsAgainst, matches)), HandballKpiHelper.FormatPerMatchContext(TeamStats.GoalsAgainst, matches, "buts encaisses")),
+            new KpiTile("Ballons valorises", HandballKpiHelper.FormatPercent(HandballKpiHelper.SuccessVsWasteShare(TeamStats.Overview.AssistCount, TeamStats.Overview.TurnoverCount)), "Part des actions de balle qui se terminent positivement.", HandballKpiHelper.BallRetentionTone(HandballKpiHelper.SuccessVsWasteShare(TeamStats.Overview.AssistCount, TeamStats.Overview.TurnoverCount), false), $"{TeamStats.Overview.AssistCount} passes pour {TeamStats.Overview.TurnoverCount} pertes"),
+            new KpiTile("Tirs engages / match", HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(technical.ShotAttempts, matches)), "Volume total de tirs, penalties et contres engages.", "neutral", HandballKpiHelper.FormatPerMatchContext(technical.ShotAttempts, matches, "tirs engages")),
+            new KpiTile("Dechet tir / match", HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(technical.ShotWaste, matches)), "Tirs rates, penalties rates et tirs contrés.", "warning", HandballKpiHelper.FormatPerMatchContext(technical.ShotWaste, matches, "dechets")),
+            new KpiTile("Pertes / match", HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(TeamStats.Overview.TurnoverCount, matches)), "Charge de dechet technique a surveiller.", "warning", HandballKpiHelper.FormatPerMatchContext(TeamStats.Overview.TurnoverCount, matches, "pertes")),
+            new KpiTile("Arrets / match", HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(TeamStats.Overview.SaveCount, matches)), "Contribution gardienne au rendement global.", HandballKpiHelper.GoalkeeperStopsPerMatchTone(HandballKpiHelper.PerMatch(TeamStats.Overview.SaveCount, matches)), HandballKpiHelper.FormatPerMatchContext(TeamStats.Overview.SaveCount, matches, "arrets")),
+            new KpiTile("Pertes techniques / match", HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(technical.TechnicalLosses, matches)), "Mauvaises passes, pertes de balle, fautes techniques et passages en force.", "warning", HandballKpiHelper.FormatPerMatchContext(technical.TechnicalLosses, matches, "pertes techniques")),
+            new KpiTile("Stop 7m %", HandballKpiHelper.FormatPercent(technical.GoalkeeperPenaltyStopRate), "Efficacite gardienne sur les penalties.", HandballKpiHelper.GoalkeeperPenaltyStopRateTone(technical.GoalkeeperPenaltyStopRate), HandballKpiHelper.FormatBase(technical.GoalkeeperPenaltyStops, Math.Max(technical.GoalkeeperPenaltyStops + technical.GoalkeeperPenaltyConcededGoals, 1), "penalties arretes")),
+            new KpiTile("Conversion globale", HandballKpiHelper.FormatPercent(technical.OverallShotSuccessRate), "Buts rapportes a tous les tirs engages.", HandballKpiHelper.FieldSuccessRateTone(technical.OverallShotSuccessRate), HandballKpiHelper.FormatBase(TeamStats.GoalsFor, Math.Max(technical.ShotAttempts, 1), "tirs engages")),
+            new KpiTile("Sanctions / match", HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(technical.Sanctions, matches)), "Niveau de discipline collective.", HandballKpiHelper.LowerIsBetterTone(HandballKpiHelper.PerMatch(technical.Sanctions, matches)), HandballKpiHelper.FormatPerMatchContext(technical.Sanctions, matches, "sanctions"))
+        ];
+    }
+
+    private IReadOnlyList<MetricPlotPoint> BuildTeamProfileSeries()
+    {
+        if (TeamStats is null)
+        {
+            return [];
+        }
+
+        var matches = TeamStats.MatchesPlayed;
+        var technical = TeamStats.Technical;
+
+        return
+        [
+            new MetricPlotPoint("Buts pour", HandballKpiHelper.PerMatch(TeamStats.GoalsFor, matches)),
+            new MetricPlotPoint("Buts c.", HandballKpiHelper.PerMatch(TeamStats.GoalsAgainst, matches)),
+            new MetricPlotPoint("Passes", HandballKpiHelper.PerMatch(TeamStats.Overview.AssistCount, matches)),
+            new MetricPlotPoint("Interceptions", HandballKpiHelper.PerMatch(TeamStats.Overview.InterceptionCount, matches)),
+            new MetricPlotPoint("Tirs engages", HandballKpiHelper.PerMatch(technical.ShotAttempts, matches)),
+            new MetricPlotPoint("Dechet tir", HandballKpiHelper.PerMatch(technical.ShotWaste, matches)),
+            new MetricPlotPoint("Pertes tech.", HandballKpiHelper.PerMatch(technical.TechnicalLosses, matches)),
+            new MetricPlotPoint("Sanctions", HandballKpiHelper.PerMatch(TeamStats.Overview.SanctionCount, matches))
+        ];
+    }
+
+    private IReadOnlyList<MetricPlotPoint> BuildTeamPlayerImpactSeries()
+    {
+        return TeamPlayers
+            .OrderByDescending(player => HandballKpiHelper.DirectContributions(player))
+            .ThenBy(player => player.FullName)
+            .Take(6)
+            .Select(player => new MetricPlotPoint(player.FullName, HandballKpiHelper.DirectContributions(player)))
+            .ToList();
+    }
+
+    private IReadOnlyList<SliceValue> TeamContributionDistribution => BuildTeamContributionDistribution();
+
+    private IReadOnlyList<SliceValue> BuildTeamContributionDistribution()
+    {
+        if (TeamPlayers.Count == 0)
+        {
+            return [];
+        }
+
+        var rankedPlayers = TeamPlayers
+            .OrderByDescending(player => HandballKpiHelper.DirectContributions(player))
+            .ThenBy(player => player.FullName)
+            .ToList();
+
+        var topPlayers = rankedPlayers.Take(5).ToList();
+        var totalContribution = rankedPlayers.Sum(player => HandballKpiHelper.DirectContributions(player));
+        var topContribution = topPlayers.Sum(player => HandballKpiHelper.DirectContributions(player));
+
+        var slices = topPlayers
+            .Select(player => new SliceValue(player.FullName, Math.Max(HandballKpiHelper.DirectContributions(player), 0)))
+            .ToList();
+
+        var remainder = Math.Max(totalContribution - topContribution, 0);
+        if (remainder > 0)
+        {
+            slices.Add(new SliceValue("Autres", remainder));
+        }
+
+        return slices;
+    }
+
+    private ApexChartOptions<SliceValue> GetTeamContributionChartOptions()
+    {
+        return new ApexChartOptions<SliceValue>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Donut
+            },
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            Legend = new Legend
+            {
+                Position = LegendPosition.Bottom
+            },
+            PlotOptions = new PlotOptions
+            {
+                Pie = new PlotOptionsPie
+                {
+                    Donut = new PlotOptionsDonut
+                    {
+                        Size = "68%"
+                    }
+                }
+            }
+        };
+    }
+
+    private IReadOnlyList<PlayerGlobalStatsDto> GetFilteredRosterPlayers()
+    {
+        IEnumerable<PlayerGlobalStatsDto> filtered = RosterPlayers;
+
+        if (!string.IsNullOrWhiteSpace(RosterSearch))
+        {
+            var query = RosterSearch.Trim();
+            filtered = filtered.Where(player =>
+                TextSearchHelper.Contains(player.FullName, query)
+                || TextSearchHelper.Contains(player.TeamName, query)
+                || TextSearchHelper.Contains(player.PositionCode, query)
+                || TextSearchHelper.Contains(player.PositionName, query));
+        }
+
+        filtered = RosterSort.Column switch
+        {
+            "name" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.FullName) : filtered.OrderBy(item => item.FullName),
+            "position" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.PositionCode ?? item.PositionName) : filtered.OrderBy(item => item.PositionCode ?? item.PositionName),
+            "matches" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.MatchesPlayed) : filtered.OrderBy(item => item.MatchesPlayed),
+            "assists" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.AssistCount) : filtered.OrderBy(item => item.AssistCount),
+            "interceptions" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.InterceptionCount) : filtered.OrderBy(item => item.InterceptionCount),
+            "saves" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.SaveCount) : filtered.OrderBy(item => item.SaveCount),
+            "turnovers" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.TurnoverCount) : filtered.OrderBy(item => item.TurnoverCount),
+            "shot" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.ShotSuccessRate) : filtered.OrderBy(item => item.ShotSuccessRate),
+            _ => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.TotalGoals) : filtered.OrderBy(item => item.TotalGoals)
+        };
+
+        return filtered.ToList();
+    }
+
+    private void SetRosterSort(string column)
+    {
+        RosterSort = RosterSort.Toggle(column, column is "name" or "position" ? SortDirection.Asc : SortDirection.Desc);
+    }
+
+    private RenderFragment TableHeader(string column, string label, Action<string> onSort) => builder =>
+    {
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "type", "button");
+        builder.AddAttribute(2, "class", $"table-sort-button {(RosterSort.IsActive(column) ? "is-active" : string.Empty)}");
+        builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => onSort(column)));
+        builder.AddContent(4, label);
+
+        var glyph = RosterSort.Glyph(column);
+        if (!string.IsNullOrWhiteSpace(glyph))
+        {
+            builder.OpenElement(5, "span");
+            builder.AddAttribute(6, "class", "sort-indicator");
+            builder.AddContent(7, glyph);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
+
+    private static string GetToneClass(string tone)
+    {
+        return tone?.ToLowerInvariant() switch
+        {
+            "positive" => "is-positive",
+            "warning" => "is-warning",
+            _ => string.Empty
+        };
+    }
+
+    private static string FormatRate(double value) => value.ToString("0.#");
+}

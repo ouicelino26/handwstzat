@@ -1,0 +1,203 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<article class="mini-card gauge-kpi-card @(GetToneClass(Item.Tone))">
+    <div class="gauge-kpi-copy">
+        <span>@Item.Label</span>
+        <strong>@Item.Value</strong>
+        @if (!string.IsNullOrWhiteSpace(Item.Context))
+        {
+            <small class="kpi-context gauge-kpi-context">@Item.Context</small>
+        }
+    </div>
+
+    <div class="gauge-kpi-visual">
+        <div id="@_hostId"
+             class="gauge-kpi-host"
+             style="@GetHostStyle()"
+             aria-label="@GetAriaLabel()"></div>
+    </div>
+
+    <p>@Item.Caption</p>
+</article>
+
+@code {
+    [Parameter]
+    public BarGaugeKpiItem Item { get; set; } = new("KPI", "0%", 0, string.Empty);
+
+    private readonly string _hostId = $"bargauge-{Guid.NewGuid():N}";
+    private bool _needsFullSync = true;
+    private bool _needsValueSync = true;
+    private bool _isInitialized;
+    private BarGaugeKpiItem? _previousItem;
+
+    protected override void OnParametersSet()
+    {
+        if (_previousItem is null)
+        {
+            _needsFullSync = true;
+            _needsValueSync = true;
+        }
+        else if (HasStructuralChanges(_previousItem, Item))
+        {
+            _needsFullSync = true;
+            _needsValueSync = true;
+        }
+        else if (!AreClose(_previousItem.GaugeValue, Item.GaugeValue))
+        {
+            _needsValueSync = true;
+        }
+
+        _previousItem = Item;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender || _needsFullSync)
+        {
+            await SyncFullGaugeAsync();
+            return;
+        }
+
+        if (!_needsValueSync)
+        {
+            return;
+        }
+
+        await SyncGaugeValueAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_isInitialized)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("handwstatJqxBarGaugeDestroy", _hostId);
+        }
+        catch
+        {
+            // Ignore teardown failures during navigation or shutdown.
+        }
+    }
+
+    private async Task SyncFullGaugeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("handwstatJqxBarGaugeSetOptions", _hostId, BuildOptions());
+            _isInitialized = true;
+            _needsFullSync = false;
+            _needsValueSync = false;
+        }
+        catch
+        {
+            // The numeric KPI text still renders even if the widget bridge fails.
+        }
+    }
+
+    private async Task SyncGaugeValueAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("handwstatJqxBarGaugeUpdateValues", _hostId, new[] { GetGaugeValue() });
+            _needsValueSync = false;
+            _isInitialized = true;
+        }
+        catch
+        {
+            // The numeric KPI text still renders even if the value update fails.
+        }
+    }
+
+    private object BuildOptions()
+    {
+        var baseColor = GetBaseColor(Item.Tone);
+
+        return new
+        {
+            width = "100%",
+            height = Item.Height,
+            min = Item.Min,
+            max = Item.Max,
+            baseValue = Item.Min,
+            values = new[] { GetGaugeValue() },
+            backgroundColor = "#ece7de",
+            animationDuration = 240,
+            barSpacing = 4,
+            relativeInnerRadius = 0.38,
+            startAngle = 225,
+            endAngle = -45,
+            useGradient = true,
+            labels = new { visible = false },
+            tooltip = new { visible = true, precision = 0 },
+            customColorScheme = new
+            {
+                name = $"{Item.Tone}-{_hostId}",
+                colors = new[] { baseColor, baseColor, baseColor, baseColor, baseColor }
+            }
+        };
+    }
+
+    private double GetGaugeValue()
+    {
+        return double.IsFinite(Item.GaugeValue)
+            ? Math.Clamp(Item.GaugeValue, Item.Min, Item.Max)
+            : Item.Min;
+    }
+
+    private string GetAriaLabel()
+    {
+        return $"{Item.Label} {Item.Value}";
+    }
+
+    private string GetHostStyle()
+    {
+        return $"height:{Item.Height}px;";
+    }
+
+    private static string GetToneClass(string tone)
+    {
+        return tone?.ToLowerInvariant() switch
+        {
+            "positive" => "is-positive",
+            "good" => "is-good",
+            "warning" => "is-warning",
+            "danger" => "is-danger",
+            "neutral" => "is-neutral",
+            _ => string.Empty
+        };
+    }
+
+    private static string GetBaseColor(string tone)
+    {
+        return tone?.ToLowerInvariant() switch
+        {
+            "positive" => "#2f8b6a",
+            "good" => "#4f8f66",
+            "warning" => "#d97706",
+            "danger" => "#c84b31",
+            "neutral" => "#5f7385",
+            _ => "#5f7385"
+        };
+    }
+
+    private static bool HasStructuralChanges(BarGaugeKpiItem previous, BarGaugeKpiItem current)
+    {
+        return previous.Label != current.Label
+            || previous.Caption != current.Caption
+            || previous.Tone != current.Tone
+            || previous.Context != current.Context
+            || previous.Height != current.Height
+            || previous.Min != current.Min
+            || previous.Max != current.Max;
+    }
+
+    private static bool AreClose(double left, double right)
+    {
+        return Math.Abs(left - right) < 0.0001;
+    }
+}

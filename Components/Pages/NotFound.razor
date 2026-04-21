@@ -1,0 +1,42 @@
+@page "/not-found"
+@layout MainLayout
+
+<PageTitle>Page introuvable</PageTitle>
+
+<StateCard Kicker="Erreur 404"
+           Title="La page demandée est introuvable"
+           Message="Le lien est peut-être obsolète ou la page a été déplacée."
+           Tone="empty"
+           Actions="@Actions" />
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private RenderFragment Actions => builder =>
+    {
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "type", "button");
+        builder.AddAttribute(2, "class", "primary-button");
+        builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, GoHome));
+        builder.AddContent(4, "Retour au tableau");
+        builder.CloseElement();
+
+        builder.OpenElement(5, "button");
+        builder.AddAttribute(6, "type", "button");
+        builder.AddAttribute(7, "class", "ghost-button filter-ghost");
+        builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, GoToDemo));
+        builder.AddContent(9, "Voir la démo");
+        builder.CloseElement();
+    };
+
+    private void GoHome()
+    {
+        Navigation.NavigateTo("/dashboard");
+    }
+
+    private void GoToDemo()
+    {
+        Navigation.NavigateTo("/demo");
+    }
+}

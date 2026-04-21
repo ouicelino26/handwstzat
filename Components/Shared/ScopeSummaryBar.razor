@@ -1,0 +1,61 @@
+@using HandWStat.Models.Analytics
+
+@if (!string.IsNullOrWhiteSpace(Title) || Items.Count > 0 || !string.IsNullOrWhiteSpace(Message))
+{
+    <section class="@CssClass">
+        <div class="scope-summary-copy">
+            @if (!string.IsNullOrWhiteSpace(Kicker))
+            {
+                <p class="section-kicker">@Kicker</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <h4>@Title</h4>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p class="page-subtitle">@Subtitle</p>
+            }
+        </div>
+
+        @if (Items.Count > 0)
+        {
+            <div class="scope-chip-row">
+                @foreach (var item in Items)
+                {
+                    <article class="scope-chip">
+                        <span>@item.Label</span>
+                        <strong>@item.Value</strong>
+                    </article>
+                }
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <p class="scope-summary-note">@Message</p>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public string? Kicker { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<ScopeSummaryItem> Items { get; set; } = [];
+
+    [Parameter]
+    public string CssClass { get; set; } = "scope-summary-bar";
+}
