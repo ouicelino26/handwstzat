@@ -14,21 +14,19 @@
     }
     else
     {
-        <section class="page-panel teams-directory-panel">
+        <section class="page-panel filter-strip teams-directory-panel @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
                 <div>
-                    <p class="section-kicker">Bilan collectif</p>
-                    <h3>Chargez une équipe puis basculez entre synthèse, effectif et matchs</h3>
-                    <p class="page-subtitle">Un seul bloc de filtres pour garder le meme contexte partout.</p>
+                    <p class="section-kicker">Bilan d'Equipe</p>
+                    <h3>Statistiques Global par équipe</h3>
                 </div>
 
                 <div class="toolbar">
-                    <button type="button" class="primary-button" @onclick="LoadTeamAsync" disabled="@IsBusy">Charger</button>
                     <button type="button" class="ghost-button filter-ghost" @onclick="ResetAsync" disabled="@IsBusy">Reinitialiser</button>
                 </div>
             </div>
 
-            <details class="filter-drawer">
+            <details class="filter-drawer" open>
                 <summary>
                     <div>
                         <strong>Afficher les filtres équipe</strong>
@@ -109,6 +107,13 @@
                        Message="@ErrorMessage"
                        Tone="error" />
         }
+        else if (IsBusy && TeamStats is null)
+        {
+            <StateCard Kicker="Chargement"
+                       Title="Mise a jour du bilan d'equipe"
+                       Message="Les KPI, joueuses et matchs se recalculent pour le contexte choisi."
+                       Tone="loading" />
+        }
         else if (TeamStats is null)
         {
             <StateCard Kicker="Aucune équipe"
@@ -118,6 +123,13 @@
         }
         else
         {
+            @if (IsBusy)
+            {
+                <PageLoader Kicker="Chargement"
+                            Title="Actualisation de l'equipe"
+                            Message="Les statistiques collectives et les graphes se recalculent." />
+            }
+
             <section class="page-panel">
                 <div class="panel-head panel-head-wrap">
                     <div>
@@ -129,12 +141,9 @@
                     <span class="hero-badge">@TeamPlayers.Count joueuses</span>
                 </div>
 
-            
 
-                <AudienceLensSelector Value="@ActiveLens"
-                                      ValueChanged="SetActiveLens"
-                                      Title="Choisissez la bonne lecture d’équipe"
-                                      Subtitle="Club pour piloter vite, Analyste pour lire plus finement, Joueuse pour situer les repères du collectif." />
+
+
 
                 <div class="tab-strip">
                     <button type="button" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Synthese</button>
@@ -228,7 +237,7 @@
                             <article class="page-panel">
                                 <p class="section-kicker">Profil collectif</p>
                                 <h4>Volumes moyens par match</h4>
-                                <ApexChart TItem="MetricPlotPoint" Title="Profil collectif" Height="310">
+                                <ApexChart TItem="MetricPlotPoint" Title="Profil collectif" Height="310" Options="@GetTeamProfileChartOptions()">
                                     <ApexPointSeries TItem="MetricPlotPoint"
                                                      Items="@TeamProfileSeries"
                                                      Name="@TeamStats.TeamName"
@@ -241,7 +250,7 @@
                             <article class="page-panel">
                                 <p class="section-kicker">Joueuses decisives</p>
                                 <h4>Actions directes dans la selection</h4>
-                                <ApexChart TItem="MetricPlotPoint" Title="Implication offensive" Height="310">
+                                <ApexChart TItem="MetricPlotPoint" Title="Implication offensive" Height="310" Options="@GetTeamImpactChartOptions()">
                                     <ApexPointSeries TItem="MetricPlotPoint"
                                                      Items="@TeamPlayerImpactSeries"
                                                      Name="Actions directes"
@@ -494,7 +503,7 @@
         return InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadTeamAsync()
+    private async Task LoadTeamAsync(bool manageBusyState = true)
     {
         if (!TeamId.HasValue)
         {
@@ -508,12 +517,15 @@
             return;
         }
 
+        var loadStartedAt = DateTimeOffset.UtcNow;
+
         try
         {
-            IsBusy = true;
+            if (manageBusyState)
+            {
+                await BusyUiHelper.EnterAsync(() => IsBusy = true, () => InvokeAsync(StateHasChanged));
+            }
             ErrorMessage = null;
-            await InvokeAsync(StateHasChanged);
-            await Task.Yield();
 
             var summaryOptions = new StatsQueryOptionsDto
             {
@@ -577,7 +589,7 @@
 
             if (filtersAdjusted)
             {
-                await LoadTeamAsync();
+                await LoadTeamAsync(manageBusyState: false);
                 return;
             }
 
@@ -605,7 +617,10 @@
         }
         finally
         {
-            IsBusy = false;
+            if (manageBusyState)
+            {
+                await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
+            }
         }
     }
 
@@ -771,6 +786,7 @@
             {
                 Type = ChartType.Donut
             },
+            Colors = ChartPalette.SemanticSeriesColors,
             DataLabels = new DataLabels
             {
                 Enabled = false
@@ -787,6 +803,54 @@
                     {
                         Size = "68%"
                     }
+                }
+            }
+        };
+    }
+
+    private ApexChartOptions<MetricPlotPoint> GetTeamProfileChartOptions()
+    {
+        return new ApexChartOptions<MetricPlotPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Bar
+            },
+            Colors = [ChartPalette.Primary],
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar
+                {
+                    BorderRadius = 10,
+                    ColumnWidth = "68%"
+                }
+            }
+        };
+    }
+
+    private ApexChartOptions<MetricPlotPoint> GetTeamImpactChartOptions()
+    {
+        return new ApexChartOptions<MetricPlotPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Bar
+            },
+            Colors = [ChartPalette.Player],
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar
+                {
+                    BorderRadius = 10,
+                    ColumnWidth = "68%"
                 }
             }
         };

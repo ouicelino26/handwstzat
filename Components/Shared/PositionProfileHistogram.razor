@@ -1,0 +1,336 @@
+@inject ILogger<PositionProfileHistogram> Logger
+
+<article class="page-panel position-profile-histogram">
+    <div class="panel-head">
+        <div>
+            <p class="section-kicker">@Kicker</p>
+            <h4>@Title</h4>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p class="page-subtitle">@Subtitle</p>
+            }
+        </div>
+
+        @if (Axes.Count > 0)
+        {
+            <span class="hero-badge">@Axes.Count axes</span>
+        }
+    </div>
+
+    @if (!HasData)
+    {
+        <StateCard Kicker="Histogramme en attente"
+                   Title="@EmptyTitle"
+                   Message="@EmptyMessage"
+                   Tone="empty"
+                   CssClass="empty-card-inline" />
+    }
+    else
+    {
+        <div class="radar-legend-strip" aria-label="Legende histogramme">
+            <div class="radar-legend-item radar-legend-item-player">
+                <span class="radar-legend-swatch" style="@GetSwatchStyle(ChartPalette.Player)"></span>
+                <strong>@SelectedSeriesLabel</strong>
+            </div>
+            <div class="radar-legend-item radar-legend-item-median">
+                <span class="radar-legend-swatch" style="@GetSwatchStyle(ChartPalette.Reference)"></span>
+                <strong>@MedianSeriesLabel</strong>
+            </div>
+        </div>
+
+        <ApexChart @key="RenderedChartKey"
+                   TItem="PositionProfileAxisViewModel"
+                   Title="@Title"
+                   Height="@Height"
+                   Options="@_options">
+            <ApexPointTooltip>
+                @{
+                    var datapoint = context.DataPoint as IDataPoint<PositionProfileAxisViewModel>;
+                    var point = datapoint?.Items?.FirstOrDefault();
+                }
+
+                @if (point is not null)
+                {
+                    <div class="chart-tooltip-card player-scatter-tooltip">
+                        <div class="chart-tooltip-head">
+                            <div>
+                                <p class="chart-tooltip-kicker">Histogramme poste</p>
+                                <h5>@point.Label</h5>
+                            </div>
+
+                            <span class="chart-tooltip-badge">@point.StatusLabel</span>
+                        </div>
+
+                        <p class="page-subtitle">@point.Summary</p>
+
+                        <div class="chart-tooltip-grid">
+                            <div>
+                                <span>Joueuse</span>
+                                <strong>@point.PlayerDisplayValue</strong>
+                            </div>
+                            <div>
+                                <span>Mediane</span>
+                                <strong>@point.MedianDisplayValue</strong>
+                            </div>
+                            <div>
+                                <span>Percentile favorable</span>
+                                <strong>@FormatPercent(point.DirectionalPercentile)</strong>
+                            </div>
+                            <div>
+                                <span>Delta</span>
+                                <strong>@point.DeltaDisplayValue</strong>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </ApexPointTooltip>
+            <ChildContent>
+                <ApexPointSeries TItem="PositionProfileAxisViewModel"
+                                 Items="@Axes"
+                                 Name="@SelectedSeriesLabel"
+                                 SeriesType="SeriesType.Bar"
+                                 XValue="axis => axis.Label"
+                                 YValue="axis => (decimal?)axis.PlayerValue" />
+                <ApexPointSeries TItem="PositionProfileAxisViewModel"
+                                 Items="@Axes"
+                                 Name="@MedianSeriesLabel"
+                                 SeriesType="SeriesType.Bar"
+                                 XValue="axis => axis.Label"
+                                 YValue="axis => (decimal?)axis.MedianValue" />
+            </ChildContent>
+        </ApexChart>
+
+        <p class="tiny-note">Les barres comparent la valeur brute de la joueuse a la mediane brute du poste. Le radar voisin projette maintenant chaque axe sur une echelle normalisee 0-100.</p>
+    }
+</article>
+
+@code {
+    [Parameter]
+    public string Kicker { get; set; } = "Histogramme poste";
+
+    [Parameter]
+    public string Title { get; set; } = "Valeurs de la joueuse face a la mediane du poste";
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string ChartKey { get; set; } = string.Empty;
+
+    [Parameter]
+    public IReadOnlyList<PositionProfileAxisViewModel> Axes { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyCollection<string> HighlightedAxisKeys { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyCollection<string> AlertAxisKeys { get; set; } = [];
+
+    [Parameter]
+    public string SelectedSeriesLabel { get; set; } = "Joueuse";
+
+    [Parameter]
+    public string MedianSeriesLabel { get; set; } = "Mediane du poste";
+
+    [Parameter]
+    public int Height { get; set; } = 420;
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "Choisissez une joueuse pour ouvrir la comparaison du poste";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "Le graphique compare la valeur de la joueuse a la mediane brute du poste. Le radar voisin projette chaque axe sur une echelle normalisee.";
+
+    private ApexChartOptions<PositionProfileAxisViewModel> _options = new();
+    private string _signature = string.Empty;
+    private string _renderedSignature = string.Empty;
+    private HashSet<string> _highlightedAxisKeys = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _alertAxisKeys = new(StringComparer.OrdinalIgnoreCase);
+
+    private bool HasData => Axes.Count > 0;
+
+    private string RenderedChartKey => _signature;
+
+    protected override Task OnParametersSetAsync()
+    {
+        _highlightedAxisKeys = HighlightedAxisKeys is null ? new(StringComparer.OrdinalIgnoreCase) : new HashSet<string>(HighlightedAxisKeys, StringComparer.OrdinalIgnoreCase);
+        _alertAxisKeys = AlertAxisKeys is null ? new(StringComparer.OrdinalIgnoreCase) : new HashSet<string>(AlertAxisKeys, StringComparer.OrdinalIgnoreCase);
+        _options = BuildOptions();
+        _signature = BuildSignature();
+
+        Logger.LogDebug(
+            "Position histogram updated. Key={Key}, Axes={Axes}, HasData={HasData}",
+            ChartKey,
+            Axes.Count,
+            HasData);
+
+        return Task.CompletedTask;
+    }
+
+    protected override bool ShouldRender()
+    {
+        return !string.Equals(_signature, _renderedSignature, StringComparison.Ordinal);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        _renderedSignature = _signature;
+    }
+
+    private ApexChartOptions<PositionProfileAxisViewModel> BuildOptions()
+    {
+        return new ApexChartOptions<PositionProfileAxisViewModel>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Bar,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
+            },
+            Colors = ChartPalette.PlayerMedianColors,
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            Legend = new Legend
+            {
+                Position = LegendPosition.Bottom
+            },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.18)"
+            },
+            Tooltip = new Tooltip
+            {
+                Shared = false,
+                Intersect = true
+            },
+            Annotations = BuildAnnotations(),
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar
+                {
+                    Horizontal = true,
+                    BorderRadius = 10,
+                    BarHeight = "68%"
+                }
+            },
+            Xaxis = new XAxis
+            {
+                Type = XAxisType.Numeric,
+                Min = 0,
+                Max = GetHistogramScaleMaximum(),
+                TickAmount = 5,
+                Title = new AxisTitle
+                {
+                    Text = "Valeur brute du poste"
+                }
+            }
+        };
+    }
+
+    private Annotations BuildAnnotations()
+    {
+        var points = new List<AnnotationsPoint>();
+
+        foreach (var axis in Axes
+            .Where(ShouldAnnotateAxis)
+            .OrderByDescending(axis => axis.Impact)
+            .ThenByDescending(axis => axis.DirectionalPercentile)
+            .Take(4))
+        {
+            points.Add(new AnnotationsPoint
+            {
+                X = axis.Label,
+                Y = axis.PlayerValue,
+                SeriesIndex = 0,
+                Marker = new AnnotationMarker
+                {
+                    Size = _alertAxisKeys.Contains(axis.Key) ? 7 : 5,
+                    FillColor = _alertAxisKeys.Contains(axis.Key) ? ChartPalette.Danger : ChartPalette.Primary,
+                    StrokeColor = "#ffffff",
+                    StrokeWidth = 2
+                },
+                Label = new Label
+                {
+                    Text = GetAnnotationText(axis),
+                    BorderColor = "transparent",
+                    BorderWidth = 0,
+                    BorderRadius = 999,
+                    Style = new Style
+                    {
+                        Background = _alertAxisKeys.Contains(axis.Key) ? ChartPalette.Danger : ChartPalette.Primary,
+                        Color = "#ffffff",
+                        FontFamily = "inherit",
+                        FontSize = "11px",
+                        FontWeight = "700",
+                        Padding = new Padding
+                        {
+                            Top = 3,
+                            Bottom = 3,
+                            Left = 8,
+                            Right = 8
+                        }
+                    }
+                }
+            });
+        }
+
+        return new Annotations
+        {
+            Points = points
+        };
+    }
+
+    private string BuildSignature()
+    {
+        return string.Join('|',
+            ChartKey,
+            Height,
+            Axes.Count,
+            string.Join(',', _highlightedAxisKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase)),
+            string.Join(',', _alertAxisKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase)),
+            string.Join(',', Axes.Select(axis => $"{axis.Key}:{axis.DirectionalPercentile:0.###}:{axis.PlayerValue:0.###}:{axis.MedianValue:0.###}")));
+    }
+
+    private double GetHistogramScaleMaximum()
+    {
+        var candidate = Axes
+            .SelectMany(axis => new[] { axis.PlayerValue, axis.MedianValue })
+            .Where(double.IsFinite)
+            .DefaultIfEmpty(1d)
+            .Max();
+
+        var padded = candidate + Math.Max(candidate * 0.08d, 0.5d);
+        return Math.Max(1d, padded);
+    }
+
+    private bool ShouldAnnotateAxis(PositionProfileAxisViewModel axis)
+    {
+        return _alertAxisKeys.Contains(axis.Key)
+            || _highlightedAxisKeys.Contains(axis.Key)
+            || axis.DirectionalPercentile >= 90d
+            || axis.DirectionalPercentile <= 20d;
+    }
+
+    private static string GetAnnotationText(PositionProfileAxisViewModel axis)
+    {
+        if (axis.DirectionalPercentile >= 90d)
+        {
+            return "Top 10%";
+        }
+
+        if (axis.DirectionalPercentile <= 20d)
+        {
+            return "Alerte";
+        }
+
+        return "Above median";
+    }
+
+    private static string FormatPercent(double value) => $"{value:0.#}%";
+
+    private static string GetSwatchStyle(string color) => $"background:{color};";
+}

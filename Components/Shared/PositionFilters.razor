@@ -1,0 +1,264 @@
+<section class="page-panel filter-strip @(IsBusy ? "is-loading" : string.Empty)">
+    <div class="panel-head panel-head-wrap position-filters-head">
+        <div>
+            <p class="section-kicker">Profil poste</p>
+        </div>
+
+        <div class="toolbar">
+            <button type="button"
+                    class="ghost-button filter-ghost"
+                    @onclick="OnResetClicked"
+                    @onclick:stopPropagation="true"
+                    disabled="@IsBusy">Reinitialiser</button>
+        </div>
+    </div>
+
+    <details class="filter-drawer" open>
+        <summary>
+            <div>
+                <strong>Filtres</strong>
+            </div>
+        </summary>
+
+        <div class="filter-drawer-body">
+            <div class="page-filters position-profile-filters">
+                <label class="filter-field player-search">
+                    <span>Recherche</span>
+                    <input value="@Search" @oninput="HandleSearchChangedAsync" placeholder="Nom ou prenom" />
+                </label>
+
+                <div class="position-profile-filter-grid">
+                    <label class="filter-field">
+                        <span>Competition</span>
+                        <select value="@GetSelectValue(CompetitionId)" @onchange="HandleCompetitionChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var competition in AvailableCompetitions)
+                            {
+                                <option value="@competition.CompetitionId">@competition.CompetitionName</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label class="filter-field">
+                        <span>Equipe</span>
+                        <select value="@GetSelectValue(TeamId)" @onchange="HandleTeamChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var team in AvailableTeams)
+                            {
+                                <option value="@team.TeamId">@team.TeamName</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label class="filter-field">
+                        <span>Saison</span>
+                        <select value="@Season" @onchange="HandleSeasonChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var season in SeasonOptions)
+                            {
+                                <option value="@season">@season</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label class="filter-field">
+                        <span>Journee</span>
+                        <select value="@Day" @onchange="HandleDayChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var day in DayOptions)
+                            {
+                                <option value="@day">@day</option>
+                            }
+                        </select>
+                    </label>
+                </div>
+
+                <details class="filter-slot-extender" open="@IsPositionExtenderOpen">
+                    <summary @onclick="TogglePositionExtender">
+                        <div>
+                            <strong>Poste</strong>
+                            <span>@GetPositionSummary()</span>
+                        </div>
+                    </summary>
+
+                    <div class="filter-slot-extender-body">
+                        <label class="filter-field">
+                            <span>Choisir le poste</span>
+                            <select value="@GetSelectValue(PositionId)" @onchange="HandlePositionChangedAsync">
+                                <option value="">Tous</option>
+                                @foreach (var position in AvailablePositions)
+                                {
+                                    <option value="@position.Id">@position.Name</option>
+                                }
+                            </select>
+                        </label>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </details>
+</section>
+
+@code {
+    [Parameter]
+    public string Search { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SearchChanged { get; set; }
+
+    [Parameter]
+    public int? CompetitionId { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> CompetitionIdChanged { get; set; }
+
+    [Parameter]
+    public int? TeamId { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> TeamIdChanged { get; set; }
+
+    [Parameter]
+    public int? PositionId { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> PositionIdChanged { get; set; }
+
+    [Parameter]
+    public string? Season { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SeasonChanged { get; set; }
+
+    [Parameter]
+    public string? Day { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> DayChanged { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<CompetitionDto> AvailableCompetitions { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<TeamDto> AvailableTeams { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<LookupItemDto> AvailablePositions { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<string> SeasonOptions { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<string> DayOptions { get; set; } = [];
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public EventCallback OnReset { get; set; }
+
+    private bool IsPositionExtenderOpen { get; set; }
+    private int? _lastPositionId;
+
+    private async Task OnResetClicked()
+    {
+        if (OnReset.HasDelegate)
+        {
+            await OnReset.InvokeAsync();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        IsPositionExtenderOpen = !PositionId.HasValue;
+        _lastPositionId = PositionId;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (PositionId == _lastPositionId)
+        {
+            return;
+        }
+
+        if (!PositionId.HasValue)
+        {
+            IsPositionExtenderOpen = true;
+        }
+
+        _lastPositionId = PositionId;
+    }
+
+    private async Task HandleSearchChangedAsync(ChangeEventArgs args)
+    {
+        if (SearchChanged.HasDelegate)
+        {
+            await SearchChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+        }
+    }
+
+    private async Task HandleCompetitionChangedAsync(ChangeEventArgs args)
+    {
+        if (CompetitionIdChanged.HasDelegate)
+        {
+            await CompetitionIdChanged.InvokeAsync(ParseNullableInt(args.Value));
+        }
+    }
+
+    private async Task HandleTeamChangedAsync(ChangeEventArgs args)
+    {
+        if (TeamIdChanged.HasDelegate)
+        {
+            await TeamIdChanged.InvokeAsync(ParseNullableInt(args.Value));
+        }
+    }
+
+    private async Task HandlePositionChangedAsync(ChangeEventArgs args)
+    {
+        if (PositionIdChanged.HasDelegate)
+        {
+            await PositionIdChanged.InvokeAsync(ParseNullableInt(args.Value));
+        }
+    }
+
+    private async Task HandleSeasonChangedAsync(ChangeEventArgs args)
+    {
+        if (SeasonChanged.HasDelegate)
+        {
+            await SeasonChanged.InvokeAsync(string.IsNullOrWhiteSpace(args.Value?.ToString()) ? null : args.Value?.ToString());
+        }
+    }
+
+    private async Task HandleDayChangedAsync(ChangeEventArgs args)
+    {
+        if (DayChanged.HasDelegate)
+        {
+            await DayChanged.InvokeAsync(string.IsNullOrWhiteSpace(args.Value?.ToString()) ? null : args.Value?.ToString());
+        }
+    }
+
+    private static int? ParseNullableInt(object? value)
+    {
+        return int.TryParse(value?.ToString(), out var parsed) ? parsed : null;
+    }
+
+    private static string GetSelectValue(int? value) => value?.ToString() ?? string.Empty;
+
+    private string GetPositionSummary()
+    {
+        if (!PositionId.HasValue)
+        {
+            return $"{AvailablePositions.Count} postes disponibles";
+        }
+
+        var selectedPosition = AvailablePositions.FirstOrDefault(position => position.Id == PositionId.Value);
+        return selectedPosition is null
+            ? "Poste selectionne"
+            : $"Poste selectionne: {selectedPosition.Name}";
+    }
+
+    private void TogglePositionExtender()
+    {
+        IsPositionExtenderOpen = !IsPositionExtenderOpen;
+    }
+}

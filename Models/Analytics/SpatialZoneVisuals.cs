@@ -5,6 +5,18 @@ public static class SpatialZoneVisuals
     public const double GoalkeeperHeatMinRate = 10;
     public const double GoalkeeperHeatMaxRate = 55;
 
+    public static bool IsTriggerZoneKey(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return false;
+        }
+
+        var normalized = key.Trim().ToUpperInvariant();
+        return normalized.StartsWith("TG", StringComparison.Ordinal)
+            || normalized.StartsWith("TD", StringComparison.Ordinal);
+    }
+
     public static string ToVisualTriggerKey(string? key)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -25,6 +37,11 @@ public static class SpatialZoneVisuals
         }
 
         return normalized;
+    }
+
+    public static string ToBackendTriggerKey(string? key)
+    {
+        return ToVisualTriggerKey(key);
     }
 
     public static double ToPaletteRate(double rawRate, bool isGoalkeeper)

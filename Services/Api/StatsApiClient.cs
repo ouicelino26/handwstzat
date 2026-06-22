@@ -107,9 +107,13 @@ public sealed class StatsApiClient : ApiClientBase
         return GetListAsync<PlayerGlobalStatsDto>($"api/Stats/matches/{matchId}/players", cancellationToken: cancellationToken);
     }
 
-    public Task<MatchSpatialStatsDto?> GetMatchSpatialAsync(int matchId, int? teamId = null, CancellationToken cancellationToken = default)
+    public Task<MatchSpatialStatsDto?> GetMatchSpatialAsync(
+        int matchId,
+        int? teamId = null,
+        StatsQueryOptionsDto? options = null,
+        CancellationToken cancellationToken = default)
     {
-        var query = new ApiQueryBuilder()
+        var query = ApiQueryBuilder.FromStatsOptions(options)
             .Add("teamId", teamId);
 
         return GetAsync<MatchSpatialStatsDto>($"api/Stats/matches/{matchId}/spatial", query, cancellationToken);

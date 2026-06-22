@@ -302,6 +302,8 @@ public static class DemoDataFactory
         IReadOnlyDictionary<string, (int Attempts, int Successes)> goalValues,
         IReadOnlyDictionary<string, (int Attempts, int Successes)> triggerValues)
     {
+        var teamHistory = CreateTeamHistory(player, matchesPlayed, totalGoals, assists, interceptions, saves, penaltySaves, turnovers, badPasses, technicalFaults, forcedOffensiveFouls);
+
         var profile = new PlayerProfileDto
         {
             PlayerId = player.Id,
@@ -312,6 +314,7 @@ public static class DemoDataFactory
             Age = player.Age,
             IsGoalkeeper = player.IsGoalkeeper,
             MatchesPlayed = matchesPlayed,
+            TeamHistory = teamHistory,
             TotalGoals = totalGoals,
             TotalAssists = assists,
             TotalInterceptions = interceptions,
@@ -331,6 +334,7 @@ public static class DemoDataFactory
             Age = player.Age,
             IsGoalkeeper = player.IsGoalkeeper,
             MatchesPlayed = matchesPlayed,
+            TeamHistory = teamHistory,
             GoalCount = totalGoals - penaltyGoals,
             PenaltyGoalCount = penaltyGoals,
             TotalGoals = totalGoals,
@@ -354,6 +358,7 @@ public static class DemoDataFactory
             Age = player.Age,
             IsGoalkeeper = player.IsGoalkeeper,
             MatchesPlayed = matchesPlayed,
+            TeamHistory = teamHistory,
             Buts = totalGoals - penaltyGoals,
             Buts7m = penaltyGoals,
             TotalButs = totalGoals,
@@ -373,6 +378,7 @@ public static class DemoDataFactory
             Age = player.Age,
             IsGoalkeeper = player.IsGoalkeeper,
             MatchesPlayed = matchesPlayed,
+            TeamHistory = teamHistory,
             Interceptions = interceptions,
             Contres = blocks,
             Neutralisations = neutralisations,
@@ -389,6 +395,7 @@ public static class DemoDataFactory
             Age = player.Age,
             IsGoalkeeper = player.IsGoalkeeper,
             MatchesPlayed = matchesPlayed,
+            TeamHistory = teamHistory,
             PasseDecisive = assists,
             MauvaisePasse = badPasses,
             PerteDeBalle = turnovers,
@@ -407,6 +414,7 @@ public static class DemoDataFactory
             Age = player.Age,
             IsGoalkeeper = player.IsGoalkeeper,
             MatchesPlayed = matchesPlayed,
+            TeamHistory = teamHistory,
             Exclusions = exclusions,
             Avertissements = warnings,
             DeuxMinutes = twoMinutes,
@@ -423,6 +431,7 @@ public static class DemoDataFactory
             Age = player.Age,
             IsGoalkeeper = player.IsGoalkeeper,
             MatchesPlayed = matchesPlayed,
+            TeamHistory = teamHistory,
             Arrets = saves,
             ArretsPenalty = penaltySaves,
             ButsPris = goalsConceded,
@@ -451,6 +460,7 @@ public static class DemoDataFactory
             Age = player.Age,
             IsGoalkeeper = player.IsGoalkeeper,
             MatchesPlayed = matchesPlayed,
+            TeamHistory = teamHistory,
             Technical = new TechnicalStatsDto
             {
                 ShotAttempts = shotAttempts,
@@ -487,6 +497,33 @@ public static class DemoDataFactory
             TriggerZones = BuildTriggerZones(triggerValues),
             Distribution = distribution
         };
+    }
+
+    private static List<PlayerTeamHistoryDto> CreateTeamHistory(
+        PlayerDirectoryItem player,
+        int matchesPlayed,
+        int totalGoals,
+        int assists,
+        int interceptions,
+        int saves,
+        int penaltySaves,
+        int turnovers,
+        int badPasses,
+        int technicalFaults,
+        int forcedOffensiveFouls)
+    {
+        var eventCount = totalGoals + assists + interceptions + saves + penaltySaves + turnovers + badPasses + technicalFaults + forcedOffensiveFouls;
+
+        return
+        [
+            new PlayerTeamHistoryDto
+            {
+                TeamName = player.TeamName,
+                MatchesPlayed = matchesPlayed,
+                EventCount = eventCount,
+                PlayingTimeMinutes = Math.Round(Math.Max(matchesPlayed, 1) * 42.5d, 1, MidpointRounding.AwayFromZero)
+            }
+        ];
     }
 
     private static PlayerMatchItemDto CreatePlayerMatch(

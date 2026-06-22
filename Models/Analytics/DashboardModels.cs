@@ -8,6 +8,8 @@ public sealed record DashboardSnapshot
 
     public required IReadOnlyList<PlayerDirectoryItem> Players { get; init; }
 
+    public DashboardGlobalBoards GlobalBoards { get; init; } = DashboardGlobalBoards.Empty;
+
     public required IReadOnlyList<PlayerRankingItem> TopScorers { get; init; }
 
     public required IReadOnlyList<PlayerRankingItem> EfficiencyRanking { get; init; }
@@ -27,6 +29,13 @@ public sealed record DashboardSnapshot
     public string? WarningMessage { get; init; }
 
     public bool IsDemo { get; init; }
+}
+
+public sealed record DashboardGlobalBoards(
+    IReadOnlyList<GlobalFieldRankingRow> FieldPlayers,
+    IReadOnlyList<GlobalGoalkeeperRankingRow> Goalkeepers)
+{
+    public static DashboardGlobalBoards Empty { get; } = new([], []);
 }
 
 public sealed record OverviewMetrics(
@@ -49,6 +58,42 @@ public sealed record PlayerDirectoryItem(
     string? CountryName,
     int? Age,
     bool IsGoalkeeper);
+
+public sealed record GlobalFieldRankingRow(
+    int PlayerId,
+    string FullName,
+    string TeamName,
+    int? PositionId,
+    string PositionLabel,
+    bool IsGoalkeeper,
+    int MatchesPlayed,
+    int Goals,
+    int PenaltyGoals,
+    int Assists,
+    int Interceptions,
+    int Blocks,
+    int Neutralisations,
+    int Turnovers,
+    int PenaltiesConceded,
+    double ShotSuccessRate);
+
+public sealed record GlobalGoalkeeperRankingRow(
+    int PlayerId,
+    string FullName,
+    string TeamName,
+    int? PositionId,
+    string PositionLabel,
+    int MatchesPlayed,
+    int Goals,
+    int Assists,
+    int Saves,
+    int PenaltySaves,
+    double SaveRate,
+    int GoalsConceded,
+    int PenaltyGoalsConceded,
+    int ShotsFaced,
+    double ShotSuccessRate,
+    int Turnovers);
 
 public sealed record PlayerSpotlight
 {

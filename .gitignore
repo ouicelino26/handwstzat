@@ -13,8 +13,12 @@ obj/
 
 # Logs and temporary assets
 *.log
+run.*.txt
 tmp_*.png
 tmp_*.svg
+publish-*/
+audit_reports/
+*_backup_*.json
 
 # OS files
 .DS_Store

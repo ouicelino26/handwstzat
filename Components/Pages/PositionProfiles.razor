@@ -1,0 +1,244 @@
+@page "/position-profiles"
+@inherits PositionProfilesBase
+
+<PageTitle>Profil poste</PageTitle>
+
+<div class="page-shell position-profiles-page">
+    @if (!AuthService.Session.IsAuthenticated)
+    {
+        <AccessRequiredCard Message="Connectez-vous pour ouvrir le module profil poste et comparer les joueuses a la mediane de leur role." />
+    }
+    else
+    {
+        <PositionFilters Search="@Search"
+                         SearchChanged="OnSearchChangedAsync"
+                         CompetitionId="@CompetitionId"
+                         CompetitionIdChanged="OnCompetitionChangedAsync"
+                         TeamId="@TeamId"
+                         TeamIdChanged="OnTeamChangedAsync"
+                         PositionId="@PositionId"
+                         PositionIdChanged="OnPositionChangedAsync"
+                         Season="@Season"
+                         SeasonChanged="OnSeasonChangedAsync"
+                         Day="@Day"
+                         DayChanged="OnDayChangedAsync"
+                         AvailableCompetitions="@AvailableCompetitions"
+                         AvailableTeams="@AvailableTeams"
+                         AvailablePositions="@AvailablePositions"
+                         SeasonOptions="@SeasonOptions"
+                         DayOptions="@DayOptions"
+                         IsBusy="@IsBusy"
+                         OnReset="ResetFiltersAsync" />
+
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <StateCard Kicker="Erreur"
+                       Title="Impossible de charger le profil poste"
+                       Message="@ErrorMessage"
+                       Tone="error" />
+        }
+        else if (IsBusy && PlayerDirectory.Count == 0)
+        {
+            <PageLoader Kicker="Chargement"
+                        Title="Mise a jour du module profil poste"
+                        Message="Preparation des filtres, du repertoire et des comparaisons du poste." />
+        }
+        else if (!HasDirectoryCriteria)
+        {
+            <StateCard Kicker="Filtre requis"
+                       Title="Selectionnez au moins un filtre pour charger les donnees"
+                       Tone="empty" />
+        }
+        else
+        {
+            @if (IsBusy)
+            {
+                <PageLoader Kicker="Chargement"
+                            Title="Actualisation du profil poste"
+                            Message="Le radar, le scatter et la comparaison se recalculent." />
+            }
+
+            <section class="position-profile-workflow">
+                <div class="position-profile-directory-band">
+                    <PlayerList Kicker="Repertoire"
+                                Subtitle="Selectionnez une joueuse pour ouvrir la lecture poste"
+                                Players="@PlayerDirectory"
+                                SelectedPlayerId="@SelectedPlayerId"
+                                Scrollable="true"
+                                IsPlayerListOpen="@IsPlayerListOpen"
+                                IsPlayerListOpenChanged="@(value => IsPlayerListOpen = value)"
+                                EmptyKicker="Aucune joueuse"
+                                EmptyTitle="Le cadre actuel ne remonte aucune joueuse"
+                                EmptyMessage="Ouvrez un peu le filtre ou changez de poste."
+                                OnSelectedPlayerChanged="SelectPlayerAsync" />
+                </div>
+
+                <article class="page-panel detail-column players-detail-column position-profile-analysis-panel">
+                    @if (PositionProfile?.SelectedPlayer is null || PositionProfile.MedianProfile is null)
+                    {
+                        <StateCard Kicker="Profil en attente"
+                                   Title="Choisissez une joueuse pour ouvrir la lecture poste"
+                                   Message="Le module affichera ensuite le radar, le scatter et la comparaison multi-joueuses."
+                                   Tone="empty"
+                                   CssClass="empty-card-inline" />
+                    }
+                    else
+                    {
+                        var profile = PositionProfile!;
+                        var selected = profile.SelectedPlayer!;
+                        var insights = PositionProfileInsights;
+
+                        <div class="panel-head panel-head-wrap">
+                            <div>
+                                <p class="section-kicker">Module dedie</p>
+                                <h3>@selected.FullName</h3>
+                                <p class="page-subtitle">@(profile.PositionName ?? selected.PositionName ?? "Poste non renseigne") - @(selected.TeamName ?? "Equipe non renseignee")</p>
+                            </div>
+
+                            <span class="hero-badge">Cohorte @profile.CohortPlayerCount</span>
+                        </div>
+
+                        <div class="position-profile-summary-stack">
+                            <ScopeSummaryBar Kicker="Cadre commun"
+                                             Title="Le contexte filtre la joueuse, la mediane agrege le poste"
+                                             Subtitle="La joueuse reste dans le repertoire filtre, tandis que la mediane du poste se calcule sur toutes les joueuses du meme poste sur la periode choisie."
+                                             Items="@PositionProfileScopeItems" />
+
+                            @if (!string.IsNullOrWhiteSpace(insights.QuickSummary))
+                            {
+                                <article class="mini-card position-profile-quick-insight">
+                                    <p class="section-kicker">Lecture instantanee</p>
+                                    <h4>@insights.QuickSummary</h4>
+                                    @if (!string.IsNullOrWhiteSpace(insights.ContextualInsight))
+                                    {
+                                        <p>@insights.ContextualInsight</p>
+                                    }
+                                </article>
+                            }
+                        </div>
+
+                        <CoachCards Kicker="Lecture coach"
+                                    Title="Ce que le staff doit retenir tout de suite"
+                                    Subtitle="@insights.ContextualInsight"
+                                    Cards="@insights.CoachCards" />
+
+                        <section class="page-panel position-profile-snapshot-panel">
+                            <div class="panel-head panel-head-wrap">
+                                <div>
+                                    <p class="section-kicker">Snapshot de profil</p>
+                                    <h4>Lecture synthese</h4>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(insights.PerformanceLevel))
+                                {
+                                    <span class="hero-badge">@insights.PerformanceLevel</span>
+                                }
+                            </div>
+
+                            <KpiTileGrid Items="@insights.SnapshotKpis" />
+                        </section>
+
+                        <div class="position-profile-radar-grid">
+                            <PositionProfileHistogram @key="PositionProfileHistogramKey"
+                                                      Kicker="Histogramme poste"
+                                                      Title="Valeurs de la joueuse face a la mediane du poste"
+                                                      ChartKey="@PositionProfileHistogramKey"
+                                                      Axes="@PositionProfileChartRows"
+                                                      HighlightedAxisKeys="@insights.HighlightAxisKeys"
+                                                      AlertAxisKeys="@insights.AlertAxisKeys"
+                                                      SelectedSeriesLabel="@selected.FullName"
+                                                      MedianSeriesLabel="Mediane du poste"
+                                                      Height="420" />
+
+                            <PositionRadarChart @key="PositionProfileRadarKey"
+                                                Kicker="Radar normalise"
+                                                Title="Forme du profil (normalisee)"
+                                                Subtitle="Forme du profil normalisee face a la mediane du poste."
+                                                ChartKey="@PositionProfileRadarKey"
+                                                Axes="@PositionProfileChartRows"
+                                                MedianSeries="@PositionProfileChartMedianRadarSeries"
+                                                HighlightedAxisKeys="@insights.HighlightAxisKeys"
+                                                AlertAxisKeys="@insights.AlertAxisKeys"
+                                                SelectedSeriesLabel="@selected.FullName"
+                                                MedianSeriesLabel="Mediane du poste"
+                                                AxisCount="@PositionProfileChartRows.Count"
+                                                Width="660"
+                                                Height="520" />
+                        </div>
+
+                        <section class="page-panel position-profile-panel @(IsPositionProfileBusy ? "is-loading" : string.Empty)">
+                            <div class="panel-head panel-head-wrap">
+                                <div>
+                                    <p class="section-kicker">Comparaison</p>
+                                    <h4>Comparer la joueuse avec une autre joueuse du meme poste</h4>
+                                </div>
+                                <span class="hero-badge">@PositionProfileComparisonPlayers.Count joueuses</span>
+                            </div>
+
+                            <div class="position-profile-compare-grid">
+                                @for (var slot = 0; slot < PositionProfileCompareSelections.Count; slot++)
+                                {
+                                    var compareSlot = slot;
+                                    <label class="filter-field">
+                                        <span>Comparaison @(compareSlot + 1)</span>
+                                        <select value="@GetPositionProfileCompareSelectionValue(compareSlot)"
+                                                @onchange="args => OnPositionProfileComparePlayerChangedAsync(compareSlot, args)"
+                                                disabled="@IsPositionProfileBusy">
+                                            <option value="">Aucune</option>
+                                            @foreach (var candidate in PositionProfileCandidates)
+                                            {
+                                                <option value="@candidate.PlayerId">@candidate.FullName - @(candidate.TeamName ?? "Equipe")</option>
+                                            }
+                                        </select>
+                                    </label>
+                                }
+                            </div>
+
+                            <div class="toolbar position-profile-toolbar">
+                                <button type="button" class="ghost-button filter-ghost" @onclick="ExportPositionProfileCsvAsync" disabled="@IsPositionProfileBusy">Exporter CSV</button>
+                                <button type="button" class="ghost-button filter-ghost" @onclick="ExportPositionProfileRadarImageAsync" disabled="@IsPositionProfileBusy">Exporter radar</button>
+                                <button type="button" class="ghost-button filter-ghost" @onclick="ExportPositionProfileImageAsync" disabled="@IsPositionProfileBusy">Exporter image</button>
+                                <button type="button" class="ghost-button filter-ghost" @onclick="CopyPositionProfileSummaryAsync" disabled="@IsPositionProfileBusy">Copier resume analyste</button>
+                            </div>
+                        </section>
+
+                        <MultiRadar @key="PositionProfileComparisonKey"
+                                    Kicker="Radar multi"
+                                    Title="Comparer plusieurs joueuses du meme poste"
+                                    Subtitle="Chaque courbe garde la meme echelle normalisee 0-100 pour une lecture rapide staff."
+                                    ChartKey="@PositionProfileComparisonKey"
+                                    Players="@PositionProfileComparisonPreviewPlayers"
+                                    Axes="@PositionProfileChartRows"
+                                    MedianSeries="@PositionProfileChartMedianRadarSeries"
+                                    HighlightedAxisKeys="@insights.HighlightAxisKeys"
+                                    AlertAxisKeys="@insights.AlertAxisKeys"
+                                    Width="700"
+                                    Height="540"
+                                    IsBusy="@IsPositionProfileBusy" />
+
+                        <div class="position-profile-scatter-grid">
+                            <ScatterChart @key="PositionProfileScatterKey"
+                                          Kicker="Scatter poste"
+                                          Title="Joueuse vs mediane axe par axe"
+                                          Subtitle="La diagonale grise sert de repere y = x. Les cartes ci-dessous ne gardent que les axes les plus marquants."
+                                          ChartKey="@PositionProfileScatterKey"
+                                          Axes="@PositionProfileChartRows"
+                                          HighlightedAxisKeys="@insights.HighlightAxisKeys"
+                                          AlertAxisKeys="@insights.AlertAxisKeys"
+                                          Bounds="@ScatterBounds"
+                                          Height="430" />
+
+                        </div>
+
+                        <DetailedTable Kicker="Lecture detaillee"
+                                       Title="Chaque axe du poste"
+                                       Subtitle="Tri par impact pour faire remonter les ecarts les plus importants avant le match."
+                                       Rows="@PositionProfileDetailRows"
+                                       HighlightedAxisKeys="@insights.HighlightAxisKeys"
+                                       AlertAxisKeys="@insights.AlertAxisKeys" />
+                    }
+                </article>
+            </section>
+        }
+    }
+</div>

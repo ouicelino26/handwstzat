@@ -1,6 +1,7 @@
 using HandWStat.Models.Analytics;
 using HandWStat.Services;
 using HandWStat.Services.Api;
+using HandWStat.Components.Shared;
 using HandballManagerCore.DTO;
 using Microsoft.AspNetCore.Components;
 
@@ -311,9 +312,11 @@ public class HomeBase : ComponentBase
             return;
         }
 
+        var loadStartedAt = DateTimeOffset.UtcNow;
+
         try
         {
-            IsBusy = true;
+            await BusyUiHelper.EnterAsync(() => IsBusy = true, () => InvokeAsync(StateHasChanged));
             ErrorMessage = null;
 
             ReferenceData = await ReferenceDataService.GetReferenceDataAsync(forceRefresh, CancellationToken.None);
@@ -359,7 +362,7 @@ public class HomeBase : ComponentBase
         }
         finally
         {
-            IsBusy = false;
+            await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
         }
     }
 

@@ -1,0 +1,566 @@
+@inject ILogger<ScatterChart> Logger
+
+<article class="page-panel">
+    <div class="panel-head">
+        <div>
+            <p class="section-kicker">@Kicker</p>
+            <h4>@Title</h4>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p class="page-subtitle">@Subtitle</p>
+            }
+        </div>
+
+        @if (Axes.Count > 0)
+        {
+            <span class="hero-badge">@Axes.Count axes</span>
+        }
+    </div>
+
+    @if (!HasData)
+    {
+        <StateCard Kicker="Lecture en attente"
+                   Title="@EmptyTitle"
+                   Message="@EmptyMessage"
+                   Tone="empty"
+                   CssClass="empty-card-inline" />
+    }
+    else
+    {
+        <div class="scatter-annotation-strip">
+            @foreach (var summary in _quadrantSummaries)
+            {
+                <article class="scatter-annotation-guide scatter-annotation-guide-@summary.Tone">
+                    <strong>@summary.Label</strong>
+                    <span>@summary.Count axes - @summary.Sentence</span>
+                </article>
+            }
+        </div>
+
+        <ApexChart @key="ChartKey"
+                   TItem="PositionProfileAxisViewModel"
+                   Title="@Title"
+                   Height="@Height"
+                   Options="@_options">
+            <ApexPointTooltip>
+                @{
+                    var datapoint = context.DataPoint as IDataPoint<PositionProfileAxisViewModel>;
+                    var point = datapoint?.Items?.FirstOrDefault();
+                }
+
+                @if (point is not null)
+                {
+                    @if (string.Equals(point.Key, ReferenceKey, StringComparison.Ordinal))
+                    {
+                        <div class="chart-tooltip-card player-scatter-tooltip">
+                            <div class="chart-tooltip-head">
+                                <div>
+                                    <p class="chart-tooltip-kicker">Repere</p>
+                                    <h5>y = x</h5>
+                                </div>
+                                <span class="chart-tooltip-badge">Repere</span>
+                            </div>
+
+                            <p class="page-subtitle">La diagonale montre l equilibre parfait entre valeur joueuse et mediane du poste.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="chart-tooltip-card player-scatter-tooltip">
+                            <div class="chart-tooltip-head">
+                                <div>
+                                    <p class="chart-tooltip-kicker">Scatter poste</p>
+                                    <h5>@point.Label</h5>
+                                </div>
+
+                                <span class="chart-tooltip-badge">@point.StatusLabel</span>
+                            </div>
+
+                            <p class="page-subtitle">@point.TooltipDeltaTitle</p>
+
+                            <div class="chart-tooltip-grid">
+                                <div>
+                                    <span>Joueuse</span>
+                                    <strong>@point.PlayerDisplayValue</strong>
+                                </div>
+                                <div>
+                                    <span>Mediane</span>
+                                    <strong>@point.MedianDisplayValue</strong>
+                                </div>
+                                <div>
+                                    <span>Delta</span>
+                                    <strong>@point.DeltaDisplayValue</strong>
+                                </div>
+                                <div>
+                                    <span>Lecture</span>
+                                    <strong>@point.Summary</strong>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </ApexPointTooltip>
+            <ChildContent>
+                <ApexPointSeries TItem="PositionProfileAxisViewModel"
+                                 Items="@ReferenceSeries"
+                                 Name="y = x"
+                                 SeriesType="SeriesType.Line"
+                                 XValue="point => (decimal?)point.DisplayMedianValue"
+                                 YValue="point => (decimal?)point.DisplayPlayerValue" />
+                <ApexPointSeries TItem="PositionProfileAxisViewModel"
+                                 Items="@AboveSeries"
+                                 Name="Au-dessus"
+                                 SeriesType="SeriesType.Scatter"
+                                 XValue="point => (decimal?)point.DisplayMedianValue"
+                                 YValue="point => (decimal?)point.DisplayPlayerValue" />
+                <ApexPointSeries TItem="PositionProfileAxisViewModel"
+                                 Items="@LevelSeries"
+                                 Name="Au niveau"
+                                 SeriesType="SeriesType.Scatter"
+                                 XValue="point => (decimal?)point.DisplayMedianValue"
+                                 YValue="point => (decimal?)point.DisplayPlayerValue" />
+                <ApexPointSeries TItem="PositionProfileAxisViewModel"
+                                 Items="@BelowSeries"
+                                 Name="Sous"
+                                 SeriesType="SeriesType.Scatter"
+                                 XValue="point => (decimal?)point.DisplayMedianValue"
+                                 YValue="point => (decimal?)point.DisplayPlayerValue" />
+            </ChildContent>
+        </ApexChart>
+
+        <div class="scatter-axis-summary">
+            <div class="scatter-axis-summary-head">
+                <div>
+                    <p class="section-kicker">Axes marquants</p>
+                    <h5>Les ecarts les plus utiles</h5>
+                </div>
+
+                @if (OverflowCount > 0)
+                {
+                    <span class="tiny-note">+@OverflowCount axes dans le tableau detaille.</span>
+                }
+            </div>
+
+            <div class="scatter-axis-grid">
+                @foreach (var axis in VisibleAxes)
+                {
+                    <article class="mini-card scatter-axis-card @GetAxisCardClass(axis)">
+                        <div class="scatter-axis-head">
+                            <strong>@axis.Label</strong>
+                            <span class="axis-badge axis-badge-@axis.StatusTone">@axis.StatusLabel</span>
+                        </div>
+                        <div class="scatter-axis-metrics">
+                            <span>Delta @axis.DeltaDisplayValue</span>
+                            <span>@axis.DirectionLabel</span>
+                        </div>
+                        <p class="tiny-note">@axis.Summary</p>
+                    </article>
+                }
+            </div>
+
+            <p class="tiny-note">Le tableau detaille plus bas reprend l'ensemble des axes et des valeurs exactes.</p>
+        </div>
+    }
+</article>
+
+@code {
+    private const string ReferenceKey = "__reference__";
+
+    [Parameter]
+    public string Kicker { get; set; } = "Scatter poste";
+
+    [Parameter]
+    public string Title { get; set; } = "Joueuse face a la mediane axe par axe";
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string ChartKey { get; set; } = string.Empty;
+
+    [Parameter]
+    public IReadOnlyList<PositionProfileAxisViewModel> Axes { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyCollection<string> HighlightedAxisKeys { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyCollection<string> AlertAxisKeys { get; set; } = [];
+
+    [Parameter]
+    public PositionProfileScatterBounds Bounds { get; set; } = PositionProfileScatterBounds.Default;
+
+    [Parameter]
+    public int Height { get; set; } = 380;
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "Choisissez une joueuse pour ouvrir la lecture poste";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "Le scatter met en regard la valeur joueuse et la mediane du poste, axe par axe.";
+
+    private const int MaxVisibleAxisCards = 6;
+
+    private ApexChartOptions<PositionProfileAxisViewModel> _options = new();
+    private string _signature = string.Empty;
+    private string _renderedSignature = string.Empty;
+    private IReadOnlyList<PositionProfileAxisViewModel> _referenceSeries = [];
+    private IReadOnlyList<PositionProfileAxisViewModel> _aboveSeries = [];
+    private IReadOnlyList<PositionProfileAxisViewModel> _levelSeries = [];
+    private IReadOnlyList<PositionProfileAxisViewModel> _belowSeries = [];
+    private HashSet<string> _highlightedAxisKeys = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _alertAxisKeys = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<ScatterQuadrantSummary> _quadrantSummaries = [];
+
+    private int AboveCount => _aboveSeries.Count;
+
+    private int LevelCount => _levelSeries.Count;
+
+    private int BelowCount => _belowSeries.Count;
+
+    private IReadOnlyList<PositionProfileAxisViewModel> ReferenceSeries => _referenceSeries;
+
+    private IReadOnlyList<PositionProfileAxisViewModel> AboveSeries => _aboveSeries;
+
+    private IReadOnlyList<PositionProfileAxisViewModel> LevelSeries => _levelSeries;
+
+    private IReadOnlyList<PositionProfileAxisViewModel> BelowSeries => _belowSeries;
+
+    private IReadOnlyList<PositionProfileAxisViewModel> VisibleAxes => Axes
+        .OrderByDescending(axis => axis.Impact)
+        .ThenBy(axis => axis.Label, StringComparer.OrdinalIgnoreCase)
+        .Take(MaxVisibleAxisCards)
+        .ToList();
+
+    private int OverflowCount => Math.Max(0, Axes.Count - VisibleAxes.Count);
+
+    private bool HasData => Axes.Count > 0 && Bounds.IsValid;
+
+    protected override Task OnParametersSetAsync()
+    {
+        _highlightedAxisKeys = HighlightedAxisKeys is null ? new(StringComparer.OrdinalIgnoreCase) : new HashSet<string>(HighlightedAxisKeys, StringComparer.OrdinalIgnoreCase);
+        _alertAxisKeys = AlertAxisKeys is null ? new(StringComparer.OrdinalIgnoreCase) : new HashSet<string>(AlertAxisKeys, StringComparer.OrdinalIgnoreCase);
+        _referenceSeries = BuildReferenceSeries();
+        _aboveSeries = Axes.Where(axis => axis.Bucket == PositionProfileScatterBucket.Above).ToList();
+        _levelSeries = Axes.Where(axis => axis.Bucket == PositionProfileScatterBucket.Level).ToList();
+        _belowSeries = Axes.Where(axis => axis.Bucket == PositionProfileScatterBucket.Below).ToList();
+        _quadrantSummaries = BuildQuadrantSummaries();
+        _options = BuildOptions();
+        _signature = BuildSignature();
+
+        Logger.LogDebug(
+            "Scatter chart parameters updated. Key={Key}, Axes={AxisCount}, Bounds={Min}-{Max}",
+            ChartKey,
+            Axes.Count,
+            Bounds.Min,
+            Bounds.Max);
+
+        return Task.CompletedTask;
+    }
+
+    protected override bool ShouldRender()
+    {
+        return !string.Equals(_signature, _renderedSignature, StringComparison.Ordinal);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        _renderedSignature = _signature;
+    }
+
+    private ApexChartOptions<PositionProfileAxisViewModel> BuildOptions()
+    {
+        var min = Bounds.IsValid ? Bounds.Min : 0d;
+        var max = Bounds.IsValid ? Bounds.Max : 100d;
+        var ticks = Bounds.TickAmount <= 0 ? 5 : Bounds.TickAmount;
+
+        return new ApexChartOptions<PositionProfileAxisViewModel>
+        {
+            Chart = new Chart { Type = ChartType.Scatter, Toolbar = new Toolbar { Show = false } },
+            Colors = ChartPalette.ScatterStatusColors,
+            DataLabels = new DataLabels { Enabled = false },
+            Legend = new Legend { Show = false },
+            Markers = new Markers
+            {
+                Size = 5,
+                StrokeWidth = 1.25,
+                Discrete = BuildDiscreteMarkers()
+            },
+            Stroke = new Stroke { Width = 1.75 },
+            Tooltip = new Tooltip { Shared = false, Intersect = true },
+            Grid = new Grid { BorderColor = "rgba(148, 163, 184, 0.14)" },
+            Annotations = BuildAnnotations(),
+            Xaxis = new XAxis
+            {
+                Type = XAxisType.Numeric,
+                Min = min,
+                Max = max,
+                TickAmount = ticks,
+                Title = new AxisTitle { Text = "Mediane poste" }
+            },
+            Yaxis = [new YAxis
+            {
+                Min = min,
+                Max = max,
+                TickAmount = ticks,
+                Title = new AxisTitle { Text = "Valeur joueuse" }
+            }]
+        };
+    }
+
+    private List<MarkersDiscrete> BuildDiscreteMarkers()
+    {
+        var discrete = new List<MarkersDiscrete>();
+        AddDiscreteMarkers(discrete, _aboveSeries, 1, ChartPalette.Positive);
+        AddDiscreteMarkers(discrete, _levelSeries, 2, ChartPalette.Warning);
+        AddDiscreteMarkers(discrete, _belowSeries, 3, ChartPalette.Danger);
+        return discrete;
+    }
+
+    private void AddDiscreteMarkers(
+        List<MarkersDiscrete> discrete,
+        IReadOnlyList<PositionProfileAxisViewModel> series,
+        int seriesIndex,
+        string baseColor)
+    {
+        for (var index = 0; index < series.Count; index++)
+        {
+            var axis = series[index];
+            if (!ShouldHighlightAxis(axis))
+            {
+                continue;
+            }
+
+            discrete.Add(new MarkersDiscrete
+            {
+                SeriesIndex = seriesIndex,
+                DataPointIndex = index,
+                FillColor = _alertAxisKeys.Contains(axis.Key) ? ChartPalette.Danger : baseColor,
+                StrokeColor = "#ffffff",
+                Size = _alertAxisKeys.Contains(axis.Key) ? 8 : 7
+            });
+        }
+    }
+
+    private Annotations BuildAnnotations()
+    {
+        var points = new List<AnnotationsPoint>();
+
+        foreach (var axis in Axes
+            .Where(ShouldHighlightAxis)
+            .OrderByDescending(axis => axis.Impact)
+            .ThenByDescending(axis => axis.DirectionalPercentile)
+            .Take(4))
+        {
+            points.Add(new AnnotationsPoint
+            {
+                X = axis.MedianValue,
+                Y = axis.PlayerValue,
+                Marker = new AnnotationMarker
+                {
+                    Size = _alertAxisKeys.Contains(axis.Key) ? 7 : 5,
+                    FillColor = _alertAxisKeys.Contains(axis.Key) ? ChartPalette.Danger : ChartPalette.Primary,
+                    StrokeColor = "#ffffff",
+                    StrokeWidth = 2
+                },
+                Label = new Label
+                {
+                    Text = GetAnnotationText(axis),
+                    BorderColor = "transparent",
+                    BorderWidth = 0,
+                    BorderRadius = 999,
+                    Style = new Style
+                    {
+                        Background = _alertAxisKeys.Contains(axis.Key) ? ChartPalette.Danger : ChartPalette.Primary,
+                        Color = "#ffffff",
+                        FontFamily = "inherit",
+                        FontSize = "11px",
+                        FontWeight = "700",
+                        Padding = new Padding
+                        {
+                            Top = 3,
+                            Bottom = 3,
+                            Left = 8,
+                            Right = 8
+                        }
+                    }
+                }
+            });
+        }
+
+        return new Annotations
+        {
+            Points = points
+        };
+    }
+
+    private IReadOnlyList<ScatterQuadrantSummary> BuildQuadrantSummaries()
+    {
+        var elite = 0;
+        var inefficient = 0;
+        var lowUsage = 0;
+        var balanced = 0;
+
+        foreach (var axis in Axes)
+        {
+            switch (GetQuadrant(axis))
+            {
+                case ScatterQuadrant.Elite:
+                    elite++;
+                    break;
+                case ScatterQuadrant.Inefficient:
+                    inefficient++;
+                    break;
+                case ScatterQuadrant.LowUsage:
+                    lowUsage++;
+                    break;
+                default:
+                    balanced++;
+                    break;
+            }
+        }
+
+        return
+        [
+            new ScatterQuadrantSummary("Elite", elite, "Axes au-dessus de la mediane avec forte lecture favorable.", "positive"),
+            new ScatterQuadrantSummary("Inefficient", inefficient, "Axes au-dessus de la mediane mais rendement a corriger.", "danger"),
+            new ScatterQuadrantSummary("Low usage", lowUsage, "Axes sous la mediane mais tres propres ou sous exploites.", "warning"),
+            new ScatterQuadrantSummary("Balanced", balanced, "Axes proches de la reference et sans alerte majeure.", "neutral")
+        ];
+    }
+
+    private string BuildSignature()
+    {
+        return string.Join('|',
+            ChartKey,
+            Axes.Count,
+            Bounds.Min.ToString("0.##"),
+            Bounds.Max.ToString("0.##"),
+            string.Join(',', _highlightedAxisKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase)),
+            string.Join(',', _alertAxisKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase)),
+            string.Join(',', Axes.Select(axis => $"{axis.Key}:{axis.PlayerValue:0.###}:{axis.MedianValue:0.###}:{axis.DirectionalPercentile:0.###}:{axis.Bucket}")));
+    }
+
+    private IReadOnlyList<PositionProfileAxisViewModel> BuildReferenceSeries()
+    {
+        if (!Bounds.IsValid)
+        {
+            return [];
+        }
+
+        var min = Bounds.Min;
+        var max = Bounds.Max;
+
+        return
+        [
+            new PositionProfileAxisViewModel(
+                ReferenceKey,
+                "Reference y=x",
+                "Reference",
+                true,
+                "number",
+                min,
+                min,
+                50,
+                "neutral",
+                min.ToString("0.#"),
+                min.ToString("0.#"),
+                "0",
+                "Repere",
+                "La diagonale montre l equilibre parfait entre valeur joueuse et mediane.",
+                "Ligne de reference",
+                min,
+                min,
+                min,
+                max),
+            new PositionProfileAxisViewModel(
+                ReferenceKey,
+                "Reference y=x",
+                "Reference",
+                true,
+                "number",
+                max,
+                max,
+                50,
+                "neutral",
+                max.ToString("0.#"),
+                max.ToString("0.#"),
+                "0",
+                "Repere",
+                "La diagonale montre l equilibre parfait entre valeur joueuse et mediane.",
+                "Ligne de reference",
+                max,
+                max,
+                min,
+                max)
+        ];
+    }
+
+    private bool ShouldHighlightAxis(PositionProfileAxisViewModel axis)
+    {
+        return _highlightedAxisKeys.Contains(axis.Key)
+            || _alertAxisKeys.Contains(axis.Key)
+            || axis.DirectionalPercentile >= 90d
+            || axis.DirectionalPercentile <= 20d;
+    }
+
+    private static string GetAnnotationText(PositionProfileAxisViewModel axis)
+    {
+        if (axis.DirectionalPercentile >= 90d)
+        {
+            return "Top 10%";
+        }
+
+        if (axis.DirectionalPercentile <= 20d)
+        {
+            return "Alerte";
+        }
+
+        return "Above median";
+    }
+
+    private ScatterQuadrant GetQuadrant(PositionProfileAxisViewModel axis)
+    {
+        if (axis.DirectionalPercentile >= 80d && axis.Bucket != PositionProfileScatterBucket.Level)
+        {
+            return ScatterQuadrant.Elite;
+        }
+
+        if (axis.DirectionalPercentile <= 40d && axis.Bucket == PositionProfileScatterBucket.Above)
+        {
+            return ScatterQuadrant.Inefficient;
+        }
+
+        if (axis.DirectionalPercentile >= 65d && axis.Bucket == PositionProfileScatterBucket.Below)
+        {
+            return ScatterQuadrant.LowUsage;
+        }
+
+        return ScatterQuadrant.Balanced;
+    }
+
+    private string GetAxisCardClass(PositionProfileAxisViewModel axis)
+    {
+        if (_alertAxisKeys.Contains(axis.Key))
+        {
+            return "scatter-axis-card-danger is-alert";
+        }
+
+        if (_highlightedAxisKeys.Contains(axis.Key))
+        {
+            return $"scatter-axis-card-{axis.StatusTone} is-highlighted";
+        }
+
+        return $"scatter-axis-card-{axis.StatusTone}";
+    }
+
+    private sealed record ScatterQuadrantSummary(string Label, int Count, string Sentence, string Tone);
+
+    private enum ScatterQuadrant
+    {
+        Elite,
+        Inefficient,
+        LowUsage,
+        Balanced
+    }
+}

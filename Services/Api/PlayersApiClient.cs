@@ -50,4 +50,14 @@ public sealed class PlayersApiClient : ApiClientBase
     {
         return GetListAsync<PlayerMatchItemDto>($"api/Players/{playerId}/matches", ApiQueryBuilder.FromStatsOptions(options), cancellationToken);
     }
+
+    public Task<PositionProfileResponseDto?> GetPlayerPositionProfileAsync(int playerId, StatsQueryOptionsDto? options = null, CancellationToken cancellationToken = default)
+    {
+        return GetAsync<PositionProfileResponseDto>($"api/Players/{playerId}/position-profile", ApiQueryBuilder.FromStatsOptions(options), cancellationToken);
+    }
+
+    public Task<PositionProfileResponseDto?> ComparePositionProfilesAsync(PositionProfileCompareRequestDto request, CancellationToken cancellationToken = default)
+    {
+        return PostAsync<PositionProfileCompareRequestDto, PositionProfileResponseDto>("api/Players/position-profile/compare", request, cancellationToken);
+    }
 }

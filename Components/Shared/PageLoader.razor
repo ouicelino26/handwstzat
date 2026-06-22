@@ -1,0 +1,30 @@
+<div class="page-loader-overlay" role="status" aria-live="polite" aria-busy="true">
+    <div class="page-loader-card">
+        <div class="page-loader-spinner" aria-hidden="true"></div>
+
+        <div class="page-loader-copy">
+            @if (!string.IsNullOrWhiteSpace(Kicker))
+            {
+                <p class="section-kicker page-loader-kicker">@Kicker</p>
+            }
+
+            <h3>@Title</h3>
+
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <p class="page-subtitle">@Message</p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Kicker { get; set; } = "Chargement";
+
+    [Parameter]
+    public string Title { get; set; } = "Ouverture de la page";
+
+    [Parameter]
+    public string? Message { get; set; } = "Preparation du contenu et des filtres.";
+}

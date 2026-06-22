@@ -1,0 +1,241 @@
+.player-list-panel {
+    --player-list-width: clamp(18.5rem, 29vw, 27rem);
+    position: sticky;
+    top: 6.7rem;
+    justify-self: start;
+    align-self: start;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0;
+    width: var(--player-list-width);
+    min-width: var(--player-list-width);
+    max-width: var(--player-list-width);
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 1.15rem;
+    background:
+        radial-gradient(circle at top right, rgba(231, 79, 35, 0.12), transparent 24%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+    transition:
+        width 0.32s ease,
+        min-width 0.32s ease,
+        max-width 0.32s ease,
+        box-shadow 0.24s ease,
+        transform 0.24s ease;
+}
+
+.player-list-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--primary) 0%, rgba(15, 118, 110, 0.95) 100%);
+    pointer-events: none;
+}
+
+.player-list-panel.is-collapsed {
+    --player-list-width: 50px;
+}
+
+.player-list-panel__head {
+    min-width: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 1rem 1rem 0.85rem;
+}
+
+.player-list-panel__copy {
+    min-width: 0;
+    display: grid;
+    gap: 0.16rem;
+    overflow: hidden;
+    transition:
+        max-width 0.32s ease,
+        opacity 0.22s ease,
+        transform 0.22s ease;
+}
+
+.player-list-panel__kicker {
+    color: var(--primary);
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.1;
+}
+
+.player-list-panel__count {
+    color: var(--text-strong);
+    line-height: 1.15;
+}
+
+.player-list-panel__subtitle {
+    color: var(--text-body);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    opacity: 0.78;
+}
+
+.player-list-toggle {
+    display: grid;
+    place-items: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    flex: 0 0 auto;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.84);
+    color: var(--text-strong);
+    cursor: pointer;
+    transition:
+        transform 0.18s ease,
+        border-color 0.18s ease,
+        background 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.player-list-toggle:hover {
+    transform: translateY(-1px);
+    border-color: rgba(231, 79, 35, 0.22);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+}
+
+.player-list-toggle:focus-visible {
+    outline: 2px solid rgba(231, 79, 35, 0.32);
+    outline-offset: 2px;
+}
+
+.player-list-toggle__icon {
+    font-size: 1.4rem;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.player-list-panel__body {
+    min-width: 0;
+    display: grid;
+    gap: 0.95rem;
+    padding: 0 1rem 1rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    overflow: auto;
+    scrollbar-gutter: stable;
+    max-height: min(58vh, calc(100dvh - 14rem));
+    transition:
+        max-height 0.32s ease,
+        opacity 0.22s ease,
+        padding 0.32s ease,
+        border-color 0.32s ease,
+        transform 0.22s ease;
+}
+
+.player-list-panel__body.is-scrollable {
+    max-height: min(68vh, calc(100dvh - 12rem));
+}
+
+.player-list-panel__body.is-relaxed {
+    max-height: min(54vh, calc(100dvh - 15rem));
+}
+
+.player-list-panel__body .player-mosaic {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+}
+
+.player-list-panel__body .player-mosaic-scrollable {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+}
+
+.player-list-panel__body .list-item {
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.88);
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        border-color 0.18s ease,
+        background 0.18s ease;
+}
+
+.player-list-panel__body .list-item:hover {
+    transform: translateY(-1px);
+    border-color: rgba(231, 79, 35, 0.18);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.player-list-panel__body .list-item button {
+    min-height: 4.35rem;
+}
+
+.player-list-panel__body .list-item .key-metric {
+    gap: 0.2rem;
+}
+
+.player-list-panel__body .list-item .tiny-note {
+    margin-bottom: 0;
+}
+
+.player-list-panel__body .list-item.is-selected {
+    background: linear-gradient(180deg, rgba(231, 79, 35, 0.14), rgba(231, 79, 35, 0.06));
+    border-color: rgba(231, 79, 35, 0.28);
+    box-shadow: 0 14px 28px rgba(231, 79, 35, 0.12);
+}
+
+.player-list-panel.is-collapsed .player-list-panel__copy {
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(-0.45rem);
+    pointer-events: none;
+}
+
+.player-list-panel.is-collapsed .player-list-panel__head {
+    padding: 0.55rem 0.35rem 0.45rem;
+}
+
+.player-list-panel.is-collapsed .player-list-panel__body {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top-color: transparent;
+    transform: translateX(-0.35rem);
+    pointer-events: none;
+}
+
+@media (max-width: 900px) {
+    .player-list-panel {
+        position: static;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        --player-list-width: 100%;
+    }
+
+    .player-list-panel.is-collapsed {
+        --player-list-width: 100%;
+    }
+
+    .player-list-panel__head {
+        padding: 0.9rem 0.9rem 0.8rem;
+    }
+
+    .player-list-panel__body,
+    .player-list-panel__body.is-scrollable,
+    .player-list-panel__body.is-relaxed {
+        max-height: min(46vh, 24rem);
+    }
+
+    .player-list-panel.is-collapsed .player-list-panel__head {
+        padding: 0.65rem 0.6rem 0.55rem;
+    }
+
+    .player-list-panel__body .list-item button {
+        min-height: 4.2rem;
+    }
+}

@@ -14,12 +14,12 @@
     }
     else
     {
-        <section class="page-panel matches-directory-panel">
+        <section class="page-panel filter-strip matches-directory-panel @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
                 <div>
-                    <p class="section-kicker">@(ShowMatchDetailView ? "Detail match" : "Filtre match")</p>
-                    <h3>@(ShowMatchDetailView ? "Lecture complete de la rencontre" : "Chargez une liste puis ouvrez le detail d'une rencontre")</h3>
-                    <p class="page-subtitle">@(ShowMatchDetailView ? "Résumé, timeline, zones et effectif sur la rencontre sélectionnée." : "Compétition, équipe, saison, journée et recherche match sur un seul bandeau.")</p>
+                    <p class="section-kicker">Rencontres</p>
+                    <h3>Filtrer les matchs en direct</h3>
+                    <p class="page-subtitle">Competition, equipe, saison, journee et recherche restent visibles en continu.</p>
                 </div>
 
                 <div class="toolbar">
@@ -29,7 +29,6 @@
                     }
                     else
                     {
-                        <button type="button" class="primary-button" @onclick="ApplyFiltersAsync" disabled="@IsBusy">Charger</button>
                         <button type="button" class="ghost-button filter-ghost" @onclick="ResetAsync" disabled="@IsBusy">Reinitialiser</button>
                     }
                 </div>
@@ -37,11 +36,10 @@
 
             @if (!ShowMatchDetailView)
             {
-                <details class="filter-drawer">
+                <details class="filter-drawer" open>
                     <summary>
                         <div>
-                            <strong>Afficher les filtres match</strong>
-                            <span>Compétition, équipe, recherche, saison et journée.</span>
+                            <strong>Filtres</strong>
                         </div>
                     </summary>
 
@@ -109,17 +107,29 @@
                        Message="@ErrorMessage"
                        Tone="error" />
         }
+        else if (IsBusy && !ShowMatchDetailView && FilteredMatchList.Count == 0)
+        {
+            <StateCard Kicker="Chargement"
+                       Title="Mise a jour des matchs"
+                       Message="La selection, les filtres et les cartes se recalculent."
+                       Tone="loading" />
+        }
         else
         {
             <section class="workspace-grid workspace-grid-single">
+                @if (IsBusy)
+                {
+                    <PageLoader Kicker="Chargement"
+                                Title="Actualisation des matchs"
+                                Message="La liste et le detail du match se recalculent." />
+                }
+
                 @if (!ShowMatchDetailView)
                 {
                 <article class="page-panel selection-column">
                             <div class="panel-head">
                                 <div>
-                                    <p class="section-kicker">Liste</p>
                                     <h3>@FilteredMatchList.Count matchs</h3>
-                                    <p class="page-subtitle">Cliquez sur Voir plus pour ouvrir la fiche complete de chaque rencontre.</p>
                                 </div>
                             </div>
 
@@ -184,16 +194,7 @@
                             </div>
                         </div>
 
-                        <ScopeSummaryBar Kicker="Contexte rencontre"
-                                         Title="Le scenario, les zones et l'effectif restent attaches au match choisi"
-                                         Subtitle="Vous pouvez lire le match par narration, par joueuses ou par spatial sans quitter le meme repere."
-                                         Items="@SelectedMatchScopeItems"
-                                         Message="Les KPI ci-dessous utilisent la meme feuille de match que la timeline et la carte." />
 
-                        <AudienceLensSelector Value="@ActiveLens"
-                                              ValueChanged="SetActiveLens"
-                                              Title="Choisissez la bonne lecture de match"
-                                              Subtitle="Club pour piloter, Analyste pour zoomer, Joueuse pour suivre le recit du match." />
 
                         <div class="match-scope-toolbar">
                             <div class="match-scope-copy">
@@ -204,17 +205,20 @@
                             <div class="match-scope-toggle" role="group" aria-label="Filtre equipe">
                                 <button type="button"
                                         class="match-scope-button @(IsTeamScopeActive(MatchTeamScopeBoth) ? "is-active" : string.Empty)"
-                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeBoth)">
+                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeBoth)"
+                                        disabled="@IsSpatialLoading">
                                     Les deux
                                 </button>
                                 <button type="button"
                                         class="match-scope-button @(IsTeamScopeActive(MatchTeamScopeTeam1) ? "is-active" : string.Empty)"
-                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeTeam1)">
+                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeTeam1)"
+                                        disabled="@IsSpatialLoading">
                                     @(SelectedMatch.Team1Name ?? "Equipe 1")
                                 </button>
                                 <button type="button"
                                         class="match-scope-button @(IsTeamScopeActive(MatchTeamScopeTeam2) ? "is-active" : string.Empty)"
-                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeTeam2)">
+                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeTeam2)"
+                                        disabled="@IsSpatialLoading">
                                     @(SelectedMatch.Team2Name ?? "Equipe 2")
                                 </button>
                             </div>
@@ -256,7 +260,7 @@
                                         <span class="hero-badge">Score final @((SelectedMatch.Team1Score ?? 0) + " - " + (SelectedMatch.Team2Score ?? 0))</span>
                                     </div>
 
-                                        <ApexChart @key="SelectedMatchLoadToken" TItem="ScoreTimelinePoint" Title="Evolution du score" Height="320">
+                                        <ApexChart @key="SelectedMatchLoadToken" TItem="ScoreTimelinePoint" Title="Evolution du score" Height="320" Options="@GetScoreTimelineChartOptions()">
                                             @if (ShowTeam1TimelineSeries)
                                             {
                                                 <ApexPointSeries TItem="ScoreTimelinePoint"
@@ -382,7 +386,7 @@
                                     <section class="page-panel">
                                         <p class="section-kicker">Profil du match</p>
                                         <h4>Volume des actions majeures</h4>
-                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Title="Profil du match" Height="300">
+                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Title="Profil du match" Height="300" Options="@GetMatchProfileChartOptions()">
                                             <ApexPointSeries TItem="MetricPlotPoint"
                                                              Items="@MatchProfileSeries"
                                                              Name="Volume"
@@ -395,7 +399,7 @@
                                     <section class="page-panel">
                                         <p class="section-kicker">Joueuses decisives</p>
                                         <h4>Actions directes sur la rencontre</h4>
-                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Title="Implication decisive" Height="300">
+                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Title="Implication decisive" Height="300" Options="@GetMatchImpactChartOptions()">
                                             <ApexPointSeries TItem="MetricPlotPoint"
                                                              Items="@MatchPlayerImpactSeries"
                                                              Name="Buts + passes"
@@ -426,76 +430,110 @@
                         }
                         else if (ActiveSection == "zones")
                         {
-                            @if (IsSpatialLoading)
-                            {
-                                <StateCard Kicker="Chargement"
-                                           Title="Rechargement spatial"
-                                           Message=$"La carte but et déclenchements se recalcule pour {MatchSpatialLabel}."
-                                           Tone="loading" />
-                            }
-                            else if (MatchSpatial is null)
-                            {
-                                <StateCard Kicker="Aucune carte"
-                                           Title="La lecture but et déclenchements n’a pas encore été chargée pour ce scope"
-                                           Message="Essayez un autre match ou changez le périmètre d’équipe."
-                                           Tone="empty"
-                                           CssClass="empty-card-inline" />
-                            }
-                            else
-                            {
-                                @if (string.Equals(MatchTeamScope, MatchTeamScopeBoth, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    <p class="tiny-note spatial-scope-note">
-                                        La lecture spatiale s'ouvre sur @MatchSpatialLabel. Utilisez les boutons d'equipe pour basculer vers l'autre camp.
-                                    </p>
-                                }
-
-                                <div class="dual-grid">
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Spatial match</p>
-                                        <h4>But et declenchements</h4>
-                                        <GoalKpi GoalZones="@GoalZones"
-                                                 TriggerZones="@TriggerZones"
-                                                 IsGoalkeeper="false"
-                                                 ActiveZoneKey="@ActiveZoneKey"
-                                                 OnZoneSelected="HandleZoneSelectionAsync" />
-                                    </section>
-
-                                    <section class="page-panel">
-                                        <div class="panel-head">
-                                            <div>
-                                                <p class="section-kicker">Zone active</p>
-                                                <h4>@(CurrentZone?.Label ?? "Selectionnez une zone")</h4>
-                                            </div>
-                                            @if (CurrentZone is not null)
-                                            {
-                                                <span class="hero-badge">@FormatRate(CurrentZone.Rate)%</span>
-                                            }
-                                        </div>
-
-                                        @if (CurrentZone is not null)
+                            <ErrorBoundary>
+                                <ChildContent>
+                                    @if (IsSpatialLoading && MatchSpatial is null)
+                                    {
+                                        <StateCard Kicker="Chargement"
+                                                   Title="Rechargement spatial"
+                                                   Message=$"La carte but et déclenchements se recalcule pour {MatchSpatialLabel}."
+                                                   Tone="loading" />
+                                    }
+                                    else if (MatchSpatial is null)
+                                    {
+                                        <StateCard Kicker="Aucune carte"
+                                                   Title="La lecture but et déclenchements n’a pas encore été chargée pour ce scope"
+                                                   Message="Essayez un autre match ou changez le périmètre d’équipe."
+                                                   Tone="empty"
+                                                   CssClass="empty-card-inline" />
+                                    }
+                                    else
+                                    {
+                                        @if (string.Equals(MatchTeamScope, MatchTeamScopeBoth, StringComparison.OrdinalIgnoreCase))
                                         {
-                                            <div class="badge-row">
-                                                <div class="mini-card"><span>Volume</span><strong>@CurrentZone.Attempts</strong></div>
-                                                <div class="mini-card"><span>Succes</span><strong>@CurrentZone.Successes</strong></div>
-                                                <div class="mini-card"><span>Echecs</span><strong>@CurrentZone.Failures</strong></div>
-                                            </div>
+                                            <p class="tiny-note spatial-scope-note">
+                                                La lecture spatiale s'ouvre sur @MatchSpatialLabel. Utilisez les boutons d'equipe pour basculer vers l'autre camp.
+                                            </p>
+                                        }
 
-                                            <div class="list-stack">
-                                                @foreach (var outcome in CurrentZone.Outcomes)
-                                                {
-                                                    <div class="list-item">
-                                                        <div class="key-metric">
-                                                            <strong>@outcome.Label</strong>
-                                                            <span>@outcome.Count</span>
-                                                        </div>
-                                                    </div>
-                                                }
+                                        @if (HasSpatialFocus)
+                                        {
+                                            <div class="match-scope-toolbar spatial-focus-toolbar">
+                                                <div class="match-scope-copy">
+                                                    <p class="section-kicker">Lecture ciblee</p>
+                                                    <span>Zones liees a @SpatialFocusKey</span>
+                                                </div>
+
+                                                <button type="button"
+                                                        class="match-scope-button"
+                                                        @onclick="ResetSpatialFocusAsync"
+                                                        disabled="@IsSpatialLoading">
+                                                    Voir toutes les zones
+                                                </button>
                                             </div>
                                         }
-                                    </section>
-                                </div>
-                            }
+
+                                        <div class="dual-grid">
+                                            <section class="page-panel @(IsSpatialLoading ? "is-loading" : string.Empty)">
+                                                <p class="section-kicker">Spatial match</p>
+                                                <h4>But et declenchements</h4>
+                                                <GoalKpi GoalZones="@GoalZones"
+                                                         TriggerZones="@TriggerZones"
+                                                         IsGoalkeeper="false"
+                                                         ActiveZoneKey="@ActiveZoneKey"
+                                                         OnZoneSelected="HandleZoneSelectionAsync"
+                                                         HideZeroZones="@HasSpatialFocus"
+                                                         IsLoading="@IsSpatialLoading" />
+                                            </section>
+
+                                            <section class="page-panel">
+                                                <div class="panel-head">
+                                                    <div>
+                                                        <p class="section-kicker">Zone active</p>
+                                                        <h4>@(CurrentZone?.Label ?? "Selectionnez une zone")</h4>
+                                                    </div>
+                                                    @if (IsSpatialLoading)
+                                                    {
+                                                        <span class="hero-badge">Chargement spatial</span>
+                                                    }
+                                                    else if (CurrentZone is not null)
+                                                    {
+                                                        <span class="hero-badge">@FormatRate(CurrentZone.Rate)%</span>
+                                                    }
+                                                </div>
+
+                                                @if (CurrentZone is not null)
+                                                {
+                                                    <div class="badge-row">
+                                                        <div class="mini-card"><span>Volume</span><strong>@CurrentZone.Attempts</strong></div>
+                                                        <div class="mini-card"><span>Succes</span><strong>@CurrentZone.Successes</strong></div>
+                                                        <div class="mini-card"><span>Echecs</span><strong>@CurrentZone.Failures</strong></div>
+                                                    </div>
+
+                                                    <div class="list-stack">
+                                                        @foreach (var outcome in CurrentZone.Outcomes)
+                                                        {
+                                                            <div class="list-item">
+                                                                <div class="key-metric">
+                                                                    <strong>@outcome.Label</strong>
+                                                                    <span>@outcome.Count</span>
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </section>
+                                        </div>
+                                    }
+                                </ChildContent>
+                                <ErrorContent Context="zoneError">
+                                    <StateCard Kicker="Erreur"
+                                               Title="La lecture spatiale n’a pas pu se rendre"
+                                               Message="Une erreur de rendu a été interceptée dans la carte des zones. Vous pouvez recharger la fiche match ou changer de camp pour réessayer."
+                                               Tone="error"
+                                               CssClass="empty-card-inline" />
+                                </ErrorContent>
+                            </ErrorBoundary>
                         }
                         else
                         {
@@ -597,10 +635,13 @@
     private string MatchPlayerSearch { get; set; } = string.Empty;
     private TableSortState MatchPlayerSort { get; set; } = new("goals", SortDirection.Desc);
     private long SelectedMatchLoadToken { get; set; }
+    private long SpatialLoadToken;
     private bool ShowMatchDetailView => MatchIdFromQuery.HasValue;
+    private string? SpatialFocusKey { get; set; }
 
     private IReadOnlyList<ZoneStat> GoalZones => MatchSpatial?.Zones.Select(MapZone).ToList() ?? [];
     private IReadOnlyList<ZoneStat> TriggerZones => MatchSpatial?.Triggers.Select(MapTrigger).ToList() ?? [];
+    private bool HasSpatialFocus => !string.IsNullOrWhiteSpace(SpatialFocusKey);
     private string MatchSpatialScopeKey => MatchTeamScope switch
     {
         MatchTeamScopeTeam1 => MatchTeamScopeTeam1,
@@ -712,9 +753,11 @@
 
     private async Task ApplyFiltersAsync()
     {
+        var loadStartedAt = DateTimeOffset.UtcNow;
+
         try
         {
-            IsBusy = true;
+            await BusyUiHelper.EnterAsync(() => IsBusy = true, () => InvokeAsync(StateHasChanged));
             ErrorMessage = null;
 
             ReferenceData = await ReferenceDataService.GetReferenceDataAsync();
@@ -758,7 +801,7 @@
         }
         finally
         {
-            IsBusy = false;
+            await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
         }
     }
 
@@ -831,8 +874,28 @@
 
     private async Task HandleZoneSelectionAsync(string zoneKey)
     {
-        ActiveZoneKey = zoneKey;
-        await InvokeAsync(StateHasChanged);
+        if (!SelectedMatchId.HasValue || MatchSpatial is null || string.IsNullOrWhiteSpace(zoneKey))
+        {
+            return;
+        }
+
+        var normalizedZoneKey = zoneKey.Trim();
+        var nextFocusKey = string.Equals(SpatialFocusKey, normalizedZoneKey, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : normalizedZoneKey;
+
+        ActiveZoneKey = normalizedZoneKey;
+        await LoadSelectedSpatialAsync(nextFocusKey);
+    }
+
+    private async Task ResetSpatialFocusAsync()
+    {
+        if (!HasSpatialFocus)
+        {
+            return;
+        }
+
+        await LoadSelectedSpatialAsync(null);
     }
 
     private void ClearSelectedMatchDetail()
@@ -843,7 +906,9 @@
         MatchSpatial = null;
         SelectedMatchTimeline = [];
         ActiveZoneKey = null;
+        SpatialFocusKey = null;
         IsSpatialLoading = false;
+        System.Threading.Interlocked.Increment(ref SpatialLoadToken);
     }
 
     private long BeginSelectedMatchLoad()
@@ -854,6 +919,9 @@
 
     private async Task LoadSelectedMatchAsync(long loadToken, bool loadPlayers = false, bool replaceCurrentSelection = false)
     {
+        System.Threading.Interlocked.Increment(ref SpatialLoadToken);
+        IsSpatialLoading = false;
+
         if (!SelectedMatchId.HasValue)
         {
             IsMatchDetailLoading = false;
@@ -1003,38 +1071,16 @@
             return;
         }
 
-        var cache = GetMatchDetailCache(SelectedMatchId.Value);
-        var scopeKey = MatchSpatialScopeKey;
-
-        if (cache.SpatialByScope.TryGetValue(scopeKey, out var cachedSpatial) && cachedSpatial is not null)
-        {
-            MatchSpatial = cachedSpatial;
-            ActiveZoneKey = MatchSpatial is null
-                ? null
-                : GoalZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
-                    ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
-                    ?? GoalZones.FirstOrDefault()?.Key
-                    ?? TriggerZones.FirstOrDefault()?.Key;
-            IsSpatialLoading = false;
-            ErrorMessage = null;
-            await InvokeAsync(StateHasChanged);
-            return;
-        }
-
-        if (cache.SpatialByScope.ContainsKey(scopeKey))
-        {
-            cache.SpatialByScope.Remove(scopeKey);
-        }
-
-        await LoadSelectedSpatialAsync();
+        await LoadSelectedSpatialAsync(SpatialFocusKey);
     }
 
-    private async Task LoadSelectedSpatialAsync()
+    private async Task LoadSelectedSpatialAsync(string? focusZoneKey = null)
     {
         if (!SelectedMatchId.HasValue || SelectedMatch is null)
         {
             MatchSpatial = null;
             ActiveZoneKey = null;
+            SpatialFocusKey = null;
             IsSpatialLoading = false;
             return;
         }
@@ -1043,73 +1089,123 @@
         var scopeKey = MatchSpatialScopeKey;
         var teamId = MatchSpatialTeamId;
         var cache = GetMatchDetailCache(matchId);
+        var cacheKey = GetMatchSpatialCacheKey(scopeKey, focusZoneKey);
+        var loadToken = System.Threading.Interlocked.Increment(ref SpatialLoadToken);
 
-        if (cache.SpatialByScope.TryGetValue(scopeKey, out var cachedSpatial) && cachedSpatial is not null)
+        if (cache.SpatialByContext.TryGetValue(cacheKey, out var cachedSpatial) && cachedSpatial is not null)
         {
             MatchSpatial = cachedSpatial;
-            ActiveZoneKey = MatchSpatial is null
-                ? null
-                : GoalZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
-                    ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
-                    ?? GoalZones.FirstOrDefault()?.Key
-                    ?? TriggerZones.FirstOrDefault()?.Key;
+            SpatialFocusKey = focusZoneKey;
+            ActiveZoneKey = ResolveActiveZoneKey(focusZoneKey);
             IsSpatialLoading = false;
+            ErrorMessage = null;
             await InvokeAsync(StateHasChanged);
             return;
         }
 
-        if (cache.SpatialByScope.ContainsKey(scopeKey))
+        if (cache.SpatialByContext.ContainsKey(cacheKey))
         {
-            cache.SpatialByScope.Remove(scopeKey);
+            cache.SpatialByContext.Remove(cacheKey);
         }
 
-        MatchSpatial = null;
-        ActiveZoneKey = null;
         IsSpatialLoading = true;
         await InvokeAsync(StateHasChanged);
         await Task.Yield();
 
         try
         {
-            var spatial = await StatsApiClient.GetMatchSpatialAsync(matchId, teamId);
+            var spatial = await StatsApiClient.GetMatchSpatialAsync(matchId, teamId, BuildMatchSpatialQueryOptions(focusZoneKey));
 
-            if (!SelectedMatchId.HasValue || SelectedMatchId.Value != matchId || !string.Equals(scopeKey, MatchSpatialScopeKey, StringComparison.OrdinalIgnoreCase))
+            if (loadToken != SpatialLoadToken || !SelectedMatchId.HasValue || SelectedMatchId.Value != matchId || !string.Equals(scopeKey, MatchSpatialScopeKey, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
 
             if (spatial is not null)
             {
-                cache.SpatialByScope[scopeKey] = spatial;
+                cache.SpatialByContext[cacheKey] = spatial;
             }
+
             MatchSpatial = spatial;
-            ActiveZoneKey = MatchSpatial is null
-                ? null
-                : GoalZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
-                    ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
-                    ?? GoalZones.FirstOrDefault()?.Key
-                    ?? TriggerZones.FirstOrDefault()?.Key;
+            SpatialFocusKey = focusZoneKey;
+            ActiveZoneKey = ResolveActiveZoneKey(focusZoneKey);
             ErrorMessage = null;
         }
         catch (Exception ex)
         {
-            if (!SelectedMatchId.HasValue || SelectedMatchId.Value != matchId || !string.Equals(scopeKey, MatchSpatialScopeKey, StringComparison.OrdinalIgnoreCase))
+            if (loadToken != SpatialLoadToken || !SelectedMatchId.HasValue || SelectedMatchId.Value != matchId || !string.Equals(scopeKey, MatchSpatialScopeKey, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
 
             MatchSpatial = null;
             ActiveZoneKey = null;
+            SpatialFocusKey = null;
             ErrorMessage = ex.Message;
         }
         finally
         {
-            if (SelectedMatchId.HasValue && SelectedMatchId.Value == matchId && string.Equals(scopeKey, MatchSpatialScopeKey, StringComparison.OrdinalIgnoreCase))
+            if (loadToken == SpatialLoadToken && SelectedMatchId.HasValue && SelectedMatchId.Value == matchId && string.Equals(scopeKey, MatchSpatialScopeKey, StringComparison.OrdinalIgnoreCase))
             {
                 IsSpatialLoading = false;
                 await InvokeAsync(StateHasChanged);
             }
         }
+    }
+
+    private string GetMatchSpatialCacheKey(string scopeKey, string? focusZoneKey)
+    {
+        if (string.IsNullOrWhiteSpace(focusZoneKey))
+        {
+            return scopeKey;
+        }
+
+        return $"{scopeKey}|{focusZoneKey.Trim().ToUpperInvariant()}";
+    }
+
+    private StatsQueryOptionsDto BuildMatchSpatialQueryOptions(string? focusZoneKey)
+    {
+        var options = new StatsQueryOptionsDto();
+
+        if (string.IsNullOrWhiteSpace(focusZoneKey))
+        {
+            return options;
+        }
+
+        if (SpatialZoneVisuals.IsTriggerZoneKey(focusZoneKey))
+        {
+            options.Trigger = SpatialZoneVisuals.ToBackendTriggerKey(focusZoneKey);
+        }
+        else
+        {
+            options.ShootShade = focusZoneKey.Trim();
+        }
+
+        return options;
+    }
+
+    private string? ResolveActiveZoneKey(string? preferredKey = null)
+    {
+        var allZoneKeys = GoalZones
+            .Concat(TriggerZones)
+            .Select(zone => zone.Key)
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(preferredKey) && allZoneKeys.Contains(preferredKey))
+        {
+            return preferredKey;
+        }
+
+        if (!string.IsNullOrWhiteSpace(ActiveZoneKey) && allZoneKeys.Contains(ActiveZoneKey))
+        {
+            return ActiveZoneKey;
+        }
+
+        return GoalZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
+            ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
+            ?? GoalZones.FirstOrDefault()?.Key
+            ?? TriggerZones.FirstOrDefault()?.Key;
     }
 
     private MatchDetailCacheItem GetMatchDetailCache(int matchId)
@@ -1235,6 +1331,7 @@
             {
                 Type = ChartType.Bar
             },
+            Colors = ChartPalette.TeamComparisonColors,
             DataLabels = new DataLabels
             {
                 Enabled = false
@@ -1248,6 +1345,86 @@
                 Bar = new PlotOptionsBar
                 {
                     Horizontal = true,
+                    BorderRadius = 10,
+                    BarHeight = "66%"
+                }
+            }
+        };
+    }
+
+    private ApexChartOptions<ScoreTimelinePoint> GetScoreTimelineChartOptions()
+    {
+        return new ApexChartOptions<ScoreTimelinePoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Line
+            },
+            Colors = ChartPalette.TeamComparisonColors,
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            Legend = new Legend
+            {
+                Position = LegendPosition.Bottom
+            },
+            Stroke = new Stroke
+            {
+                Width = 3
+            }
+        };
+    }
+
+    private ApexChartOptions<MetricPlotPoint> GetMatchProfileChartOptions()
+    {
+        return new ApexChartOptions<MetricPlotPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Bar
+            },
+            Colors = [ChartPalette.Secondary],
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            Legend = new Legend
+            {
+                Position = LegendPosition.Bottom
+            },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar
+                {
+                    BorderRadius = 10,
+                    BarHeight = "66%"
+                }
+            }
+        };
+    }
+
+    private ApexChartOptions<MetricPlotPoint> GetMatchImpactChartOptions()
+    {
+        return new ApexChartOptions<MetricPlotPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Bar
+            },
+            Colors = [ChartPalette.Player],
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            Legend = new Legend
+            {
+                Position = LegendPosition.Bottom
+            },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar
+                {
                     BorderRadius = 10,
                     BarHeight = "66%"
                 }
@@ -1418,6 +1595,7 @@
             SelectedMatchId = MatchIdFromQuery.Value;
             MatchSpatial = null;
             ActiveZoneKey = null;
+            SpatialFocusKey = null;
             IsSpatialLoading = false;
             ErrorMessage = null;
             BeginSelectedMatchLoad();
@@ -1467,11 +1645,10 @@
 
         public IReadOnlyList<PlayerGlobalStatsDto> Players { get; set; } = [];
 
-        public Dictionary<string, MatchSpatialStatsDto?> SpatialByScope { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, MatchSpatialStatsDto?> SpatialByContext { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         public IReadOnlyList<ScoreTimelinePoint> Timeline { get; set; } = [];
 
         public bool PlayersLoaded { get; set; }
     }
 }
-

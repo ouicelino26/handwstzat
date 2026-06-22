@@ -1,45 +1,45 @@
 @page "/players"
+@using System.Globalization
 @inject ReferenceDataService ReferenceDataService
 @inject PlayersApiClient PlayersApiClient
 @inject MatchesApiClient MatchesApiClient
 @inject StatsApiClient StatsApiClient
 @inject IApiAuthService AuthService
+@inject IJSRuntime JS
+@implements IDisposable
 
 <PageTitle>Joueuses</PageTitle>
 
-<div class="page-shell">
+<div class="page-shell players-page">
     @if (!AuthService.Session.IsAuthenticated)
     {
         <AccessRequiredCard Message="Connectez-vous pour ouvrir les fiches joueuses, les zones et les feuilles de match." />
     }
     else
     {
-        <section class="page-panel players-directory-panel">
-            <div class="panel-head panel-head-wrap">
-                <div>
-                    <p class="section-kicker">Répertoire</p>
-                    <h3>Choisissez une joueuse puis ouvrez sa fiche</h3>
+        <details class="page-panel filter-strip filter-drawer players-directory-panel players-directory-drawer @(IsBusy ? "is-loading" : string.Empty)" open="@IsDirectoryDrawerOpen">
+            <summary @onclick="ToggleDirectoryDrawer">
+
+                <div class="drawer-copy">
+                    <strong>Joueuses</strong>
+                    <span>Filtrez le repertoire en direct</span>
                 </div>
 
-                <div class="toolbar">
-                    <button type="button" class="primary-button" @onclick="ApplyFiltersAsync" disabled="@IsBusy">Charger</button>
-                    <button type="button" class="ghost-button filter-ghost" @onclick="ResetFiltersAsync" disabled="@IsBusy">Réinitialiser</button>
+                <div class="toolbar drawer-actions">
+                    <button type="button"
+                            class="ghost-button filter-ghost"
+                            @onclick="ResetFiltersAsync"
+                            @onclick:preventDefault="true"
+                            @onclick:stopPropagation="true"
+                            disabled="@IsBusy">Réinitialiser</button>
                 </div>
-            </div>
+            </summary>
 
-            <details class="filter-drawer">
-                <summary>
-                    <div>
-                        <strong>Afficher les filtres du répertoire</strong>
-                        <span>Recherche, compétition, équipe, poste, saison et journée.</span>
-                    </div>
-                </summary>
-
-                <div class="filter-drawer-body">
-                    <div class="page-filters">
+            <div class="filter-drawer-body">
+                <div class="page-filters">
                         <label class="filter-field player-search">
                             <span>Recherche</span>
-                            <input @bind="Search" placeholder="Nom ou prenom" />
+                            <input value="@Search" @oninput="OnSearchChangedAsync" placeholder="Nom ou prenom" />
                         </label>
 
                         <label class="filter-field">
@@ -98,8 +98,7 @@
                         </label>
                     </div>
                 </div>
-            </details>
-        </section>
+        </details>
 
         @if (!string.IsNullOrWhiteSpace(ErrorMessage))
         {
@@ -118,47 +117,31 @@
         else if (!HasDirectoryCriteria)
         {
             <StateCard Kicker="Filtre requis"
-                       Title="Sélectionnez un contexte pour charger les joueuses"
+                       Title="Sélectionnez un filtre pour charger les joueuses"
                        Message="Choisissez au moins une compétition, une équipe, un poste ou saisissez une recherche."
                        Tone="empty" />
         }
         else
         {
-            <section class="workspace-grid players-workspace-grid">
-                <article class="page-panel selection-column players-selection-column">
-                    <div class="panel-head">
-                        <div>
-                            <p class="section-kicker">Liste</p>
-                            <h3>@PlayerDirectory.Count joueuses</h3>
-                        </div>
-                    </div>
+            @if (IsBusy)
+            {
+                <PageLoader Kicker="Chargement"
+                            Title="Actualisation du repertoire"
+                            Message="La liste et la fiche de la joueuse se recalculent." />
+            }
 
-                    @if (PlayerDirectory.Count == 0)
-                    {
-                        <StateCard Kicker="Aucune joueuse"
-                                   Title="Le filtre courant ne retourne aucune fiche"
-                                   Message="Essayez un contexte plus large ou retirez un filtre trop restrictif."
-                                   Tone="empty"
-                                   CssClass="empty-card-inline" />
-                    }
-                    else
-                    {
-                        <div class="player-mosaic @(UseScrollableDirectory ? "player-mosaic-scrollable" : string.Empty)">
-                            @foreach (var player in PlayerDirectory)
-                            {
-                                <div class="list-item @(SelectedPlayerId == player.PlayerId ? "is-selected" : string.Empty)">
-                                    <button type="button" @onclick="() => SelectPlayerAsync(player.PlayerId)">
-                                        <div class="key-metric">
-                                            <strong>@player.FullName</strong>
-                                            <span>@(player.PositionCode ?? player.PositionName ?? "-")</span>
-                                        </div>
-                                        <p class="tiny-note">@player.TeamName - @(player.Nationality ?? "Nationalite inconnue")</p>
-                                    </button>
-                                </div>
-                            }
-                        </div>
-                    }
-                </article>
+            <section class="workspace-grid players-workspace-grid">
+                <PlayerList Kicker="Liste"
+                            Subtitle="Selectionnez une joueuse pour afficher sa fiche"
+                            Players="@PlayerDirectory"
+                            SelectedPlayerId="@SelectedPlayerId"
+                            Scrollable="@UseScrollableDirectory"
+                            IsPlayerListOpen="@IsPlayerListOpen"
+                            IsPlayerListOpenChanged="@(value => IsPlayerListOpen = value)"
+                            EmptyKicker="Aucune joueuse"
+                            EmptyTitle="Le filtre courant ne retourne aucune fiche"
+                            EmptyMessage="Essayez un contexte plus large ou retirez un filtre trop restrictif."
+                            OnSelectedPlayerChanged="SelectPlayerAsync" />
 
                 <article class="page-panel detail-column players-detail-column">
                     @if (Profile is null || Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null)
@@ -178,14 +161,14 @@
                         var passing = Passing!;
                         var sanctions = Sanctions!;
                         var goalkeeper = Goalkeeper!;
-                        var technical = Technical!;
+                        PlayerTechnicalStatsDto? technical = Technical!;
 
                         <div class="panel-head panel-head-wrap">
                             <div>
                                 <p class="section-kicker">Fiche joueuse</p>
                                 <h3>@profile.FullName</h3>
                                 <p class="page-subtitle">
-                                    @(profile.TeamName ?? "Equipe non renseignee") - @(profile.PositionName ?? "Poste non renseigne")
+                                    Club principal: @(profile.TeamName ?? "Equipe non renseignee") - @(profile.PositionName ?? "Poste non renseigne")
                                     @if (profile.Number.HasValue)
                                     {
                                         <span>- #@profile.Number.Value</span>
@@ -197,8 +180,16 @@
                                 </p>
                             </div>
 
-                            <span class="hero-badge">@(profile.IsGoalkeeper ? "Gardienne" : "Joueuse de champ")</span>
+                            <div class="toolbar">
+                                <button type="button"
+                                        class="ghost-button filter-ghost"
+                                        @onclick="ExportPlayerSheetAsync"
+                                        disabled="@(!CanExportPlayerSheet || IsBusy || IsPlayerSheetExportBusy)">Exporter fiche + radar</button>
+                                <span class="hero-badge">@(profile.IsGoalkeeper ? "Gardienne" : "Joueuse de champ")</span>
+                            </div>
                         </div>
+
+                        <PlayerTeamHistoryPanel Profile="@profile" />
 
                         <ScopeSummaryBar Kicker="Lecture fiche"
                                          Title="Toutes les vues utilisent le meme cadre d'analyse"
@@ -206,13 +197,9 @@
                                          Items="@SelectedPlayerScopeItems"
                                          Message="Le detail conserve le filtre courant pour eviter les comparaisons faussees." />
 
-                        <AudienceLensSelector Value="@ActiveLens"
-                                              ValueChanged="SetActiveLens"
-                                              Title="Choisissez la bonne lecture de fiche"
-                                              Subtitle="Joueuse pour l'essentiel, Club pour le role dans le collectif, Analyste pour ouvrir toute la profondeur." />
-
                         <div class="tab-strip">
                             <button type="button" class="tab-button @(ActiveSection == "overview" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("overview")'>Synthese</button>
+                            <button type="button" class="tab-button @(ActiveSection == "analysis" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("analysis")'>Analyse</button>
                             <button type="button" class="tab-button @(ActiveSection == "graphs" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("graphs")'>Graphes</button>
                             <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Zones</button>
                             <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Matchs</button>
@@ -234,113 +221,106 @@
                             <BarGaugeKpiGrid Items="@PlayerGaugeKpis" />
 
                             <KpiTileGrid Items="@PlayerKpis" />
+                        }
+                        else if (ActiveSection == "analysis")
+                        {
+                            <div class="triple-grid">
+                                <section class="page-panel">
+                                    <p class="section-kicker">Attaque</p>
+                                    <h4>@Offense.TotalButs buts</h4>
+                                    <p>@Offense.TirsRates tirs rates - @Offense.TirContre tirs contres - @Offense.PenaltyRate penalties rates</p>
+                                    <p class="tiny-note">@FormatRate(HandballKpiHelper.OverallShotSuccessRate(Offense))% de conversion globale</p>
+                                </section>
 
-                            @if (ShowPlayerRoleCards)
-                            {
-                                <div class="triple-grid">
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Attaque</p>
-                                        <h4>@Offense.TotalButs buts</h4>
-                                        <p>@Offense.TirsRates tirs rates - @Offense.TirContre tirs contres - @Offense.PenaltyRate penalties rates</p>
-                                        <p class="tiny-note">@FormatRate(HandballKpiHelper.OverallShotSuccessRate(Offense))% de conversion globale</p>
-                                    </section>
+                                <section class="page-panel">
+                                    <p class="section-kicker">Defense</p>
+                                    <h4>@Defense.Interceptions interceptions</h4>
+                                    <p>@Defense.Contres contres - @Defense.Neutralisations neutralisations</p>
+                                    <p class="tiny-note">@Defense.PassageForce passages en force provoques</p>
+                                </section>
 
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Defense</p>
-                                        <h4>@Defense.Interceptions interceptions</h4>
-                                        <p>@Defense.Contres contres - @Defense.Neutralisations neutralisations</p>
-                                        <p class="tiny-note">@Defense.PassageForce passages en force provoques</p>
-                                    </section>
+                                <section class="page-panel">
+                                    <p class="section-kicker">Passe / perte</p>
+                                    <h4>@Passing.PasseDecisive passes decisives</h4>
+                                    <p>@Passing.TotalPertes pertes - @Passing.MauvaisePasse mauvaises passes</p>
+                                    <p class="tiny-note">@Passing.FauteTechnique fautes techniques - @Passing.PassageEnForce passages en force</p>
+                                </section>
+                            </div>
 
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Passe / perte</p>
-                                        <h4>@Passing.PasseDecisive passes decisives</h4>
-                                        <p>@Passing.TotalPertes pertes - @Passing.MauvaisePasse mauvaises passes</p>
-                                        <p class="tiny-note">@Passing.FauteTechnique fautes techniques - @Passing.PassageEnForce passages en force</p>
-                                    </section>
-                                </div>
-                            }
-
-                            @if (ShowPlayerAdvancedCards)
-                            {
-                                <div class="triple-grid">
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Sanctions</p>
-                                        <h4>@(Sanctions.Exclusions + Sanctions.Avertissements + Sanctions.DeuxMinutes + Sanctions.PenaltyConcede) incidents</h4>
-                                        <div class="badge-row">
-                                            <div class="mini-card"><span>Exclusions</span><strong>@Sanctions.Exclusions</strong></div>
-                                            <div class="mini-card"><span>Avertissements</span><strong>@Sanctions.Avertissements</strong></div>
-                                            <div class="mini-card"><span>Deux minutes</span><strong>@Sanctions.DeuxMinutes</strong></div>
-                                            <div class="mini-card"><span>Penaltys</span><strong>@Sanctions.PenaltyConcede</strong></div>
+                            <div class="triple-grid">
+                                <section class="page-panel">
+                                    <p class="section-kicker">Sanctions</p>
+                                    <h4>@(Sanctions.Exclusions + Sanctions.Avertissements + Sanctions.DeuxMinutes + Sanctions.PenaltyConcede) incidents</h4>
+                                    <div class="badge-row">
+                                        <div class="mini-card"><span>Exclusions</span><strong>@Sanctions.Exclusions</strong></div>
+                                        <div class="mini-card"><span>Avertissements</span><strong>@Sanctions.Avertissements</strong></div>
+                                        <div class="mini-card"><span>Deux minutes</span><strong>@Sanctions.DeuxMinutes</strong></div>
+                                        <div class="mini-card"><span>Penaltys</span><strong>@Sanctions.PenaltyConcede</strong></div>
+                                    </div>
+                                </section>
+                                <section class="page-panel">
+                                    <p class="section-kicker">Bloc gardienne</p>
+                                    <h4>@(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty) arrets</h4>
+                                    <div class="badge-row">
+                                        <div class="mini-card"><span>Buts pris</span><strong>@Goalkeeper.ButsPris</strong></div>
+                                        <div class="mini-card"><span>Tirs subis</span><strong>@Goalkeeper.TirsSubis</strong></div>
+                                        <div class="mini-card"><span>Taux d'arret</span><strong>@FormatRate(Goalkeeper.TauxArret)%</strong></div>
+                                        <div class="mini-card"><span>Passes</span><strong>@Goalkeeper.PasseDecisives</strong></div>
+                                    </div>
+                                </section>
+                                <section class="page-panel">
+                                    <p class="section-kicker">Technique</p>
+                                    <h4>@(profile.IsGoalkeeper ? $"{technical.TirsSubis} tirs subis" : $"{technical.ShotAttempts} tirs engages")</h4>
+                                    <div class="badge-row">
+                                        <div class="mini-card">
+                                            <span>@(profile.IsGoalkeeper ? "Stop 7m" : "Conversion globale")</span>
+                                            <strong>@FormatRate(profile.IsGoalkeeper ? technical.GoalkeeperPenaltyStopRate : technical.OverallShotSuccessRate)%</strong>
                                         </div>
-                                    </section>
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Bloc gardienne</p>
-                                        <h4>@(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty) arrets</h4>
-                                        <div class="badge-row">
-                                            <div class="mini-card"><span>Buts pris</span><strong>@Goalkeeper.ButsPris</strong></div>
-                                            <div class="mini-card"><span>Tirs subis</span><strong>@Goalkeeper.TirsSubis</strong></div>
-                                            <div class="mini-card"><span>Taux d'arret</span><strong>@FormatRate(Goalkeeper.TauxArret)%</strong></div>
-                                            <div class="mini-card"><span>Passes</span><strong>@Goalkeeper.PasseDecisives</strong></div>
+                                        <div class="mini-card">
+                                            <span>@(profile.IsGoalkeeper ? "Buts encaisses" : "Tirs contres")</span>
+                                            <strong>@(profile.IsGoalkeeper ? technical.GoalkeeperConcededGoals : offense.TirContre)</strong>
                                         </div>
-                                    </section>
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Technique</p>
-                                        <h4>@(profile.IsGoalkeeper ? $"{technical.TirsSubis} tirs subis" : $"{technical.ShotAttempts} tirs engages")</h4>
-                                        <div class="badge-row">
-                                            <div class="mini-card">
-                                                <span>@(profile.IsGoalkeeper ? "Stop 7m" : "Conversion globale")</span>
-                                                <strong>@FormatRate(profile.IsGoalkeeper ? technical.GoalkeeperPenaltyStopRate : technical.OverallShotSuccessRate)%</strong>
-                                            </div>
-                                            <div class="mini-card">
-                                                <span>@(profile.IsGoalkeeper ? "Buts encaisses" : "Tirs contres")</span>
-                                                <strong>@(profile.IsGoalkeeper ? technical.GoalkeeperConcededGoals : offense.TirContre)</strong>
-                                            </div>
-                                            <div class="mini-card">
-                                                <span>@(profile.IsGoalkeeper ? "Pertes techniques" : "Dechet tir")</span>
-                                                <strong>@(profile.IsGoalkeeper ? technical.TechnicalLosses : technical.ShotWaste)</strong>
-                                            </div>
-                                            <div class="mini-card">
-                                                <span>Sanctions</span>
-                                                <strong>@technical.Sanctions</strong>
-                                            </div>
+                                        <div class="mini-card">
+                                            <span>@(profile.IsGoalkeeper ? "Pertes techniques" : "Dechet tir")</span>
+                                            <strong>@(profile.IsGoalkeeper ? technical.TechnicalLosses : technical.ShotWaste)</strong>
                                         </div>
-                                    </section>
-                                </div>
-                            }
+                                        <div class="mini-card">
+                                            <span>Sanctions</span>
+                                            <strong>@technical.Sanctions</strong>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
                         }
                         else if (ActiveSection == "graphs")
                         {
-                            @if (ShowPlayerProfileCharts)
-                            {
-                                <div class="dual-grid">
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Profil technique</p>
-                                        <h4>Volumes qui structurent le role</h4>
-                                        <ApexChart TItem="MetricPlotPoint" Title="Profil d'impact" Height="310">
-                                            <ApexPointSeries TItem="MetricPlotPoint"
-                                                             Items="@PlayerActionProfile"
-                                                             Name="@Profile.FullName"
-                                                             SeriesType="SeriesType.Bar"
-                                                             XValue="point => point.Label"
-                                                             YValue="point => (decimal?)point.Value" />
-                                        </ApexChart>
-                                    </section>
+                            <div class="dual-grid">
+                                <section class="page-panel">
+                                    <p class="section-kicker">Profil technique</p>
+                                    <h4>Volumes qui structurent le role</h4>
+                                    <ApexChart TItem="MetricPlotPoint" Title="Profil d'impact" Height="310" Options="@GetPlayerProfileChartOptions()">
+                                        <ApexPointSeries TItem="MetricPlotPoint"
+                                                         Items="@PlayerActionProfile"
+                                                         Name="@Profile.FullName"
+                                                         SeriesType="SeriesType.Bar"
+                                                         XValue="point => point.Label"
+                                                         YValue="point => (decimal?)point.Value" />
+                                    </ApexChart>
+                                </section>
 
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Rendement</p>
-                                        <h4>Pourcentages et ratios clefs</h4>
-                                        <ApexChart TItem="MetricPlotPoint" Title="Rendement" Height="310">
-                                            <ApexPointSeries TItem="MetricPlotPoint"
-                                                             Items="@PlayerRateProfile"
-                                                             Name="Niveau"
-                                                             SeriesType="SeriesType.Bar"
-                                                             XValue="point => point.Label"
-                                                             YValue="point => (decimal?)point.Value" />
-                                        </ApexChart>
-                                    </section>
-                                </div>
-                            }
+                                <section class="page-panel">
+                                    <p class="section-kicker">Rendement</p>
+                                    <h4>Pourcentages et ratios clefs</h4>
+                                    <ApexChart TItem="MetricPlotPoint" Title="Rendement" Height="310" Options="@GetPlayerRateChartOptions()">
+                                        <ApexPointSeries TItem="MetricPlotPoint"
+                                                         Items="@PlayerRateProfile"
+                                                         Name="Niveau"
+                                                         SeriesType="SeriesType.Bar"
+                                                         XValue="point => point.Label"
+                                                         YValue="point => (decimal?)point.Value" />
+                                    </ApexChart>
+                                </section>
+                            </div>
 
                             <div class="dual-grid">
                                 <section class="page-panel">
@@ -353,7 +333,7 @@
                                     }
                                     else
                                     {
-                                        <ApexChart @key="SelectedPlayerId" TItem="MatchTrendPoint" Title="Evolution recente" Height="320">
+                                        <ApexChart @key="SelectedPlayerId" TItem="MatchTrendPoint" Title="Evolution recente" Height="320" Options="@GetPlayerTrendChartOptions()">
                                             <ApexPointSeries TItem="MatchTrendPoint"
                                                              Items="@PlayerTrendSeries"
                                                              Name="Actions directes"
@@ -476,51 +456,93 @@
                         }
                         else if (ActiveSection == "zones")
                         {
-                            <div class="dual-grid">
-                                <section class="page-panel">
-                                    <p class="section-kicker">Spatial</p>
-                                    <h4>But et declenchements</h4>
-                                    <GoalKpi GoalZones="@GoalZones"
-                                             TriggerZones="@TriggerZones"
-                                             IsGoalkeeper="@Profile.IsGoalkeeper"
-                                             ActiveZoneKey="@ActiveZoneKey"
-                                             OnZoneSelected="HandleZoneSelectionAsync" />
-                                </section>
-
-                                <section class="page-panel">
-                                    <div class="panel-head">
-                                        <div>
-                                            <p class="section-kicker">Zone active</p>
-                                            <h4>@(CurrentZone?.Label ?? "Selectionnez une zone")</h4>
+                            @if (IsSpatialLoading && Spatial is null)
+                            {
+                                <StateCard Kicker="Chargement"
+                                           Title="Rechargement spatial"
+                                           Message="La carte but et declenchements se recalculent pour cette joueuse."
+                                           Tone="loading"
+                                           CssClass="empty-card-inline" />
+                            }
+                            else if (Spatial is null)
+                            {
+                                <StateCard Kicker="Aucune carte"
+                                           Title="La lecture spatiale n’est pas encore disponible pour cette joueuse"
+                                           Message="Le spatial s’ouvre apres chargement du dossier de la joueuse."
+                                           Tone="empty"
+                                           CssClass="empty-card-inline" />
+                            }
+                            else
+                            {
+                                @if (HasSpatialFocus)
+                                {
+                                    <div class="match-scope-toolbar spatial-focus-toolbar">
+                                        <div class="match-scope-copy">
+                                            <p class="section-kicker">Lecture ciblee</p>
+                                            <span>Zones liees a @SpatialFocusKey</span>
                                         </div>
-                                        @if (CurrentZone is not null)
-                                        {
-                                            <span class="hero-badge">@FormatRate(CurrentZone.Rate)%</span>
-                                        }
+
+                                        <button type="button"
+                                                class="match-scope-button"
+                                                @onclick="ResetSpatialFocusAsync"
+                                                disabled="@IsSpatialLoading">
+                                            Voir toutes les zones
+                                        </button>
                                     </div>
+                                }
 
-                                    @if (CurrentZone is not null)
-                                    {
-                                        <div class="badge-row">
-                                            <div class="mini-card"><span>Volume</span><strong>@CurrentZone.Attempts</strong></div>
-                                            <div class="mini-card"><span>Succes</span><strong>@CurrentZone.Successes</strong></div>
-                                            <div class="mini-card"><span>Echecs</span><strong>@CurrentZone.Failures</strong></div>
-                                        </div>
+                                <div class="dual-grid">
+                                    <section class="page-panel @(IsSpatialLoading ? "is-loading" : string.Empty)">
+                                        <p class="section-kicker">Spatial</p>
+                                        <h4>But et declenchements</h4>
+                                        <GoalKpi GoalZones="@GoalZones"
+                                                 TriggerZones="@TriggerZones"
+                                                 IsGoalkeeper="@Profile.IsGoalkeeper"
+                                                 ActiveZoneKey="@ActiveZoneKey"
+                                                 OnZoneSelected="HandleZoneSelectionAsync"
+                                                 HideZeroZones="@HasSpatialFocus"
+                                                 IsLoading="@IsSpatialLoading" />
+                                    </section>
 
-                                        <div class="list-stack">
-                                            @foreach (var outcome in CurrentZone.Outcomes)
+                                    <section class="page-panel">
+                                        <div class="panel-head">
+                                            <div>
+                                                <p class="section-kicker">Zone active</p>
+                                                <h4>@(CurrentZone?.Label ?? "Selectionnez une zone")</h4>
+                                            </div>
+                                            @if (IsSpatialLoading)
                                             {
-                                                <div class="list-item">
-                                                    <div class="key-metric">
-                                                        <strong>@outcome.Label</strong>
-                                                        <span>@outcome.Count</span>
-                                                    </div>
-                                                </div>
+                                                <span class="hero-badge">Chargement spatial</span>
+                                            }
+                                            else if (CurrentZone is not null)
+                                            {
+                                                <span class="hero-badge">@FormatRate(CurrentZone.Rate)%</span>
                                             }
                                         </div>
-                                    }
-                                </section>
-                            </div>
+
+                                        @if (CurrentZone is not null)
+                                        {
+                                            <div class="badge-row">
+                                                <div class="mini-card"><span>Volume</span><strong>@CurrentZone.Attempts</strong></div>
+                                                <div class="mini-card"><span>Succes</span><strong>@CurrentZone.Successes</strong></div>
+                                                <div class="mini-card"><span>Echecs</span><strong>@CurrentZone.Failures</strong></div>
+                                            </div>
+
+                                            <div class="list-stack">
+                                                @foreach (var outcome in CurrentZone.Outcomes)
+                                                {
+                                                    <div class="list-item">
+                                                        <div class="key-metric">
+                                                            <strong>@outcome.Label</strong>
+                                                            <span>@outcome.Count</span>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </section>
+                                </div>
+                            }
                         }
                         else
                         {
@@ -611,23 +633,31 @@
     private PlayerTechnicalStatsDto? Technical { get; set; }
     private PlayerSpatialStatsDto? Spatial { get; set; }
     private bool IsBusy { get; set; }
+    private bool IsSpatialLoading { get; set; }
+    private bool IsDirectoryDrawerOpen { get; set; } = true;
+    private bool IsPlayerSheetExportBusy { get; set; }
     private string? ErrorMessage { get; set; }
+    private CancellationTokenSource? _searchDebounceCts;
+    private static readonly TimeSpan SearchDebounceDelay = TimeSpan.FromMilliseconds(300);
     private string Search { get; set; } = string.Empty;
     private int? CompetitionId { get; set; }
     private int? TeamId { get; set; }
     private int? PositionId { get; set; }
+    private string? SpatialFocusKey { get; set; }
+    private long SpatialLoadToken;
     private int? Year { get; set; }
     private string? Season { get; set; }
     private string? Day { get; set; }
     private int? SelectedPlayerId { get; set; }
     private string? ActiveZoneKey { get; set; }
     private string ActiveSection { get; set; } = "overview";
-    private string ActiveLens { get; set; } = AudienceLens.Player;
     private string PlayerMatchSearch { get; set; } = string.Empty;
     private TableSortState PlayerMatchSort { get; set; } = new("date", SortDirection.Desc);
+    private bool IsPlayerListOpen { get; set; } = true;
 
     private IReadOnlyList<ZoneStat> GoalZones => Spatial?.Zones.Select(MapZone).ToList() ?? [];
     private IReadOnlyList<ZoneStat> TriggerZones => Spatial?.Triggers.Select(MapTrigger).ToList() ?? [];
+    private bool HasSpatialFocus => !string.IsNullOrWhiteSpace(SpatialFocusKey);
     private IReadOnlyList<string> SeasonOptions => MatchFilterCatalog.GetSeasons(ScopedMatches);
     private IReadOnlyList<string> DayOptions => MatchFilterCatalog.GetDays(ScopedMatches, Season);
     private IReadOnlyList<CompetitionDto> AvailableCompetitions => SmartFilterCatalog.GetCompetitions(
@@ -675,9 +705,6 @@
                 : $"{FormatRate(Global.ShotSuccessRate)}%"),
             new("Zones actives", GoalZones.Count(zone => zone.Attempts > 0).ToString())
         ];
-    private bool ShowPlayerRoleCards => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
-    private bool ShowPlayerAdvancedCards => ActiveLens == AudienceLens.Analyst;
-    private bool ShowPlayerProfileCharts => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
     private IReadOnlyList<BarGaugeKpiItem> PlayerGaugeKpis => BuildPlayerGaugeKpis();
     private IReadOnlyList<KpiTile> PlayerKpis => BuildPlayerKpis();
     private IReadOnlyList<MetricPlotPoint> PlayerActionProfile => BuildPlayerActionProfile();
@@ -715,16 +742,45 @@
         return ApplyFiltersAsync();
     }
 
-    private Task SetActiveLens(string lens)
+    private async Task OnSearchChangedAsync(ChangeEventArgs args)
     {
-        ActiveLens = lens;
-        return InvokeAsync(StateHasChanged);
+        Search = args.Value?.ToString() ?? string.Empty;
+        await DebounceSearchAsync();
+    }
+
+    private async Task DebounceSearchAsync()
+    {
+        var cts = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _searchDebounceCts, cts);
+        previous?.Cancel();
+        previous?.Dispose();
+
+        try
+        {
+            await Task.Delay(SearchDebounceDelay, cts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (cts.IsCancellationRequested)
+        {
+            return;
+        }
+
+        await ApplyFiltersAsync();
     }
 
     private async Task ApplyFiltersAsync()
     {
         SelectedPlayerId = null;
         await LoadAsync(refreshReferenceData: false);
+    }
+
+    private void ToggleDirectoryDrawer()
+    {
+        IsDirectoryDrawerOpen = !IsDirectoryDrawerOpen;
     }
 
     private async Task ResetFiltersAsync()
@@ -739,12 +795,16 @@
         PlayerMatchSort = new TableSortState("date", SortDirection.Desc);
         SelectedPlayerId = null;
         ActiveSection = "overview";
+        IsDirectoryDrawerOpen = true;
+        IsPlayerListOpen = true;
         await LoadAsync(refreshReferenceData: true);
     }
 
     private async Task SelectPlayerAsync(int playerId)
     {
         SelectedPlayerId = playerId;
+        IsDirectoryDrawerOpen = false;
+        IsPlayerListOpen = false;
         await LoadPlayerDetailsAsync();
     }
 
@@ -756,8 +816,122 @@
 
     private async Task HandleZoneSelectionAsync(string zoneKey)
     {
-        ActiveZoneKey = zoneKey;
+        if (!SelectedPlayerId.HasValue || Spatial is null || string.IsNullOrWhiteSpace(zoneKey))
+        {
+            return;
+        }
+
+        var normalizedZoneKey = zoneKey.Trim();
+        var nextFocusKey = string.Equals(SpatialFocusKey, normalizedZoneKey, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : normalizedZoneKey;
+
+        ActiveZoneKey = normalizedZoneKey;
+        await LoadSpatialForFocusAsync(nextFocusKey);
+    }
+
+    private async Task ResetSpatialFocusAsync()
+    {
+        if (!HasSpatialFocus)
+        {
+            return;
+        }
+
+        await LoadSpatialForFocusAsync(null);
+    }
+
+    private async Task LoadSpatialForFocusAsync(string? focusZoneKey)
+    {
+        if (!SelectedPlayerId.HasValue)
+        {
+            return;
+        }
+
+        var playerId = SelectedPlayerId.Value;
+        var loadToken = System.Threading.Interlocked.Increment(ref SpatialLoadToken);
+        var options = BuildSpatialQueryOptions(focusZoneKey);
+
+        IsSpatialLoading = true;
         await InvokeAsync(StateHasChanged);
+        await Task.Yield();
+
+        try
+        {
+            var spatialTask = StatsApiClient.GetPlayerSpatialAsync(playerId, options);
+            var spatial = await spatialTask;
+
+            if (loadToken != SpatialLoadToken || !SelectedPlayerId.HasValue || SelectedPlayerId.Value != playerId)
+            {
+                return;
+            }
+
+            Spatial = spatial;
+            SpatialFocusKey = focusZoneKey;
+            ActiveZoneKey = ResolveActiveZoneKey(focusZoneKey);
+            ErrorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            if (loadToken != SpatialLoadToken || !SelectedPlayerId.HasValue || SelectedPlayerId.Value != playerId)
+            {
+                return;
+            }
+
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            if (loadToken == SpatialLoadToken && SelectedPlayerId.HasValue && SelectedPlayerId.Value == playerId)
+            {
+                IsSpatialLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private StatsQueryOptionsDto BuildSpatialQueryOptions(string? focusZoneKey)
+    {
+        var options = BuildOptions();
+
+        if (string.IsNullOrWhiteSpace(focusZoneKey))
+        {
+            return options;
+        }
+
+        if (SpatialZoneVisuals.IsTriggerZoneKey(focusZoneKey))
+        {
+            options.Trigger = SpatialZoneVisuals.ToBackendTriggerKey(focusZoneKey);
+        }
+        else
+        {
+            options.ShootShade = focusZoneKey.Trim();
+        }
+
+        return options;
+    }
+
+    private string? ResolveActiveZoneKey(string? preferredKey = null)
+    {
+        var allZoneKeys = GoalZones
+            .Concat(TriggerZones)
+            .Select(zone => zone.Key)
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(preferredKey) && allZoneKeys.Contains(preferredKey))
+        {
+            return preferredKey;
+        }
+
+        if (!string.IsNullOrWhiteSpace(ActiveZoneKey) && allZoneKeys.Contains(ActiveZoneKey))
+        {
+            return ActiveZoneKey;
+        }
+
+        return GoalZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
+            ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
+            ?? GoalZones.FirstOrDefault()?.Key
+            ?? TriggerZones.FirstOrDefault()?.Key;
     }
 
     private Task OnPlayerMatchSearchChanged(ChangeEventArgs args)
@@ -766,19 +940,71 @@
         return InvokeAsync(StateHasChanged);
     }
 
+    private bool CanExportPlayerSheet =>
+        Profile is not null
+        && Global is not null
+        && Offense is not null
+        && Defense is not null
+        && Passing is not null
+        && Sanctions is not null
+        && Goalkeeper is not null
+        && Technical is not null
+        && SelectedPlayerId.HasValue;
+
+    private async Task ExportPlayerSheetAsync()
+    {
+        if (!CanExportPlayerSheet)
+        {
+            return;
+        }
+
+        var loadStartedAt = DateTimeOffset.UtcNow;
+
+        try
+        {
+            await BusyUiHelper.EnterAsync(() => IsPlayerSheetExportBusy = true, () => InvokeAsync(StateHasChanged));
+
+            PositionProfileResponseDto? positionProfile = null;
+            try
+            {
+                positionProfile = await PlayersApiClient.GetPlayerPositionProfileAsync(SelectedPlayerId!.Value, BuildPlayerSheetPositionProfileOptions());
+            }
+            catch
+            {
+                positionProfile = null;
+            }
+
+            await JS.InvokeVoidAsync(
+                "handwstatExports.downloadTextFile",
+                BuildPlayerSheetFileName("svg"),
+                "image/svg+xml;charset=utf-8",
+                BuildPlayerSheetSvg(positionProfile));
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            await BusyUiHelper.ExitAsync(() => IsPlayerSheetExportBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
+        }
+    }
+
     private async Task LoadAsync(bool refreshReferenceData)
     {
         if (!AuthService.Session.IsAuthenticated)
         {
             ReferenceData = AnalyticsReferenceData.Empty;
             PlayerDirectory = [];
-            await LoadPlayerDetailsAsync();
+            await LoadPlayerDetailsAsync(manageBusyState: false);
             return;
         }
 
+        var loadStartedAt = DateTimeOffset.UtcNow;
+
         try
         {
-            IsBusy = true;
+            await BusyUiHelper.EnterAsync(() => IsBusy = true, () => InvokeAsync(StateHasChanged));
             ErrorMessage = null;
 
             if (refreshReferenceData || ReferenceData == AnalyticsReferenceData.Empty)
@@ -790,7 +1016,7 @@
             {
                 ScopedMatches = [];
                 PlayerDirectory = [];
-                await LoadPlayerDetailsAsync();
+                await LoadPlayerDetailsAsync(manageBusyState: false);
                 return;
             }
 
@@ -842,7 +1068,7 @@
                 SelectedPlayerId = PlayerDirectory.FirstOrDefault()?.PlayerId;
             }
 
-            await LoadPlayerDetailsAsync();
+            await LoadPlayerDetailsAsync(manageBusyState: false);
         }
         catch (Exception ex)
         {
@@ -850,12 +1076,22 @@
         }
         finally
         {
-            IsBusy = false;
+            await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
         }
     }
 
-    private async Task LoadPlayerDetailsAsync()
+    public void Dispose()
     {
+        var cts = Interlocked.Exchange(ref _searchDebounceCts, null);
+        cts?.Cancel();
+        cts?.Dispose();
+    }
+
+    private async Task LoadPlayerDetailsAsync(bool manageBusyState = true)
+    {
+        System.Threading.Interlocked.Increment(ref SpatialLoadToken);
+        IsSpatialLoading = false;
+
         if (!SelectedPlayerId.HasValue)
         {
             Profile = null;
@@ -867,13 +1103,21 @@
             Goalkeeper = null;
             Technical = null;
             Spatial = null;
+            ActiveZoneKey = null;
+            SpatialFocusKey = null;
+            IsSpatialLoading = false;
             PlayerMatches = [];
             return;
         }
 
+        var loadStartedAt = DateTimeOffset.UtcNow;
+
         try
         {
-            IsBusy = true;
+            if (manageBusyState)
+            {
+                await BusyUiHelper.EnterAsync(() => IsBusy = true, () => InvokeAsync(StateHasChanged));
+            }
             ErrorMessage = null;
 
             var options = BuildOptions();
@@ -901,10 +1145,8 @@
             Technical = technicalTask.Result;
             Spatial = spatialTask.Result;
             PlayerMatches = matchesTask.Result;
-            ActiveZoneKey = GoalZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
-                ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)?.Key
-                ?? GoalZones.FirstOrDefault()?.Key
-                ?? TriggerZones.FirstOrDefault()?.Key;
+            SpatialFocusKey = null;
+            ActiveZoneKey = ResolveActiveZoneKey();
         }
         catch (Exception ex)
         {
@@ -912,7 +1154,10 @@
         }
         finally
         {
-            IsBusy = false;
+            if (manageBusyState)
+            {
+                await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
+            }
         }
     }
 
@@ -922,6 +1167,17 @@
         {
             CompetitionId = CompetitionId,
             TeamId = TeamId,
+            PositionId = PositionId,
+            Year = Year,
+            Season = Season,
+            Day = Day
+        };
+    }
+
+    private StatsQueryOptionsDto BuildPlayerSheetPositionProfileOptions()
+    {
+        return new StatsQueryOptionsDto
+        {
             PositionId = PositionId,
             Year = Year,
             Season = Season,
@@ -1340,7 +1596,9 @@
             "score" => PlayerMatchSort.IsDescending
                 ? filtered.OrderByDescending(item => (item.Team1Score ?? 0) + (item.Team2Score ?? 0))
                 : filtered.OrderBy(item => (item.Team1Score ?? 0) + (item.Team2Score ?? 0)),
-            "goals" => PlayerMatchSort.IsDescending ? filtered.OrderByDescending(item => item.Goals + item.PenaltyGoals) : filtered.OrderBy(item => item.Goals + item.PenaltyGoals),
+            "goals" => PlayerMatchSort.IsDescending
+                ? filtered.OrderByDescending(item => item.Goals + item.PenaltyGoals)
+                : filtered.OrderBy(item => item.Goals + item.PenaltyGoals),
             "assists" => PlayerMatchSort.IsDescending ? filtered.OrderByDescending(item => item.Assists) : filtered.OrderBy(item => item.Assists),
             "interceptions" => PlayerMatchSort.IsDescending ? filtered.OrderByDescending(item => item.Interceptions) : filtered.OrderBy(item => item.Interceptions),
             "saves" => PlayerMatchSort.IsDescending ? filtered.OrderByDescending(item => item.Saves) : filtered.OrderBy(item => item.Saves),
@@ -1367,6 +1625,7 @@
             {
                 Type = ChartType.Scatter
             },
+            Colors = [ChartPalette.Info],
             DataLabels = new DataLabels
             {
                 Enabled = false
@@ -1396,7 +1655,8 @@
                     Text = "Pertes"
                 }
             },
-            Yaxis = [
+            Yaxis =
+            [
                 new YAxis
                 {
                     Title = new AxisTitle
@@ -1405,6 +1665,82 @@
                     }
                 }
             ]
+        };
+    }
+
+    private ApexChartOptions<MetricPlotPoint> GetPlayerProfileChartOptions()
+    {
+        return new ApexChartOptions<MetricPlotPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Bar
+            },
+            Colors = [ChartPalette.Player],
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar
+                {
+                    BorderRadius = 10,
+                    ColumnWidth = "68%"
+                }
+            }
+        };
+    }
+
+    private ApexChartOptions<MetricPlotPoint> GetPlayerRateChartOptions()
+    {
+        return new ApexChartOptions<MetricPlotPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Bar
+            },
+            Colors = [ChartPalette.Primary],
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar
+                {
+                    BorderRadius = 10,
+                    ColumnWidth = "68%"
+                }
+            }
+        };
+    }
+
+    private ApexChartOptions<MatchTrendPoint> GetPlayerTrendChartOptions()
+    {
+        return new ApexChartOptions<MatchTrendPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Line
+            },
+            Colors = [ChartPalette.Player, ChartPalette.Primary, ChartPalette.Danger, ChartPalette.Info],
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            Legend = new Legend
+            {
+                Position = LegendPosition.Bottom
+            },
+            Markers = new Markers
+            {
+                Size = 4
+            },
+            Stroke = new Stroke
+            {
+                Width = 3
+            }
         };
     }
 
@@ -1434,6 +1770,340 @@
 
         return "Profil equilibre";
     }
+
+    private string BuildPlayerSheetFileName(string extension)
+    {
+        var playerSlug = Slugify(Profile?.FullName ?? "joueuse");
+        var positionSlug = Slugify(Profile?.PositionName ?? AvailablePositions.FirstOrDefault(item => item.Id == PositionId)?.Name ?? "poste");
+        var seasonSlug = Slugify(string.IsNullOrWhiteSpace(Season) ? "toutes-saisons" : Season!);
+        return $"feuille-joueuse-{playerSlug}-{positionSlug}-{seasonSlug}.{extension}";
+    }
+
+    private string BuildPlayerSheetSvg(PositionProfileResponseDto? positionProfile)
+    {
+        var profile = Profile!;
+        var rows = BuildPlayerSheetRows();
+        var width = 1600;
+        var height = 1120;
+        var headerNote = BuildPlayerSheetHeaderNote(positionProfile);
+        var summaryCards = BuildPlayerSheetSummaryCards();
+        var tableMarkup = BuildPlayerSheetTableMarkup(rows, 36, 272, 720, 780);
+        var radarMarkup = BuildPlayerSheetRadarMarkup(positionProfile, 760, 272, 804, 780);
+        var footerNote = "La table resume les volumes et l'efficacite. Le radar compare la joueuse a la mediane du poste sur la cohorte courante.";
+
+        return $"""
+<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+  <rect width="{width}" height="{height}" rx="30" fill="#eef4fb" />
+  <rect x="14" y="14" width="{width - 28}" height="{height - 28}" rx="26" fill="#ffffff" stroke="#d8e2ef" />
+  <text x="36" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="{ChartPalette.Player}">FICHE JOUEUSE</text>
+  <text x="36" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="800" fill="#0f172a">{EscapeXml(profile.FullName)}</text>
+  <text x="36" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#475569">{EscapeXml((profile.PositionName ?? "Poste") + " - " + (profile.TeamName ?? "Equipe"))}</text>
+  <text x="36" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">{SvgExportHelpers.EscapeXml(headerNote)}</text>
+  <rect x="1360" y="34" width="204" height="40" rx="20" fill="{ChartPalette.Primary}" />
+  <text x="1462" y="60" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#ffffff">Cohorte {positionProfile?.CohortPlayerCount ?? 0}</text>
+  {summaryCards}
+  {tableMarkup}
+  {radarMarkup}
+  <rect x="36" y="1074" width="1528" height="28" rx="14" fill="#f8fafc" stroke="#d8e2ef" />
+  <text x="54" y="1093" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">{SvgExportHelpers.EscapeXml(footerNote)}</text>
+  <text x="36" y="{height - 14}" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="{ChartPalette.Reference}">HandWStat - export fiche joueuse</text>
+</svg>
+""";
+    }
+
+    private string BuildPlayerSheetSummaryCards()
+    {
+        var cards = Profile?.IsGoalkeeper == true
+            ? new (string Label, string Value, string Note, string Tone)[]
+            {
+                ("Matchs", Profile!.MatchesPlayed.ToString(), "Volume de rencontres analysees.", "info"),
+                ("Arrets", (Goalkeeper!.Arrets + Goalkeeper.ArretsPenalty).ToString(), "Parades totales sur la saison.", "positive"),
+                ("Arrets 7m", Goalkeeper.ArretsPenalty.ToString(), "Impact sur les sequences decisives.", "good"),
+                ("Taux d'arret", $"{FormatRate(Goalkeeper!.TauxArret)}%", "Lecture gardienne sur les tirs subis.", Goalkeeper.TauxArret >= 45 ? "positive" : "warning")
+            }
+            : new (string Label, string Value, string Note, string Tone)[]
+            {
+                ("Matchs", Profile!.MatchesPlayed.ToString(), "Volume de rencontres analysees.", "info"),
+                ("Buts", Global!.TotalGoals.ToString(), "Production offensive directe.", "positive"),
+                ("Passes decisives", Global.AssistCount.ToString(), "Creation et finition du collectif.", "good"),
+                ("Taux de tir ouvert", $"{FormatRate(Technical!.OpenShotSuccessRate)}%", "Conversion hors 7m.", Technical.OpenShotSuccessRate >= 50 ? "positive" : "warning")
+            };
+
+        var xPositions = new double[] { 36d, 416d, 796d, 1176d };
+
+        return string.Join("\n", cards.Select((card, index) =>
+            SvgExportHelpers.BuildMetricCard(xPositions[index], 162, 360, 92, card.Label, card.Value, card.Note, card.Tone)));
+    }
+
+    private string BuildPlayerSheetTableMarkup(IReadOnlyList<PlayerSheetRow> rows, double x, double y, double width, double height)
+    {
+        var headerHeight = 36d;
+        var rowHeight = 58d;
+        var tableX = x + 24d;
+        var tableY = y + 74d;
+        var tableWidth = width - 48d;
+        var labelWidth = 168d;
+        var valueWidth = 120d;
+        var noteX = tableX + labelWidth + valueWidth + 18d;
+        var noteWidth = tableWidth - labelWidth - valueWidth - 34d;
+
+        var bodyRows = string.Join("\n", rows.Select((row, index) =>
+        {
+            var rowY = tableY + headerHeight + (index * rowHeight);
+            var background = index % 2 == 0 ? "#f8fafc" : "#ffffff";
+            var accent = GetSheetToneColor(row.Tone);
+
+            return $"""
+      <rect x="{FormatSvgNumber(tableX)}" y="{FormatSvgNumber(rowY)}" width="{FormatSvgNumber(tableWidth)}" height="{FormatSvgNumber(rowHeight - 4d)}" rx="14" fill="{background}" stroke="#d8e2ef" />
+      <rect x="{FormatSvgNumber(tableX)}" y="{FormatSvgNumber(rowY)}" width="6" height="{FormatSvgNumber(rowHeight - 4d)}" rx="14" fill="{accent}" />
+      {SvgExportHelpers.BuildWrappedText(tableX + 18d, rowY + 22d, labelWidth - 24d, row.Label, "#64748b", 13, 700, "start", 1.08, 1)}
+      <text x="{FormatSvgNumber(tableX + labelWidth + 18d)}" y="{FormatSvgNumber(rowY + 36d)}" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#0f172a">{SvgExportHelpers.EscapeXml(row.Value)}</text>
+      {SvgExportHelpers.BuildWrappedText(noteX, rowY + 21d, noteWidth, row.Note, "#475569", 12, 400, "start", 1.16, 2)}
+""";
+        }));
+
+        return $"""
+  <rect x="{FormatSvgNumber(x)}" y="{FormatSvgNumber(y)}" width="{FormatSvgNumber(width)}" height="{FormatSvgNumber(height)}" rx="24" fill="#ffffff" stroke="#d8e2ef" />
+  <text x="{FormatSvgNumber(x + 24d)}" y="{FormatSvgNumber(y + 36d)}" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="{ChartPalette.Player}">TABLEAU DE SYNTHESE</text>
+  <text x="{FormatSvgNumber(x + 24d)}" y="{FormatSvgNumber(y + 58d)}" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">{SvgExportHelpers.EscapeXml(BuildPlayerSheetSummarySubtitle())}</text>
+  <rect x="{FormatSvgNumber(tableX)}" y="{FormatSvgNumber(tableY)}" width="{FormatSvgNumber(tableWidth)}" height="{FormatSvgNumber(headerHeight)}" rx="12" fill="#f8fafc" stroke="#d8e2ef" />
+  <text x="{FormatSvgNumber(tableX + 16d)}" y="{FormatSvgNumber(tableY + 23d)}" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#64748b">INDICATEUR</text>
+  <text x="{FormatSvgNumber(tableX + labelWidth + 18d)}" y="{FormatSvgNumber(tableY + 23d)}" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#64748b">VALEUR</text>
+  <text x="{FormatSvgNumber(noteX)}" y="{FormatSvgNumber(tableY + 23d)}" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#64748b">LECTURE</text>
+  {bodyRows}
+""";
+    }
+
+    private string BuildPlayerSheetHeaderNote(PositionProfileResponseDto? positionProfile)
+    {
+        var seasonLabel = string.IsNullOrWhiteSpace(Season) ? "Toutes saisons" : Season!;
+        var positionLabel = positionProfile?.PositionName ?? Profile?.PositionName ?? "Poste";
+        return $"Filtre: {positionLabel} - {seasonLabel} | Cohorte poste: {positionProfile?.CohortPlayerCount ?? 0}";
+    }
+
+    private string BuildPlayerSheetSummarySubtitle()
+    {
+        return Profile?.IsGoalkeeper == true
+            ? "Lecture gardienne condensant la production, la charge defensive et le niveau d'efficacite."
+            : "Lecture de champ condensant la production, la creation et la maitrise technique.";
+    }
+
+    private IReadOnlyList<PlayerSheetRow> BuildPlayerSheetRows()
+    {
+        if (Profile is null || Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null || Technical is null)
+        {
+            return [];
+        }
+
+        if (Profile.IsGoalkeeper)
+        {
+            return
+            [
+                new PlayerSheetRow("Matchs", Profile.MatchesPlayed.ToString(), "Volume total de rencontres analysees.", "info"),
+                new PlayerSheetRow("Arrets", (Goalkeeper.Arrets + Goalkeeper.ArretsPenalty).ToString(), "Arrets classiques et penalties.", "positive"),
+                new PlayerSheetRow("Arrets 7m", Goalkeeper.ArretsPenalty.ToString(), "Impact direct sur les phases decisives.", "good"),
+                new PlayerSheetRow("Tirs subis", Goalkeeper.TirsSubis.ToString(), "Charge defensive absorbee.", "warning"),
+                new PlayerSheetRow("Taux d'arret", $"{FormatRate(Goalkeeper.TauxArret)}%", "Lecture gardienne sur la ligne.", Goalkeeper.TauxArret >= 45 ? "positive" : "warning"),
+                new PlayerSheetRow("Stop 7m", $"{FormatRate(Technical.GoalkeeperPenaltyStopRate)}%", "Efficacite sur penalties.", Technical.GoalkeeperPenaltyStopRate >= 40 ? "good" : "warning"),
+                new PlayerSheetRow("Pertes techniques", Technical.TechnicalLosses.ToString(), "Mauvaises passes, pertes et fautes.", "danger"),
+                new PlayerSheetRow("Sanctions", Technical.Sanctions.ToString(), "Charge disciplinaire individuelle.", "danger")
+            ];
+        }
+
+        return
+        [
+            new PlayerSheetRow("Matchs", Profile.MatchesPlayed.ToString(), "Volume total de rencontres analysees.", "info"),
+            new PlayerSheetRow("Buts", Global.TotalGoals.ToString(), "Production offensive directe.", "positive"),
+            new PlayerSheetRow("Passes decisives", Global.AssistCount.ToString(), "Creation et finalisation du collectif.", "good"),
+            new PlayerSheetRow("Interceptions", Defense.Interceptions.ToString(), "Impact defensif au contact.", "good"),
+            new PlayerSheetRow("Tirs engages", Technical.ShotAttempts.ToString(), "Tirs rates, contres et penalties engages.", "warning"),
+            new PlayerSheetRow("Taux de tir ouvert", $"{FormatRate(Technical.OpenShotSuccessRate)}%", "Conversion hors 7m.", Technical.OpenShotSuccessRate >= 50 ? "positive" : "warning"),
+            new PlayerSheetRow("Pertes techniques", Technical.TechnicalLosses.ToString(), "Ballons rendus et fautes techniques.", "danger"),
+            new PlayerSheetRow("Sanctions", Technical.Sanctions.ToString(), "Charge disciplinaire individuelle.", "danger")
+        ];
+    }
+
+    private string BuildPlayerSheetRadarMarkup(PositionProfileResponseDto? positionProfile, int panelX, int panelY, int panelWidth, int panelHeight)
+    {
+        var axes = BuildRadarAxes(positionProfile);
+        if (axes.Count == 0)
+        {
+            return $"""
+  <rect x="{panelX + 24}" y="{panelY + 74}" width="{panelWidth - 48}" height="{panelHeight - 120}" rx="22" fill="#f8fafc" stroke="#d8e2ef" />
+  <text x="{panelX + (panelWidth / 2)}" y="{panelY + 360}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#0f172a">Radar poste indisponible</text>
+  <text x="{panelX + (panelWidth / 2)}" y="{panelY + 388}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">La fiche reste exportee, mais la cohorte du poste n'a pas pu etre chargee.</text>
+""";
+        }
+
+        var centerX = panelX + 264d;
+        var centerY = panelY + 370d;
+        var radius = 220d;
+        var legendX = panelX + 430d;
+        var legendY = panelY + 180d;
+        var polygonLevels = new[] { 0.25d, 0.5d, 0.75d, 1d };
+        var grid = string.Join("\n", polygonLevels.Select(level => BuildRadarPolygon(axes, centerX, centerY, radius * level, axis => 100d, "none", "#d7e0ea", 1)));
+        var spokes = string.Join("\n", axes.Select((axis, index) =>
+        {
+            var point = GetRadarPoint(index, axes.Count, centerX, centerY, radius, 100d);
+            return $"""<line x1="{FormatSvgNumber(centerX)}" y1="{FormatSvgNumber(centerY)}" x2="{FormatSvgNumber(point.X)}" y2="{FormatSvgNumber(point.Y)}" stroke="#d7e0ea" stroke-width="1" />""";
+        }));
+        var labels = string.Join("\n", axes.Select((axis, index) =>
+        {
+            var point = GetRadarPoint(index, axes.Count, centerX, centerY, radius + 42d, 100d);
+            return $"""<text x="{FormatSvgNumber(point.X)}" y="{FormatSvgNumber(point.Y)}" text-anchor="{GetRadarTextAnchor(point.X, centerX)}" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#334155">{EscapeXml(axis.Label)}</text>""";
+        }));
+        var medianPolygon = BuildRadarPolygon(axes, centerX, centerY, radius, axis => axis.MedianValue, ChartColorUtilities.WithAlpha(ChartPalette.Reference, 0.12), ChartPalette.Reference, 2.5, "7 6");
+        var playerPolygon = BuildRadarPolygon(axes, centerX, centerY, radius, axis => axis.PlayerValue, ChartColorUtilities.WithAlpha(ChartPalette.Player, 0.18), ChartPalette.Player, 3);
+
+        return $"""
+  <g>
+    <rect x="{panelX + 24}" y="{panelY + 74}" width="{panelWidth - 48}" height="{panelHeight - 120}" rx="22" fill="#ffffff" stroke="#d8e2ef" />
+    <g>
+      {grid}
+      {spokes}
+      {medianPolygon}
+      {playerPolygon}
+      {labels}
+      <circle cx="{FormatSvgNumber(centerX)}" cy="{FormatSvgNumber(centerY)}" r="4" fill="#0f172a" />
+    </g>
+    <g transform="translate({FormatSvgNumber(legendX)}, {FormatSvgNumber(legendY)})">
+      <rect width="220" height="128" rx="18" fill="#f8fafc" stroke="#d8e2ef" />
+      <text x="24" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#0f172a">Legende</text>
+      <line x1="26" y1="62" x2="70" y2="62" stroke="{ChartPalette.Player}" stroke-width="4" />
+      <text x="78" y="67" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#334155">{EscapeXml(Profile?.FullName ?? "Joueuse")}</text>
+      <line x1="26" y1="94" x2="70" y2="94" stroke="{ChartPalette.Reference}" stroke-width="4" stroke-dasharray="7 6" />
+      <text x="78" y="99" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#334155">Mediane du poste</text>
+      <text x="24" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">Echelle radar 0-100 sur la cohorte du poste.</text>
+    </g>
+  </g>
+""";
+    }
+
+    private static IReadOnlyList<PlayerSheetRadarAxis> BuildRadarAxes(PositionProfileResponseDto? positionProfile)
+    {
+        var axes = positionProfile?.SelectedPlayer?.Axes ?? [];
+        if (axes.Count == 0)
+        {
+            return [];
+        }
+
+        return axes
+            .Where(axis => axis is not null && !string.IsNullOrWhiteSpace(axis.Label))
+            .OrderBy(GetRadarAxisSortRank)
+            .ThenBy(axis => axis.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(axis =>
+            {
+                return new PlayerSheetRadarAxis(
+                    axis.Label,
+                    NormalizeRadarValue(axis, axis.Value),
+                    NormalizeRadarValue(axis, axis.MedianValue));
+            })
+            .ToList();
+    }
+
+    private static string BuildRadarPolygon(
+        IReadOnlyList<PlayerSheetRadarAxis> axes,
+        double centerX,
+        double centerY,
+        double radius,
+        Func<PlayerSheetRadarAxis, double> valueSelector,
+        string fill,
+        string stroke,
+        double strokeWidth,
+        string? strokeDasharray = null)
+    {
+        var points = axes
+            .Select((axis, index) => GetRadarPoint(index, axes.Count, centerX, centerY, radius, valueSelector(axis)))
+            .Select(point => $"{FormatSvgNumber(point.X)},{FormatSvgNumber(point.Y)}");
+
+        var dashAttribute = string.IsNullOrWhiteSpace(strokeDasharray) ? string.Empty : $" stroke-dasharray=\"{EscapeXml(strokeDasharray)}\"";
+        return $"""<polygon points="{string.Join(" ", points)}" fill="{fill}" stroke="{stroke}" stroke-width="{strokeWidth.ToString("0.##", CultureInfo.InvariantCulture)}"{dashAttribute} />""";
+    }
+
+    private static (double X, double Y) GetRadarPoint(int index, int count, double centerX, double centerY, double radius, double value)
+    {
+        var angle = (-Math.PI / 2d) + (2d * Math.PI * index / count);
+        var normalized = Math.Clamp(value / 100d, 0d, 1d);
+        var currentRadius = radius * normalized;
+        return (centerX + (Math.Cos(angle) * currentRadius), centerY + (Math.Sin(angle) * currentRadius));
+    }
+
+    private static string GetRadarTextAnchor(double pointX, double centerX)
+    {
+        if (Math.Abs(pointX - centerX) < 12d)
+        {
+            return "middle";
+        }
+
+        return pointX > centerX ? "start" : "end";
+    }
+
+    private static int GetRadarAxisSortRank(PositionProfileAxisDto axis)
+    {
+        var text = $"{axis.Category} {axis.Key} {axis.Label}".ToLowerInvariant();
+
+        if (text.Contains("goalkeeper") || text.Contains("keeper") || text.Contains("save") || text.Contains("arret"))
+        {
+            return 4;
+        }
+
+        if (text.Contains("discip") || text.Contains("sanction") || text.Contains("penalty"))
+        {
+            return 3;
+        }
+
+        if (text.Contains("def") || text.Contains("interception") || text.Contains("block") || text.Contains("neutral"))
+        {
+            return 2;
+        }
+
+        if (text.Contains("pass") || text.Contains("assist") || text.Contains("create") || text.Contains("ball"))
+        {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private static double NormalizeRadarValue(PositionProfileAxisDto axis, double value)
+    {
+        if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
+        {
+            return Math.Clamp(axis.HigherIsBetter ? axis.Percentile : 100d - axis.Percentile, 0d, 100d);
+        }
+
+        var normalized = (value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);
+
+        if (!axis.HigherIsBetter)
+        {
+            normalized = 100d - normalized;
+        }
+
+        return Math.Clamp(Math.Round(normalized, 1, MidpointRounding.AwayFromZero), 0d, 100d);
+    }
+
+    private static string GetSheetToneColor(string? tone)
+    {
+        return tone?.ToLowerInvariant() switch
+        {
+            "positive" => ChartPalette.Positive,
+            "good" => ChartPalette.Primary,
+            "warning" => ChartPalette.Warning,
+            "danger" => ChartPalette.Danger,
+            "info" => ChartPalette.Info,
+            _ => ChartPalette.Slate
+        };
+    }
+
+    private static string EscapeXml(string value) => value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&apos;");
+
+    private static string Slugify(string value) => string.Join("-", value.Trim().ToLowerInvariant().Split(new[] { ' ', '/', '\\', '.', ',', ';', ':', '_' }, StringSplitOptions.RemoveEmptyEntries));
+
+    private static string FormatSvgNumber(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private sealed record PlayerSheetRow(string Label, string Value, string Note, string Tone);
+
+    private sealed record PlayerSheetRadarAxis(string Label, double PlayerValue, double MedianValue);
 
     private RenderFragment TableHeader(string column, string label, Action<string> onSort) => builder =>
     {

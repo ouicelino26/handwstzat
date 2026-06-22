@@ -1,0 +1,202 @@
+@if (Profile is not null)
+{
+    var orderedHistory = GetOrderedHistory();
+    var primaryHistory = GetPrimaryHistory(orderedHistory, Profile);
+    var otherHistory = GetOtherHistory(orderedHistory, primaryHistory);
+    var clubCount = orderedHistory.Count;
+
+    <section class="@CssClass">
+        <div class="scope-summary-copy">
+            @if (!string.IsNullOrWhiteSpace(Kicker))
+            {
+                <p class="section-kicker">@Kicker</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <h4>@Title</h4>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p class="page-subtitle">@Subtitle</p>
+            }
+        </div>
+
+        <div class="player-team-history-body">
+            <div class="player-team-history-current @(primaryHistory is not null ? "has-history" : "is-empty")">
+                <div class="player-team-history-current-copy">
+                    <div class="player-team-history-current-row">
+                        <span class="hero-badge">Club principal</span>
+                        <span class="panel-pill">@(clubCount == 0 ? "Aucun historique" : $"{clubCount} club{(clubCount > 1 ? "s" : string.Empty)}")</span>
+                    </div>
+
+                    <strong>@(Profile.TeamName ?? "Equipe non renseignee")</strong>
+
+                    <small>@GetCurrentNote(primaryHistory, orderedHistory.Count)</small>
+                </div>
+
+                @if (primaryHistory is not null)
+                {
+                    <div class="player-team-history-current-meta">
+                        <div class="player-team-history-stat">
+                            <span>Matchs</span>
+                            <strong>@primaryHistory.MatchesPlayed</strong>
+                        </div>
+                        <div class="player-team-history-stat">
+                            <span>Minutes</span>
+                            <strong>@FormatMinutes(primaryHistory.PlayingTimeMinutes)</strong>
+                        </div>
+                        <div class="player-team-history-stat">
+                            <span>Events</span>
+                            <strong>@primaryHistory.EventCount</strong>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (otherHistory.Count > 0)
+            {
+                <div class="player-team-history-grid">
+                    @foreach (var item in otherHistory)
+                    {
+                        <article class="player-team-history-card">
+                            <div class="player-team-history-card-head">
+                                <strong class="player-team-history-team">@GetTeamLabel(item)</strong>
+                                <span class="panel-pill">Autre club</span>
+                            </div>
+
+                            <div class="player-team-history-meta">
+                                <div class="player-team-history-stat">
+                                    <span>Matchs</span>
+                                    <strong>@item.MatchesPlayed</strong>
+                                </div>
+                                <div class="player-team-history-stat">
+                                    <span>Minutes</span>
+                                    <strong>@FormatMinutes(item.PlayingTimeMinutes)</strong>
+                                </div>
+                                <div class="player-team-history-stat">
+                                    <span>Events</span>
+                                    <strong>@item.EventCount</strong>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+
+            <p class="player-team-history-note">@Footnote</p>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public PlayerListItemDto? Profile { get; set; }
+
+    [Parameter]
+    public string Kicker { get; set; } = "Historique de club";
+
+    [Parameter]
+    public string Title { get; set; } = "Clubs observes dans le perimetre";
+
+    [Parameter]
+    public string Subtitle { get; set; } = "";
+
+    [Parameter]
+    public string Footnote { get; set; } = "";
+
+    [Parameter]
+    public string CssClass { get; set; } = "scope-summary-bar player-team-history-bar";
+
+    private IReadOnlyList<PlayerTeamHistoryDto> GetOrderedHistory()
+    {
+        if (Profile is null || Profile.TeamHistory.Count == 0)
+        {
+            return [];
+        }
+
+        return Profile.TeamHistory
+            .OrderByDescending(item => MatchesProfileTeam(item, Profile) ? 1 : 0)
+            .ThenByDescending(item => item.MatchesPlayed)
+            .ThenByDescending(item => item.PlayingTimeMinutes)
+            .ThenBy(item => GetTeamLabel(item), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static PlayerTeamHistoryDto? GetPrimaryHistory(IReadOnlyList<PlayerTeamHistoryDto> history, PlayerListItemDto profile)
+    {
+        if (history.Count == 0)
+        {
+            return null;
+        }
+
+        return history.FirstOrDefault(item => MatchesProfileTeam(item, profile));
+    }
+
+    private static IReadOnlyList<PlayerTeamHistoryDto> GetOtherHistory(IReadOnlyList<PlayerTeamHistoryDto> history, PlayerTeamHistoryDto? primaryHistory)
+    {
+        if (history.Count == 0)
+        {
+            return [];
+        }
+
+        if (primaryHistory is null)
+        {
+            return history;
+        }
+
+        return history.Where(item => !ReferenceEquals(item, primaryHistory)).ToList();
+    }
+
+    private static bool MatchesProfileTeam(PlayerTeamHistoryDto item, PlayerListItemDto profile)
+    {
+        if (profile.TeamId.HasValue && item.TeamId.HasValue && profile.TeamId.Value == item.TeamId.Value)
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(profile.TeamCode) && !string.IsNullOrWhiteSpace(item.TeamCode) && string.Equals(profile.TeamCode.Trim(), item.TeamCode.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(profile.TeamName) && !string.IsNullOrWhiteSpace(item.TeamName) && string.Equals(profile.TeamName.Trim(), item.TeamName.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string GetTeamLabel(PlayerTeamHistoryDto item)
+    {
+        return item.TeamName ?? item.TeamCode ?? "Equipe non renseignee";
+    }
+
+    private static string GetCurrentNote(PlayerTeamHistoryDto? primaryHistory, int historyCount)
+    {
+        if (historyCount == 0)
+        {
+            return "Aucun historique detaille n'est disponible dans la reponse courante.";
+        }
+
+        if (primaryHistory is null)
+        {
+            return "Aucune entree historique ne correspond au club principal du profil; les autres clubs observes sont affiches ci-dessous.";
+        }
+
+        if (historyCount == 1)
+        {
+            return "Un seul club est remonte dans le perimetre courant.";
+        }
+
+        return "Le club principal du profil est detaille ci-dessus; les autres clubs observes sont affiches plus bas.";
+    }
+
+    private static string FormatMinutes(double value)
+    {
+        var formatted = HandballKpiHelper.FormatNumber(value);
+        return $"{formatted} min";
+    }
+}

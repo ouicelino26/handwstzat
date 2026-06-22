@@ -1,0 +1,115 @@
+@using HandWStat.Models.Analytics
+
+<article class="page-panel">
+    <div class="panel-head panel-head-wrap">
+        <div>
+            <p class="section-kicker">@Kicker</p>
+            <h4>@Title</h4>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p class="page-subtitle">@Subtitle</p>
+            }
+        </div>
+
+        @if (_cards.Count > 0)
+        {
+            <span class="hero-badge">@_cards.Count cartes</span>
+        }
+    </div>
+
+    @if (_cards.Count == 0)
+    {
+        <StateCard Kicker="Lecture coach"
+                   Title="@EmptyTitle"
+                   Message="@EmptyMessage"
+                   Tone="empty"
+                   CssClass="empty-card-inline" />
+    }
+    else
+    {
+        <div class="coach-card-grid">
+            @foreach (var card in _cards)
+            {
+                <article class="mini-card coach-card coach-card-@GetToneClass(card.Tone)">
+                    <div class="coach-card-head">
+                        <span class="coach-card-label">@GetTypeLabel(card.Type, card.Label)</span>
+                        <span class="axis-badge axis-badge-@GetToneClass(card.Tone)">@GetToneLabel(card.Tone)</span>
+                    </div>
+                    <p class="coach-card-text">@card.Sentence</p>
+                </article>
+            }
+        </div>
+    }
+</article>
+
+@code {
+    [Parameter]
+    public string Kicker { get; set; } = "Lecture coach";
+
+    [Parameter]
+    public string Title { get; set; } = "Ce que le staff doit retenir tout de suite";
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<CoachCardViewModel> Cards { get; set; } = [];
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "Choisissez une joueuse pour afficher les cartes coach";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "Les cartes coach condensent les forces, les faiblesses, les alertes et le role dans une lecture immediate.";
+
+    [Parameter]
+    public int MaxCards { get; set; } = 4;
+
+    private IReadOnlyList<CoachCardViewModel> _cards = [];
+
+    protected override void OnParametersSet()
+    {
+        _cards = Cards
+            .Where(card => card is not null)
+            .Take(MaxCards)
+            .ToList();
+    }
+
+    private static string GetToneClass(string? tone)
+    {
+        return tone?.ToLowerInvariant() switch
+        {
+            "positive" => "positive",
+            "good" => "good",
+            "warning" => "warning",
+            "danger" => "danger",
+            "info" => "info",
+            _ => "neutral"
+        };
+    }
+
+    private static string GetToneLabel(string? tone)
+    {
+        return tone?.ToLowerInvariant() switch
+        {
+            "positive" => "Fort",
+            "good" => "Stable",
+            "warning" => "Vigilance",
+            "danger" => "Alerte",
+            "info" => "Role",
+            _ => "Note"
+        };
+    }
+
+    private static string GetTypeLabel(CoachCardType type, string fallback)
+    {
+        return type switch
+        {
+            CoachCardType.Strength => "Force",
+            CoachCardType.Weakness => "Vigilance",
+            CoachCardType.Alert => "Alerte",
+            CoachCardType.Role => "Role",
+            CoachCardType.Tactical => "Tactique",
+            _ => fallback
+        };
+    }
+}

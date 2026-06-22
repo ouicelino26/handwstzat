@@ -1,0 +1,108 @@
+<aside class="player-list-panel selection-column @(IsPlayerListOpen ? "is-open" : "is-collapsed")"
+       aria-label="@Kicker">
+    <div class="player-list-panel__head">
+        <div class="player-list-panel__copy">
+            <strong class="player-list-panel__kicker">@Kicker</strong>
+            <strong class="player-list-panel__count">@Players.Count joueuses</strong>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <span class="player-list-panel__subtitle">@Subtitle</span>
+            }
+        </div>
+
+        <button type="button"
+                class="player-list-toggle"
+                @onclick="TogglePlayerListAsync"
+                aria-expanded="@IsPlayerListOpen"
+                aria-controls="@_contentId"
+                aria-label="@(IsPlayerListOpen ? "Reduire la liste des joueuses" : "Ouvrir la liste des joueuses")">
+            <span class="player-list-toggle__icon" aria-hidden="true">@(IsPlayerListOpen ? "\u2039" : "\u203A")</span>
+        </button>
+    </div>
+
+    <div id="@_contentId"
+         class="player-list-panel__body @(Scrollable ? "is-scrollable" : "is-relaxed")"
+         aria-hidden="@(!IsPlayerListOpen)">
+        @if (Players.Count == 0)
+        {
+            <StateCard Kicker="@EmptyKicker"
+                       Title="@EmptyTitle"
+                       Message="@EmptyMessage"
+                       Tone="empty"
+                       CssClass="empty-card-inline" />
+        }
+        else
+        {
+            <div class="player-mosaic">
+                @foreach (var player in Players)
+                {
+                    <div class="list-item @(SelectedPlayerId == player.PlayerId ? "is-selected" : string.Empty)">
+                        <button type="button" @onclick="() => SelectPlayerAsync(player.PlayerId)">
+                            <div class="key-metric">
+                                <strong>@player.FullName</strong>
+                                <span>@(player.PositionCode ?? player.PositionName ?? "-")</span>
+                            </div>
+                            <p class="tiny-note">@player.TeamName - @(player.Nationality ?? "Nationalite inconnue")</p>
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</aside>
+
+@code {
+    [Parameter]
+    public string Kicker { get; set; } = "Repertoire";
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<PlayerListItemDto> Players { get; set; } = [];
+
+    [Parameter]
+    public int? SelectedPlayerId { get; set; }
+
+    [Parameter]
+    public bool Scrollable { get; set; }
+
+    [Parameter]
+    public bool IsPlayerListOpen { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<bool> IsPlayerListOpenChanged { get; set; }
+
+    [Parameter]
+    public string EmptyKicker { get; set; } = "Aucune joueuse";
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "Le cadre actuel ne remonte aucune joueuse";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "Ouvrez un peu le filtre ou changez de poste.";
+
+    [Parameter]
+    public EventCallback<int> OnSelectedPlayerChanged { get; set; }
+
+    private readonly string _contentId = $"player-list-body-{Guid.NewGuid():N}";
+
+    private async Task SelectPlayerAsync(int playerId)
+    {
+        if (OnSelectedPlayerChanged.HasDelegate)
+        {
+            await OnSelectedPlayerChanged.InvokeAsync(playerId);
+        }
+    }
+
+    private async Task TogglePlayerListAsync()
+    {
+        if (IsPlayerListOpenChanged.HasDelegate)
+        {
+            await IsPlayerListOpenChanged.InvokeAsync(!IsPlayerListOpen);
+            return;
+        }
+
+        IsPlayerListOpen = !IsPlayerListOpen;
+    }
+}

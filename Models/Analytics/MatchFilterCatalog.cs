@@ -80,7 +80,7 @@ public static partial class MatchFilterCatalog
             return season;
         }
 
-        return $"{season} -- {day}";
+        return $"{season} - {day}";
     }
 
     public static string? NormalizeSelection(string? value)

@@ -176,12 +176,12 @@
     {
         return tone?.ToLowerInvariant() switch
         {
-            "positive" => "#2f8b6a",
-            "good" => "#4f8f66",
-            "warning" => "#d97706",
-            "danger" => "#c84b31",
-            "neutral" => "#5f7385",
-            _ => "#5f7385"
+            "positive" => ChartPalette.Positive,
+            "good" => ChartPalette.Primary,
+            "warning" => ChartPalette.Warning,
+            "danger" => ChartPalette.Danger,
+            "neutral" => ChartPalette.Slate,
+            _ => ChartPalette.Slate
         };
     }
 

@@ -34,3 +34,11 @@ public sealed record MatchTimelineInsight(
     string Label,
     string Value,
     string Detail);
+
+public sealed record PositionProfileScatterPoint(
+    string Label,
+    double PlayerValue,
+    double MedianValue,
+    double Percentile,
+    string Tone,
+    string Format);

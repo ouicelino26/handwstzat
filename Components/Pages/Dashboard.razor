@@ -21,6 +21,13 @@ else if (!string.IsNullOrWhiteSpace(ErrorMessage))
 else if (Snapshot is not null)
 {
     <div class="dashboard-shell">
+        @if (IsBusy)
+        {
+            <PageLoader Kicker="Chargement"
+                        Title="Actualisation du tableau de bord"
+                        Message="Les filtres, classements et KPI se recalculent." />
+        }
+
         <section class="dashboard-hero">
             <div class="dashboard-hero-copy">
                 <p class="section-kicker">Tableau de bord</p>
@@ -56,21 +63,19 @@ else if (Snapshot is not null)
 
             </div>
         </section>
-
         <section class="page-panel filter-strip">
+
             <div class="panel-head panel-head-wrap">
                 <div>
                     <p class="section-kicker">Filtres</p>
-                    <h3>Pilotez la vue ligue sans changer de page</h3>
                 </div>
 
                 <div class="toolbar">
-                    <button type="button" class="primary-button" @onclick="ApplyFiltersAsync" disabled="@IsBusy">Appliquer</button>
                     <button type="button" class="ghost-button filter-ghost" @onclick="ResetFiltersAsync" disabled="@IsBusy">Reinitialiser</button>
                 </div>
             </div>
 
-            <details class="filter-drawer">
+            <details class="filter-drawer" open>
                 <summary>
                     <div>
                         <strong>Afficher les filtres dashboard</strong>
@@ -124,25 +129,6 @@ else if (Snapshot is not null)
                             </select>
                         </label>
 
-                        <label class="filter-field">
-                            <span>Classement</span>
-                            <select @bind="Filters.RankingMetric">
-                                @foreach (var metric in RankingMetrics)
-                                {
-                                    <option value="@metric.Value">@metric.Label</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Top</span>
-                            <select @bind="Filters.Top">
-                                <option value="5">Top 5</option>
-                                <option value="8">Top 8</option>
-                                <option value="10">Top 10</option>
-                                <option value="12">Top 12</option>
-                            </select>
-                        </label>
                     </div>
                 </div>
             </details>
@@ -167,17 +153,21 @@ else if (Snapshot is not null)
         else
         {
             <div class="page-section-switch">
-                <button type="button" class="section-chip @(ActiveDashboardSection == "league" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("league")'>
+                <button type="button" class="section-chip @(ActiveDashboardSection == "league" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("league")' disabled="@IsBusy">
                     Ligue
                     <small>Pilotage global</small>
                 </button>
-                <button type="button" class="section-chip @(ActiveDashboardSection == "spotlight" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("spotlight")'>
+                <button type="button" class="section-chip @(ActiveDashboardSection == "spotlight" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("spotlight")' disabled="@IsBusy">
                     Focus joueuse
                     <small>Profil et spatial</small>
                 </button>
-                <button type="button" class="section-chip @(ActiveDashboardSection == "recent" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("recent")'>
+                <button type="button" class="section-chip @(ActiveDashboardSection == "recent" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("recent")' disabled="@IsBusy">
                     Activite recente
                     <small>Matchs et feuilles</small>
+                </button>
+                <button type="button" class="section-chip @(ActiveDashboardSection == "global-rankings" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("global-rankings")' disabled="@IsBusy">
+                    Classements globaux
+                    <small>Toutes les joueuses</small>
                 </button>
             </div>
 
@@ -217,7 +207,39 @@ else if (Snapshot is not null)
                             <span class="panel-pill">Top @Filters.Top</span>
                         </div>
 
-                        <ApexChart TItem="PlayerRankingItem" Title="@Snapshot.RequestedRankingLabel" Height="300">
+                        <div class="ranking-toolbar">
+                            <div class="ranking-toolbar-group">
+                                <span class="section-kicker">Indicateur</span>
+                                <div class="page-section-switch ranking-chip-row">
+                                    @foreach (var metric in RankingMetrics)
+                                    {
+                                        <button type="button"
+                                                class="section-chip ranking-chip @(IsRankingMetricActive(metric.Value) ? "is-active" : string.Empty)"
+                                                disabled="@IsBusy"
+                                                @onclick="() => SelectRankingMetricAsync(metric.Value)">
+                                            @metric.Label
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="ranking-toolbar-group">
+                                <span class="section-kicker">Top</span>
+                                <div class="page-section-switch ranking-chip-row">
+                                    @foreach (var top in RankingTopOptions)
+                                    {
+                                        <button type="button"
+                                                class="section-chip ranking-chip @(IsRankingTopActive(top) ? "is-active" : string.Empty)"
+                                                disabled="@IsBusy"
+                                                @onclick="() => SelectRankingTopAsync(top)">
+                                            Top @top
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <ApexChart @key="RankingChartKey" TItem="PlayerRankingItem" Title="@Snapshot.RequestedRankingLabel" Height="300" Options="@GetRankingChartOptions()">
                             <ApexPointSeries TItem="PlayerRankingItem"
                                              Items="@Snapshot.RequestedRanking"
                                              Name="@Snapshot.RequestedRankingLabel"
@@ -225,16 +247,6 @@ else if (Snapshot is not null)
                                              XValue="item => item.PlayerName"
                                              YValue="item => (decimal?)item.Value" />
                         </ApexChart>
-
-                        <div class="compact-list">
-                            @foreach (var item in Snapshot.EfficiencyRanking.Take(5))
-                            {
-                                <div class="outcome-row">
-                                    <span>@item.PlayerName</span>
-                                    <strong>@item.ValueLabel</strong>
-                                </div>
-                            }
-                        </div>
                     </section>
                 }
             }
@@ -280,7 +292,7 @@ else if (Snapshot is not null)
                             <section class="page-panel dashboard-nested-panel">
                                 <p class="section-kicker">Profil d'activite</p>
                                 <h4>Repartition des actions</h4>
-                                <ApexChart TItem="SliceValue" Title="Volume d'actions" Height="280">
+                                <ApexChart TItem="SliceValue" Title="Volume d'actions" Height="280" Options="@GetDistributionChartOptions()">
                                     <ApexPointSeries TItem="SliceValue"
                                                      Items="@Snapshot.Spotlight.Distribution"
                                                      Name="Actions"
@@ -398,6 +410,164 @@ else if (Snapshot is not null)
                     </section>
                 }
             }
+            else if (ActiveDashboardSection == "global-rankings")
+            {
+                <section class="page-panel">
+                    <div class="panel-head panel-head-wrap">
+                        <div>
+                            <p class="section-kicker">Classements globaux</p>
+                        </div>
+
+                        <div class="toolbar">
+                            <label class="filter-field compact-select">
+                                <span>Poste</span>
+                                <select @bind="GlobalRankingPositionId">
+                                    <option value="">Tous les postes</option>
+                                    @foreach (var position in GlobalRankingPositionOptions)
+                                    {
+                                        <option value="@position.Id">@position.Name</option>
+                                    }
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    @{
+                        var fieldRows = FilteredGlobalFieldRows.ToArray();
+                        var goalkeeperRows = SortedGlobalGoalkeeperRows.ToArray();
+                    }
+
+                    <div class="list-stack">
+                        <details class="dashboard-board-drawer" open>
+                            <summary>
+                                <div>
+                                    <p class="section-kicker">Joueuses de champ</p>
+                                    <strong>@fieldRows.Length profils actifs dans la selection</strong>
+                                </div>
+                                <span class="panel-pill">Saison @(string.IsNullOrWhiteSpace(Filters.Season) ? "toutes" : Filters.Season)</span>
+                            </summary>
+
+                            <section class="page-panel dashboard-nested-panel">
+                                @if (fieldRows.Length == 0)
+                                {
+                                    <StateCard Kicker="Aucune joueuse"
+                                               Title="Aucune joueuse de champ pour ce filtre poste"
+                                               Message="Changez le poste ou elargissez la selection pour recharger le tableau."
+                                               Tone="empty"
+                                               CssClass="empty-card-inline" />
+                                }
+                                else
+                                {
+                                    <div class="table-wrap">
+                                        <table class="stat-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>@DashboardTableHeader("field-name", "Joueuse", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-team", "Equipe", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-position", "Poste", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-matches", "Matchs", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-goals", "Buts", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-penalty-goals", "Buts 7m", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-assists", "Passes", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-interceptions", "Interceptions", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-blocks", "Contres", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-neutralisations", "Neutralisations", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-turnovers", "Pertes", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-penalties-conceded", "Penalty c.", SetFieldBoardSort)</th>
+                                                    <th>@DashboardTableHeader("field-shot-rate", "Taux tir", SetFieldBoardSort)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var player in fieldRows)
+                                                {
+                                                    <tr>
+                                                        <td>@player.FullName</td>
+                                                        <td>@player.TeamName</td>
+                                                        <td>@player.PositionLabel</td>
+                                                        <td>@player.MatchesPlayed</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Goals, player)">@player.Goals</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltyGoals, player)">@player.PenaltyGoals</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Assists, player)">@player.Assists</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Interceptions, player)">@player.Interceptions</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Blocks, player)">@player.Blocks</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Neutralisations, player)">@player.Neutralisations</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Turnovers, player, higherIsBetter: false)">@player.Turnovers</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltiesConceded, player, higherIsBetter: false)">@player.PenaltiesConceded</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.ShotSuccessRate, player)">@FormatRate(player.ShotSuccessRate)%</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </section>
+                        </details>
+
+                        <details class="dashboard-board-drawer">
+                            <summary>
+                                <div>
+                                    <p class="section-kicker">Gardiennes</p>
+                                    <strong>@goalkeeperRows.Length profils gardiennes dans la selection</strong>
+                                </div>
+                                <span class="panel-pill">Lecture specifique GB</span>
+                            </summary>
+
+                            <section class="page-panel dashboard-nested-panel">
+                                @if (goalkeeperRows.Length == 0)
+                                {
+                                    <StateCard Kicker="Aucune gardienne"
+                                               Title="Aucune gardienne dans ce perimetre"
+                                               Message="La selection courante ne retourne pas de profil gardienne."
+                                               Tone="empty"
+                                               CssClass="empty-card-inline" />
+                                }
+                                else
+                                {
+                                    <div class="table-wrap">
+                                        <table class="stat-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>@DashboardTableHeader("keeper-name", "Gardienne", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-team", "Equipe", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-matches", "Matchs", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-goals", "Buts", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-assists", "Passes", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-saves", "Arrets", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-penalty-saves", "Arrets 7m", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-save-rate", "Taux arret", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-goals-conceded", "Buts pris", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-shots-faced", "Tirs subis", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-turnovers", "Pertes", SetGoalkeeperBoardSort)</th>
+                                                    <th>@DashboardTableHeader("keeper-shot-rate", "Taux tir", SetGoalkeeperBoardSort)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var goalkeeper in goalkeeperRows)
+                                                {
+                                                    <tr>
+                                                        <td>@goalkeeper.FullName</td>
+                                                        <td>@goalkeeper.TeamName</td>
+                                                        <td>@goalkeeper.MatchesPlayed</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Goals, goalkeeper)">@goalkeeper.Goals</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Assists, goalkeeper)">@goalkeeper.Assists</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Saves, goalkeeper)">@goalkeeper.Saves</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.PenaltySaves, goalkeeper)">@goalkeeper.PenaltySaves</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.SaveRate, goalkeeper)">@FormatRate(goalkeeper.SaveRate)%</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.GoalsConceded, goalkeeper, higherIsBetter: false)">@goalkeeper.GoalsConceded</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotsFaced, goalkeeper, higherIsBetter: false)">@goalkeeper.ShotsFaced</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Turnovers, goalkeeper, higherIsBetter: false)">@goalkeeper.Turnovers</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotSuccessRate, goalkeeper)">@FormatRate(goalkeeper.ShotSuccessRate)%</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </section>
+                        </details>
+                    </div>
+                </section>
+            }
             else
             {
                 <section class="page-panel">
@@ -463,6 +633,10 @@ else if (Snapshot is not null)
 
     private string ActiveLens { get; set; } = AudienceLens.Club;
     private string ActiveDashboardSection { get; set; } = "league";
+    private static readonly int[] RankingTopOptions = [5, 8, 10, 12];
+    private int? GlobalRankingPositionId { get; set; }
+    private TableSortState FieldBoardSort { get; set; } = new("field-goals", SortDirection.Desc);
+    private TableSortState GoalkeeperBoardSort { get; set; } = new("keeper-saves", SortDirection.Desc);
 
     private bool ShowLeagueKpis => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
 
@@ -471,6 +645,24 @@ else if (Snapshot is not null)
     private bool ShowSpotlightDeepDive => ActiveLens is AudienceLens.Analyst or AudienceLens.Player;
 
     private bool ShowSpatialSection => ActiveLens is AudienceLens.Analyst or AudienceLens.Player;
+
+    private IReadOnlyList<LookupItemDto> GlobalRankingPositionOptions => SmartFilterCatalog.GetPositions(
+        ReferenceData.Positions,
+        Snapshot?.GlobalBoards.FieldPlayers
+            .Select(player => new PlayerListItemDto
+            {
+                PlayerId = player.PlayerId,
+                FullName = player.FullName,
+                TeamName = player.TeamName,
+                PositionId = player.PositionId,
+                PositionName = player.PositionLabel
+            })
+            .ToList() ?? [],
+        GlobalRankingPositionId.HasValue || Snapshot?.GlobalBoards.FieldPlayers.Count > 0);
+
+    private IReadOnlyList<GlobalFieldRankingRow> FilteredGlobalFieldRows => GetFilteredGlobalFieldRows();
+
+    private IReadOnlyList<GlobalGoalkeeperRankingRow> SortedGlobalGoalkeeperRows => GetSortedGlobalGoalkeeperRows();
 
     private Task SetDashboardSection(string section)
     {
@@ -488,4 +680,216 @@ else if (Snapshot is not null)
 
         return InvokeAsync(StateHasChanged);
     }
+
+    private bool IsRankingMetricActive(string metric)
+    {
+        return string.Equals(Filters.RankingMetric, metric, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsRankingTopActive(int top)
+    {
+        return Filters.Top == top;
+    }
+
+    private string RankingChartKey => $"{Filters.RankingMetric}:{Filters.Top}:{Snapshot?.RequestedRankingLabel ?? string.Empty}";
+
+    private ApexChartOptions<PlayerRankingItem> GetRankingChartOptions()
+    {
+        return new ApexChartOptions<PlayerRankingItem>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Bar
+            },
+            Colors = ChartPalette.SemanticSeriesColors,
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar
+                {
+                    Distributed = true,
+                    ColumnWidth = "68%",
+                    BorderRadius = 10
+                }
+            }
+        };
+    }
+
+    private ApexChartOptions<SliceValue> GetDistributionChartOptions()
+    {
+        return new ApexChartOptions<SliceValue>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Donut
+            },
+            Colors = ChartPalette.SemanticSeriesColors,
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            Legend = new Legend
+            {
+                Position = LegendPosition.Bottom
+            },
+            PlotOptions = new PlotOptions
+            {
+                Pie = new PlotOptionsPie
+                {
+                    Donut = new PlotOptionsDonut
+                    {
+                        Size = "68%"
+                    }
+                }
+            }
+        };
+    }
+
+    private async Task SelectRankingMetricAsync(string metric)
+    {
+        if (!IsRankingMetricActive(metric))
+        {
+            Filters.RankingMetric = metric;
+        }
+
+        await RefreshRequestedRankingAsync();
+    }
+
+    private async Task SelectRankingTopAsync(int top)
+    {
+        if (Filters.Top != top)
+        {
+            Filters.Top = top;
+        }
+
+        await RefreshRequestedRankingAsync();
+    }
+
+    private async Task RefreshRequestedRankingAsync()
+    {
+        if (Snapshot is null)
+        {
+            return;
+        }
+
+        var loadStartedAt = DateTimeOffset.UtcNow;
+
+        try
+        {
+            await BusyUiHelper.EnterAsync(() => IsBusy = true, () => InvokeAsync(StateHasChanged));
+
+            var (ranking, label) = await DashboardService.LoadRequestedRankingAsync(Filters, CancellationToken.None);
+            Snapshot = Snapshot with
+            {
+                RequestedRanking = ranking,
+                RequestedRankingLabel = label
+            };
+        }
+        catch
+        {
+            // Keep the previous dashboard state if only the ranking refresh fails.
+        }
+        finally
+        {
+            await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
+        }
+    }
+
+    private IReadOnlyList<GlobalFieldRankingRow> GetFilteredGlobalFieldRows()
+    {
+        if (Snapshot is null)
+        {
+            return [];
+        }
+
+        IEnumerable<GlobalFieldRankingRow> filtered = Snapshot.GlobalBoards.FieldPlayers;
+
+        if (GlobalRankingPositionId.HasValue)
+        {
+            filtered = filtered.Where(player => player.PositionId == GlobalRankingPositionId.Value);
+        }
+
+        filtered = FieldBoardSort.Column switch
+        {
+            "field-name" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.FullName) : filtered.OrderBy(item => item.FullName),
+            "field-team" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.TeamName) : filtered.OrderBy(item => item.TeamName),
+            "field-position" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.PositionLabel) : filtered.OrderBy(item => item.PositionLabel),
+            "field-matches" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.MatchesPlayed) : filtered.OrderBy(item => item.MatchesPlayed),
+            "field-penalty-goals" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.PenaltyGoals) : filtered.OrderBy(item => item.PenaltyGoals),
+            "field-assists" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Assists) : filtered.OrderBy(item => item.Assists),
+            "field-interceptions" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Interceptions) : filtered.OrderBy(item => item.Interceptions),
+            "field-blocks" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Blocks) : filtered.OrderBy(item => item.Blocks),
+            "field-neutralisations" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Neutralisations) : filtered.OrderBy(item => item.Neutralisations),
+            "field-turnovers" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Turnovers) : filtered.OrderBy(item => item.Turnovers),
+            "field-penalties-conceded" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.PenaltiesConceded) : filtered.OrderBy(item => item.PenaltiesConceded),
+            "field-shot-rate" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.ShotSuccessRate) : filtered.OrderBy(item => item.ShotSuccessRate),
+            _ => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Goals) : filtered.OrderBy(item => item.Goals)
+        };
+
+        return filtered.ToList();
+    }
+
+    private IReadOnlyList<GlobalGoalkeeperRankingRow> GetSortedGlobalGoalkeeperRows()
+    {
+        if (Snapshot is null)
+        {
+            return [];
+        }
+
+        IEnumerable<GlobalGoalkeeperRankingRow> sorted = Snapshot.GlobalBoards.Goalkeepers;
+
+        sorted = GoalkeeperBoardSort.Column switch
+        {
+            "keeper-name" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.FullName) : sorted.OrderBy(item => item.FullName),
+            "keeper-team" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.TeamName) : sorted.OrderBy(item => item.TeamName),
+            "keeper-matches" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.MatchesPlayed) : sorted.OrderBy(item => item.MatchesPlayed),
+            "keeper-goals" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.Goals) : sorted.OrderBy(item => item.Goals),
+            "keeper-assists" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.Assists) : sorted.OrderBy(item => item.Assists),
+            "keeper-penalty-saves" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.PenaltySaves) : sorted.OrderBy(item => item.PenaltySaves),
+            "keeper-save-rate" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.SaveRate) : sorted.OrderBy(item => item.SaveRate),
+            "keeper-goals-conceded" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.GoalsConceded) : sorted.OrderBy(item => item.GoalsConceded),
+            "keeper-shots-faced" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.ShotsFaced) : sorted.OrderBy(item => item.ShotsFaced),
+            "keeper-turnovers" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.Turnovers) : sorted.OrderBy(item => item.Turnovers),
+            "keeper-shot-rate" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.ShotSuccessRate) : sorted.OrderBy(item => item.ShotSuccessRate),
+            _ => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.Saves) : sorted.OrderBy(item => item.Saves)
+        };
+
+        return sorted.ToList();
+    }
+
+    private void SetFieldBoardSort(string column)
+    {
+        FieldBoardSort = FieldBoardSort.Toggle(column, column is "field-name" or "field-team" or "field-position" ? SortDirection.Asc : SortDirection.Desc);
+    }
+
+    private void SetGoalkeeperBoardSort(string column)
+    {
+        GoalkeeperBoardSort = GoalkeeperBoardSort.Toggle(column, column is "keeper-name" or "keeper-team" ? SortDirection.Asc : SortDirection.Desc);
+    }
+
+    private RenderFragment DashboardTableHeader(string column, string label, Action<string> onSort) => builder =>
+    {
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "type", "button");
+        builder.AddAttribute(2, "class", $"table-sort-button {(FieldBoardSort.IsActive(column) || GoalkeeperBoardSort.IsActive(column) ? "is-active" : string.Empty)}");
+        builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => onSort(column)));
+        builder.AddContent(4, label);
+
+        var glyph = FieldBoardSort.IsActive(column)
+            ? FieldBoardSort.Glyph(column)
+            : GoalkeeperBoardSort.Glyph(column);
+
+        if (!string.IsNullOrWhiteSpace(glyph))
+        {
+            builder.OpenElement(5, "span");
+            builder.AddAttribute(6, "class", "sort-indicator");
+            builder.AddContent(7, glyph);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
 }

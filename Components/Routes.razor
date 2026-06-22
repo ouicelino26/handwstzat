@@ -1,6 +1,64 @@
-﻿<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+<Router AppAssembly="@typeof(MauiProgram).Assembly"
+        OnNavigateAsync="HandleNavigateAsync">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1, h2" />
     </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.PublicLayout)">
+            <DynamicComponent Type="typeof(HandWStat.Components.Pages.NotFound)" />
+        </LayoutView>
+    </NotFound>
 </Router>
+
+@if (_showLoader)
+{
+    <PageLoader Kicker="Chargement"
+                Title="Ouverture de la page"
+                Message="Preparation du contenu et des filtres." />
+}
+
+@code {
+    private bool _showLoader;
+    private bool _hideLoaderAfterRender;
+    private bool _hasCompletedInitialNavigation;
+    private DateTimeOffset _loaderStartedAt;
+
+    private static readonly TimeSpan MinimumLoaderDuration = TimeSpan.FromMilliseconds(240);
+
+    private Task HandleNavigateAsync(NavigationContext args)
+    {
+        if (!_hasCompletedInitialNavigation)
+        {
+            _hasCompletedInitialNavigation = true;
+            _showLoader = false;
+            _hideLoaderAfterRender = false;
+            return Task.CompletedTask;
+        }
+
+        _loaderStartedAt = DateTimeOffset.UtcNow;
+        _showLoader = true;
+        _hideLoaderAfterRender = true;
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_hideLoaderAfterRender)
+        {
+            return;
+        }
+
+        _hideLoaderAfterRender = false;
+
+        var elapsed = DateTimeOffset.UtcNow - _loaderStartedAt;
+        if (elapsed < MinimumLoaderDuration)
+        {
+            await Task.Delay(MinimumLoaderDuration - elapsed);
+        }
+
+        _showLoader = false;
+        await InvokeAsync(StateHasChanged);
+    }
+}

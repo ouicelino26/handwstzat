@@ -1,0 +1,18 @@
+.players-page .players-workspace-grid {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1.15rem;
+    align-items: start;
+    min-width: 0;
+}
+
+.players-page .players-workspace-grid > * {
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .players-page .players-workspace-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.9rem;
+    }
+}

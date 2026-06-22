@@ -1,0 +1,687 @@
+@inject ILogger<MultiRadar> Logger
+
+<article class="page-panel">
+    <div class="panel-head">
+        <div>
+            <p class="section-kicker">@Kicker</p>
+            <h4>@Title</h4>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p class="page-subtitle">@Subtitle</p>
+            }
+        </div>
+
+        @if (Players.Count > 0)
+        {
+            <span class="hero-badge">@($"{VisiblePlayers.Count}/{Players.Count} visibles")</span>
+        }
+    </div>
+
+    @if (!HasData)
+    {
+        <StateCard Kicker="Comparaison en attente"
+                   Title="@EmptyTitle"
+                   Message="@EmptyMessage"
+                   Tone="empty"
+                   CssClass="empty-card-inline" />
+    }
+    else
+    {
+        <div class="page-section-switch ranking-chip-row">
+            @foreach (var player in Players)
+            {
+                var isVisible = _visiblePlayerIds.Contains(player.PlayerId.ToString());
+                <button type="button"
+                        class="section-chip ranking-chip @(isVisible ? "is-active" : string.Empty)"
+                        @onclick="() => ToggleVisibilityAsync(player.PlayerId)"
+                        disabled="@IsBusy">
+                    <span style="display:inline-block;width:0.65rem;height:0.65rem;border-radius:999px;background:@GetPlayerColor(player.PlayerId);margin-right:0.35rem;"></span>
+                    <span class="ranking-chip-copy">
+                        <strong>@player.FullName</strong>
+                        <small>@GetPlayerSummaryLabel(player)</small>
+                    </span>
+                </button>
+            }
+        </div>
+
+        <div class="radar-chart-shell">
+            <svg class="radar-svg"
+                 viewBox="@GetViewBox()"
+                 role="img"
+                 aria-label="@Title"
+                 preserveAspectRatio="xMidYMid meet"
+                 style="@GetSvgStyle()">
+                <defs>
+                    <filter id="@FilterId" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.12" />
+                    </filter>
+                </defs>
+
+                <rect x="16" y="16" width="@FormatNumber(ViewBoxWidth - 32d)" height="@FormatNumber(ViewBoxHeight - 32d)" rx="24" fill="#ffffff" stroke="#d8e2ef" />
+
+                @foreach (var polygon in GridPolygons)
+                {
+                    <polygon points="@polygon" fill="none" stroke="#d7e0ea" stroke-width="1.15" />
+                }
+
+                @foreach (var spoke in Spokes)
+                {
+                    <line x1="@FormatNumber(spoke.X1)" y1="@FormatNumber(spoke.Y1)" x2="@FormatNumber(spoke.X2)" y2="@FormatNumber(spoke.Y2)" stroke="#d7e0ea" stroke-width="1" />
+                }
+
+                @if (MedianPolygon is not null)
+                {
+                    <polygon points="@MedianPolygon" fill="@ChartColorUtilities.WithAlpha(ChartPalette.Reference, 0.10)" stroke="@ChartPalette.Reference" stroke-width="2.4" stroke-dasharray="7 6" />
+                }
+
+                @foreach (var series in SeriesPolygons)
+                {
+                    <polygon points="@series.Points"
+                             fill="@series.Fill"
+                             stroke="@series.Stroke"
+                             stroke-width="2.6"
+                             filter="url(#@FilterId)"
+                             opacity="@FormatNumber(series.Opacity, "0.#")" />
+                }
+
+                @foreach (var marker in PlayerMarkers)
+                {
+                    <circle cx="@FormatNumber(marker.X)"
+                            cy="@FormatNumber(marker.Y)"
+                            r="@FormatNumber(marker.Radius, "0.#")"
+                            fill="@marker.Fill"
+                            stroke="@marker.Stroke"
+                            stroke-width="2" />
+                }
+
+                @foreach (var label in AxisLabels)
+                {
+                    <g>
+                        @BuildSvgText(label.X, label.Y, label.Anchor, 13.5, 700, label.Fill, label.Text)
+                        @if (!string.IsNullOrWhiteSpace(label.Annotation))
+                        {
+                            @BuildSvgText(label.X, label.AnnotationY, label.Anchor, 10, 700, label.AnnotationFill!, label.Annotation!)
+                        }
+                    </g>
+                }
+
+                <circle cx="@FormatNumber(CenterX)" cy="@FormatNumber(CenterY)" r="4" fill="#0f172a" />
+            </svg>
+        </div>
+
+        <p class="tiny-note">Les pastilles affichent la moyenne radar normalisee de chaque joueuse visible. La mediane du poste se projette sur la meme echelle 0-100, avec une moyenne actuelle de @GetMedianSummaryLabel().</p>
+    }
+</article>
+
+@code {
+    private const int MaxVisiblePlayers = 5;
+    private const double ViewBoxWidthValue = 900d;
+    private const double ViewBoxHeightValue = 760d;
+    private const double CenterXValue = 340d;
+    private const double CenterYValue = 360d;
+    private const double RadiusValue = 220d;
+
+    [Parameter]
+    public string Kicker { get; set; } = "Radar multi";
+
+    [Parameter]
+    public string Title { get; set; } = "Comparer plusieurs joueuses du meme poste";
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string ChartKey { get; set; } = string.Empty;
+
+    [Parameter]
+    public IReadOnlyList<PositionProfilePlayerDto> Players { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<PositionProfileAxisViewModel> Axes { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyCollection<string> HighlightedAxisKeys { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyCollection<string> AlertAxisKeys { get; set; } = [];
+
+    [Parameter]
+    public int Width { get; set; } = 600;
+
+    [Parameter]
+    public int Height { get; set; } = 500;
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "Ajoutez une ou plusieurs joueuses dans les selects ci-dessus pour ouvrir le radar multi-joueuses.";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "Le radar multi garde la meme echelle normalisee 0-100 et permet d afficher 3 a 5 profils dans le meme cadre.";
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string MedianSeriesLabel { get; set; } = "Mediane du poste";
+
+    [Parameter]
+    public IReadOnlyList<MetricPlotPoint> MedianSeries { get; set; } = [];
+
+    private readonly HashSet<string> _visiblePlayerIds = new();
+    private readonly HashSet<string> _highlightedAxisKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _alertAxisKeys = new(StringComparer.OrdinalIgnoreCase);
+
+    private string _signature = string.Empty;
+    private string _renderedSignature = string.Empty;
+    private IReadOnlyList<PositionProfilePlayerDto> _visiblePlayers = [];
+    private IReadOnlyList<string> GridPolygons { get; set; } = [];
+    private IReadOnlyList<RadarSpokeGeometry> Spokes { get; set; } = [];
+    private string? MedianPolygon { get; set; }
+    private IReadOnlyList<RadarSeriesGeometry> SeriesPolygons { get; set; } = [];
+    private IReadOnlyList<RadarPointViewModel> PlayerMarkers { get; set; } = [];
+    private IReadOnlyList<RadarLabelGeometry> AxisLabels { get; set; } = [];
+
+    private double ViewBoxWidth => ViewBoxWidthValue;
+
+    private double ViewBoxHeight => ViewBoxHeightValue;
+
+    private double CenterX => CenterXValue;
+
+    private double CenterY => CenterYValue;
+
+    private double Radius => RadiusValue;
+
+    private string FilterId => $"radar-multi-shadow-{GetHashCode():x}";
+
+    private bool HasData => Players.Count > 1 && Axes.Count > 0;
+
+    private string RenderedChartKey => _signature;
+
+    private IReadOnlyList<PositionProfilePlayerDto> VisiblePlayers => _visiblePlayers;
+
+    protected override Task OnParametersSetAsync()
+    {
+        _highlightedAxisKeys.Clear();
+        foreach (var key in HighlightedAxisKeys)
+        {
+            _highlightedAxisKeys.Add(key);
+        }
+
+        _alertAxisKeys.Clear();
+        foreach (var key in AlertAxisKeys)
+        {
+            _alertAxisKeys.Add(key);
+        }
+
+        RefreshChartState();
+
+        Logger.LogDebug(
+            "Multi radar updated. Key={Key}, Players={Players}, Visible={Visible}, Axes={Axes}",
+            ChartKey,
+            Players.Count,
+            _visiblePlayers.Count,
+            Axes.Count);
+
+        return Task.CompletedTask;
+    }
+
+    protected override bool ShouldRender()
+    {
+        return !string.Equals(_signature, _renderedSignature, StringComparison.Ordinal);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        _renderedSignature = _signature;
+    }
+
+    private void RefreshChartState()
+    {
+        ReconcileVisibility();
+        _visiblePlayers = Players.Where(player => _visiblePlayerIds.Contains(player.PlayerId.ToString())).ToList();
+
+        BuildRadarGeometry();
+
+        var nextSignature = BuildSignature();
+        _signature = nextSignature;
+    }
+
+    private void ReconcileVisibility()
+    {
+        var playerIds = Players.Select(player => player.PlayerId.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _visiblePlayerIds.RemoveWhere(id => !playerIds.Contains(id));
+
+        if (_visiblePlayerIds.Count == 0)
+        {
+            foreach (var player in Players.Take(MaxVisiblePlayers))
+            {
+                _visiblePlayerIds.Add(player.PlayerId.ToString());
+            }
+        }
+    }
+
+    private async Task ToggleVisibilityAsync(int playerId)
+    {
+        var id = playerId.ToString();
+        if (_visiblePlayerIds.Contains(id))
+        {
+            _visiblePlayerIds.Remove(id);
+        }
+        else
+        {
+            if (_visiblePlayerIds.Count >= MaxVisiblePlayers)
+            {
+                Logger.LogDebug("Multi radar reached max visible players ({MaxVisiblePlayers}).", MaxVisiblePlayers);
+                return;
+            }
+
+            _visiblePlayerIds.Add(id);
+        }
+
+        if (_visiblePlayerIds.Count == 0)
+        {
+            _visiblePlayerIds.Add(id);
+        }
+
+        RefreshChartState();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void BuildRadarGeometry()
+    {
+        if (!HasData)
+        {
+            GridPolygons = [];
+            Spokes = [];
+            MedianPolygon = null;
+            SeriesPolygons = [];
+            PlayerMarkers = [];
+            AxisLabels = [];
+            return;
+        }
+
+        var levels = new[] { 0.25d, 0.5d, 0.75d, 1d };
+        GridPolygons = levels
+            .Select(level => BuildPolygon(Axes, Radius * level, axis => 100d))
+            .ToList();
+
+        Spokes = BuildSpokes(Axes, Radius);
+
+        MedianPolygon = BuildMedianPolygon();
+
+        SeriesPolygons = BuildVisiblePlayerSeries();
+        AxisLabels = BuildLabels(Axes, Radius + 42d);
+    }
+
+    private IReadOnlyList<RadarSeriesGeometry> BuildVisiblePlayerSeries()
+    {
+        var series = new List<RadarSeriesGeometry>(_visiblePlayers.Count);
+        var markers = new List<RadarPointViewModel>(_visiblePlayers.Count * Math.Max(Axes.Count, 1));
+
+        for (var index = 0; index < _visiblePlayers.Count; index++)
+        {
+            var player = _visiblePlayers[index];
+            var color = GetPlayerColor(player.PlayerId);
+            var values = BuildPlayerValues(player);
+            var points = BuildPolygonFromValues(values, Radius);
+            var averageValue = values.Count == 0 ? 0d : values.Average();
+
+            series.Add(new RadarSeriesGeometry(
+                player.PlayerId,
+                player.FullName,
+                points,
+                ChartColorUtilities.WithAlpha(color, 0.18),
+                ChartColorUtilities.WithAlpha(color, 0.98),
+                ChartColorUtilities.WithAlpha(color, 0.98),
+                1d - (index * 0.12d),
+                averageValue));
+
+            markers.AddRange(BuildPlayerMarkers(values, color));
+        }
+
+        PlayerMarkers = markers;
+        return series;
+    }
+
+    private string BuildSignature()
+    {
+        return string.Join('|',
+            ChartKey,
+            Width,
+            Height,
+            Players.Count,
+            Axes.Count,
+            MedianSeries.Count,
+            string.Join(',', _visiblePlayerIds.OrderBy(id => id, StringComparer.OrdinalIgnoreCase)),
+            string.Join(',', _highlightedAxisKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase)),
+            string.Join(',', _alertAxisKeys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase)),
+            string.Join(',', Axes.Select(axis => $"{axis.Key}:{FormatNumber(axis.MinValue, "0.###")}:{FormatNumber(axis.MaxValue, "0.###")}:{axis.HigherIsBetter}:{FormatNumber(axis.DirectionalPercentile, "0.###")}")),
+            string.Join(',', MedianSeries.Select(point => $"{point.Label}:{FormatNumber(point.Value, "0.###")}")),
+            string.Join(';', Players.Select(BuildPlayerSignature)));
+    }
+
+    private IReadOnlyList<RadarSpokeGeometry> BuildSpokes(IReadOnlyList<PositionProfileAxisViewModel> axes, double radius)
+    {
+        var spokes = new List<RadarSpokeGeometry>(axes.Count);
+
+        for (var index = 0; index < axes.Count; index++)
+        {
+            var angle = (-Math.PI / 2d) + (2d * Math.PI * index / axes.Count);
+            spokes.Add(new RadarSpokeGeometry(
+                CenterX,
+                CenterY,
+                CenterX + (Math.Cos(angle) * radius),
+                CenterY + (Math.Sin(angle) * radius)));
+        }
+
+        return spokes;
+    }
+
+    private string BuildPlayerSignature(PositionProfilePlayerDto player)
+    {
+        var lookup = (player.Axes ?? [])
+            .Where(axis => axis is not null && !string.IsNullOrWhiteSpace(axis.Key))
+            .ToDictionary(axis => axis.Key, axis => axis, StringComparer.OrdinalIgnoreCase);
+
+        var axisSignature = string.Join(',', Axes.Select(axis =>
+        {
+            if (!lookup.TryGetValue(axis.Key, out var playerAxis))
+            {
+                return $"{axis.Key}:{FormatNumber(axis.RadarMedianValue, "0.###")}:{FormatNumber(axis.MinValue, "0.###")}:{FormatNumber(axis.MaxValue, "0.###")}";
+            }
+
+            var value = NormalizeRadarValue(playerAxis, playerAxis.Value);
+            return $"{axis.Key}:{FormatNumber(value, "0.###")}:{FormatNumber(playerAxis.MinValue, "0.###")}:{FormatNumber(playerAxis.MaxValue, "0.###")}";
+        }));
+
+        return $"{player.PlayerId}:{axisSignature}";
+    }
+
+    private IReadOnlyList<double> BuildPlayerValues(PositionProfilePlayerDto player)
+    {
+        var lookup = (player.Axes ?? [])
+            .Where(axis => axis is not null && !string.IsNullOrWhiteSpace(axis.Key))
+            .ToDictionary(axis => axis.Key, axis => axis, StringComparer.OrdinalIgnoreCase);
+
+        return Axes
+            .Select(axis => lookup.TryGetValue(axis.Key, out var playerAxis) ? NormalizeRadarValue(playerAxis, playerAxis.Value) : axis.RadarMedianValue)
+            .ToList();
+    }
+
+    private IReadOnlyList<RadarPointViewModel> BuildPlayerMarkers(IReadOnlyList<double> values, string fill)
+    {
+        var markers = new List<RadarPointViewModel>(values.Count);
+
+        for (var index = 0; index < values.Count; index++)
+        {
+            var value = Math.Clamp(values[index], 0d, 100d);
+            var point = GetRadarPoint(index, values.Count, Radius, value);
+            markers.Add(new RadarPointViewModel(
+                point.X,
+                point.Y,
+                4.2d,
+                fill,
+                "#ffffff"));
+        }
+
+        return markers;
+    }
+
+    private string BuildPolygon(
+        IReadOnlyList<PositionProfileAxisViewModel> axes,
+        double radius,
+        Func<PositionProfileAxisViewModel, double> valueSelector)
+    {
+        var points = axes.Select((axis, index) => GetRadarPoint(index, axes.Count, radius, valueSelector(axis)));
+        return string.Join(' ', points.Select(point => $"{FormatNumber(point.X)},{FormatNumber(point.Y)}"));
+    }
+
+    private string BuildPolygonFromValues(IReadOnlyList<double> values, double radius)
+    {
+        var points = values.Select((value, index) =>
+        {
+            var normalized = Math.Clamp(value, 0d, 100d) / 100d;
+            var angle = (-Math.PI / 2d) + (2d * Math.PI * index / values.Count);
+            var currentRadius = radius * normalized;
+            return (X: CenterX + (Math.Cos(angle) * currentRadius), Y: CenterY + (Math.Sin(angle) * currentRadius));
+        });
+
+        return string.Join(' ', points.Select(point => $"{FormatNumber(point.X)},{FormatNumber(point.Y)}"));
+    }
+
+    private string BuildMedianPolygon()
+    {
+        if (Axes.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var lookup = MedianSeries
+            .Where(point => !string.IsNullOrWhiteSpace(point.Label))
+            .ToDictionary(point => point.Label, point => point.Value, StringComparer.OrdinalIgnoreCase);
+
+        var values = Axes
+            .Select(axis => lookup.TryGetValue(axis.Label, out var medianValue)
+                ? medianValue
+                : axis.RadarMedianValue)
+            .ToList();
+
+        return BuildPolygonFromValues(values, Radius);
+    }
+
+    private IReadOnlyList<RadarLabelGeometry> BuildLabels(IReadOnlyList<PositionProfileAxisViewModel> axes, double labelRadius)
+    {
+        var labels = new List<RadarLabelGeometry>(axes.Count);
+
+        for (var index = 0; index < axes.Count; index++)
+        {
+            var axis = axes[index];
+            var point = GetRadarPoint(index, axes.Count, labelRadius, 100d);
+            var anchor = GetRadarTextAnchor(point.X, CenterX);
+            var highlighted = _highlightedAxisKeys.Contains(axis.Key) || axis.DirectionalPercentile >= 90d || axis.DirectionalPercentile <= 20d;
+            var fill = _alertAxisKeys.Contains(axis.Key)
+                ? ChartPalette.Danger
+                : highlighted
+                    ? ChartPalette.Player
+                    : "#334155";
+            var annotation = GetAnnotationText(axis);
+
+            labels.Add(new RadarLabelGeometry(
+                point.X,
+                point.Y,
+                anchor,
+                axis.Label,
+                fill,
+                highlighted ? annotation : null,
+                point.Y + (GetAnnotationDirection(point.Y) * 18d),
+                highlighted ? (axis.DirectionalPercentile >= 90d || _alertAxisKeys.Contains(axis.Key) ? ChartPalette.Danger : ChartPalette.Primary) : null));
+        }
+
+        return labels;
+    }
+
+    private (double X, double Y) GetRadarPoint(int index, int count, double radius, double value)
+    {
+        var angle = (-Math.PI / 2d) + (2d * Math.PI * index / count);
+        var normalized = Math.Clamp(value / 100d, 0d, 1d);
+        var currentRadius = radius * normalized;
+        return (CenterX + (Math.Cos(angle) * currentRadius), CenterY + (Math.Sin(angle) * currentRadius));
+    }
+
+    private string BuildPolygon(IReadOnlyList<double> values, double radius)
+    {
+        var points = values.Select((value, index) =>
+        {
+            var normalized = Math.Clamp(value, 0d, 100d) / 100d;
+            var angle = (-Math.PI / 2d) + (2d * Math.PI * index / values.Count);
+            var currentRadius = radius * normalized;
+            return (X: CenterX + (Math.Cos(angle) * currentRadius), Y: CenterY + (Math.Sin(angle) * currentRadius));
+        });
+
+        return string.Join(' ', points.Select(point => $"{FormatNumber(point.X)},{FormatNumber(point.Y)}"));
+    }
+
+    private string GetSvgStyle()
+    {
+        return $"width:100%;max-width:{FormatNumber(Width)}px;height:auto;max-height:{FormatNumber(Height)}px;";
+    }
+
+    private string GetViewBox()
+    {
+        return $"0 0 {FormatNumber(ViewBoxWidth)} {FormatNumber(ViewBoxHeight)}";
+    }
+
+    private static string GetPlayerColor(int playerId)
+    {
+        return ChartPalette.SeriesColor(playerId);
+    }
+
+    private string GetPlayerSummaryLabel(PositionProfilePlayerDto player)
+    {
+        var values = BuildPlayerValues(player);
+        if (values.Count == 0)
+        {
+            return "Moy. n/a";
+        }
+
+        var average = values.Average();
+        return $"Moy. {FormatNumber(average, "0.#")}/100";
+    }
+
+    private string GetMedianSummaryLabel()
+    {
+        if (Axes.Count == 0)
+        {
+            return "n/a";
+        }
+
+        var values = MedianSeries.Count > 0
+            ? BuildMedianValues()
+            : Axes.Select(axis => axis.RadarMedianValue).ToList();
+
+        var average = values.Average();
+        return $"{FormatNumber(average, "0.#")}/100";
+    }
+
+    private IReadOnlyList<double> BuildMedianValues()
+    {
+        var lookup = MedianSeries
+            .Where(point => !string.IsNullOrWhiteSpace(point.Label))
+            .ToDictionary(point => point.Label, point => point.Value, StringComparer.OrdinalIgnoreCase);
+
+        return Axes
+            .Select(axis => lookup.TryGetValue(axis.Label, out var medianValue)
+                ? medianValue
+                : axis.RadarMedianValue)
+            .ToList();
+    }
+
+    private static string GetRadarTextAnchor(double pointX, double centerX)
+    {
+        if (Math.Abs(pointX - centerX) < 12)
+        {
+            return "middle";
+        }
+
+        return pointX < centerX ? "end" : "start";
+    }
+
+    private double GetAnnotationDirection(double pointY)
+    {
+        return pointY < CenterY ? -1d : 1d;
+    }
+
+    private static string GetAnnotationText(PositionProfileAxisViewModel axis)
+    {
+        if (axis.DirectionalPercentile >= 90d)
+        {
+            return "Top 10%";
+        }
+
+        if (axis.DirectionalPercentile <= 20d)
+        {
+            return "Alerte";
+        }
+
+        return "Above median";
+    }
+
+    private static double NormalizeRadarValue(PositionProfileAxisDto axis, double value)
+    {
+        if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
+        {
+            return Math.Clamp(axis.HigherIsBetter ? axis.Percentile : 100d - axis.Percentile, 0d, 100d);
+        }
+
+        var normalized = (value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);
+
+        if (!axis.HigherIsBetter)
+        {
+            normalized = 100d - normalized;
+        }
+
+        return Math.Clamp(Math.Round(normalized, 1, MidpointRounding.AwayFromZero), 0d, 100d);
+    }
+
+    private static string FormatNumber(double value, string format = "0.##")
+    {
+        return value.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static string BuildPlayerSignature(PositionProfilePlayerDto player, IReadOnlyList<PositionProfileAxisViewModel> axes)
+    {
+        var lookup = (player.Axes ?? [])
+            .Where(axis => axis is not null && !string.IsNullOrWhiteSpace(axis.Key))
+            .ToDictionary(axis => axis.Key, axis => axis, StringComparer.OrdinalIgnoreCase);
+
+        var axisSignature = string.Join(',', axes.Select(axis =>
+        {
+            if (!lookup.TryGetValue(axis.Key, out var playerAxis))
+            {
+                return $"{axis.Key}:{FormatNumber(axis.RadarMedianValue, "0.###")}:{FormatNumber(axis.MinValue, "0.###")}:{FormatNumber(axis.MaxValue, "0.###")}";
+            }
+
+            var value = NormalizeRadarValue(playerAxis, playerAxis.Value);
+            return $"{axis.Key}:{FormatNumber(value, "0.###")}:{FormatNumber(playerAxis.MinValue, "0.###")}:{FormatNumber(playerAxis.MaxValue, "0.###")}";
+        }));
+
+        return $"{player.PlayerId}:{axisSignature}";
+    }
+
+    private static MarkupString BuildSvgText(
+        double x,
+        double y,
+        string anchor,
+        double fontSize,
+        int fontWeight,
+        string fill,
+        string text)
+    {
+        var encoded = System.Net.WebUtility.HtmlEncode(text);
+        var content = $"<text x=\"{FormatNumber(x)}\" y=\"{FormatNumber(y)}\" text-anchor=\"{anchor}\" font-family=\"Segoe UI, Arial, sans-serif\" font-size=\"{FormatNumber(fontSize)}\" font-weight=\"{fontWeight}\" fill=\"{fill}\">{encoded}</text>";
+        return new MarkupString(content);
+    }
+
+    private sealed record RadarSeriesGeometry(
+        int PlayerId,
+        string Label,
+        string Points,
+        string Fill,
+        string Stroke,
+        string MarkerStroke,
+        double Opacity,
+        double AverageValue);
+
+    private sealed record RadarPointViewModel(double X, double Y, double Radius, string Fill, string Stroke);
+
+    private sealed record RadarSpokeGeometry(double X1, double Y1, double X2, double Y2);
+
+    private sealed record RadarLabelGeometry(
+        double X,
+        double Y,
+        string Anchor,
+        string Text,
+        string Fill,
+        string? Annotation,
+        double AnnotationY,
+        string? AnnotationFill);
+}

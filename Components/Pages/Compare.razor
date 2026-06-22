@@ -14,21 +14,15 @@
     }
     else
     {
-        <section class="page-panel">
+        <section class="page-panel filter-strip @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
                 <div>
                     <p class="section-kicker">Face a face</p>
-                    <h3>Choisissez autant de joueuses que necessaire dans le meme contexte</h3>
-                    <p class="page-subtitle">Filtres communs, recherche rapide puis lecture visuelle et tabulaire des profils.</p>
-                </div>
-
-                <div class="toolbar">
-                    <button type="button" class="primary-button" @onclick="RunComparisonAsync" disabled="@IsBusy">Comparer</button>
-                    <button type="button" class="ghost-button filter-ghost" @onclick="RefreshPlayersAsync" disabled="@IsBusy">Rafraichir la liste</button>
+                    <h3>Comparer les joueuses sur un même périmètre</h3>
                 </div>
             </div>
 
-            <details class="filter-drawer">
+            <details class="filter-drawer" open>
                 <summary>
                     <div>
                         <strong>Afficher les filtres de comparaison</strong>
@@ -107,10 +101,10 @@
                 </div>
             </details>
 
-            <AudienceLensSelector Value="@ActiveLens"
-                                  ValueChanged="SetActiveLens"
-                                  Title="Choisissez la bonne profondeur de comparaison"
-                                  Subtitle="Club pour benchmarker vite, Analyste pour tout ouvrir, Joueuse pour se situer plus simplement." />
+            <ScopeSummaryBar Kicker="Cadre commun"
+                             Title="La comparaison repose sur le meme filtre pour toutes les joueuses"
+                             Subtitle="Competition, equipe, poste, saison, journee et nombre de slots pilotent les graphes et les KPI."
+                             Items="@ComparisonScopeItems" />
 
             <div class="comparison-picker-grid">
                 @foreach (var slot in CompareSlots)
@@ -170,6 +164,13 @@
                        Message="@ErrorMessage"
                        Tone="error" />
         }
+        else if (IsBusy && Response is null)
+        {
+            <StateCard Kicker="Chargement"
+                       Title="Mise a jour de la comparaison"
+                       Message="La liste et les graphes se recalculent pour le perimetre choisi."
+                       Tone="loading" />
+        }
         else if (Response is null)
         {
             <StateCard Kicker="Comparaison en attente"
@@ -179,6 +180,13 @@
         }
         else
         {
+            @if (IsBusy)
+            {
+                <PageLoader Kicker="Chargement"
+                            Title="Actualisation de la comparaison"
+                            Message="Les KPI, graphes et tableaux se recalculent." />
+            }
+
             <ScopeSummaryBar Kicker="Lecture comparee"
                              Title="Les graphes et KPI sont lus sur une base commune"
                              Subtitle="Chaque profil garde le meme perimetre pour que les ecarts soient vraiment exploitables."
@@ -225,6 +233,12 @@
                                     <p class="page-subtitle">@player.TeamName - @(player.PositionCode ?? player.PositionName ?? "Poste non renseigne")</p>
                                 </div>
 
+                                <PlayerTeamHistoryPanel Profile="@player"
+                                                       Kicker="Historique de club"
+                                                       Title="Lecture des changements de club"
+                                                       Subtitle="Le club principal est affiche en premier; les autres clubs aident a garder la comparaison propre."
+                                                       Footnote="Chaque joueuse garde son contexte club pour que les KPI restent comparables et sans ambiguite." />
+
                                 <BarGaugeKpiGrid Items="@GetComparisonGaugeKpis(player)"
                                                  CssClass="gauge-kpi-grid gauge-kpi-grid-compact" />
 
@@ -258,7 +272,7 @@
                                 </div>
                             </div>
 
-                            <ApexChart @key="response.Players.Count" TItem="MetricPlotPoint" Title="Radar compare" Height="340" Options="@GetComparisonRadarChartOptions()">
+                            <ApexChart @key="response.Players.Count" TItem="MetricPlotPoint" Title="Radar compare" Height="340" Options="@GetComparisonRadarChartOptions(response.Players.Count)">
                                 @foreach (var player in response.Players)
                                 {
                                     <ApexPointSeries TItem="MetricPlotPoint"
@@ -283,7 +297,7 @@
                                 </div>
                             </div>
 
-                                <ApexChart TItem="MetricPlotPoint" Title="Volumes cles" Height="320">
+                                <ApexChart TItem="MetricPlotPoint" Title="Volumes cles" Height="320" Options="@GetComparisonBarChartOptions(response.Players.Count)">
                                     @foreach (var player in response.Players)
                                     {
                                         <ApexPointSeries TItem="MetricPlotPoint"
@@ -307,7 +321,7 @@
                                 </div>
                             </div>
 
-                            <ApexChart TItem="MetricPlotPoint" Title="Efficacite" Height="320">
+                            <ApexChart TItem="MetricPlotPoint" Title="Efficacite" Height="320" Options="@GetComparisonLineChartOptions(response.Players.Count)">
                                     @foreach (var player in response.Players)
                                     {
                                         <ApexPointSeries TItem="MetricPlotPoint"
@@ -332,7 +346,7 @@
                                 </div>
                             </div>
 
-                            <ApexChart TItem="MetricPlotPoint" Title="Technique" Height="320">
+                            <ApexChart TItem="MetricPlotPoint" Title="Technique" Height="320" Options="@GetComparisonBarChartOptions(response.Players.Count)">
                                 @foreach (var player in response.Players)
                                 {
                                     <ApexPointSeries TItem="MetricPlotPoint"
@@ -356,7 +370,7 @@
                                 </div>
                             </div>
 
-                            <ApexChart TItem="MetricPlotPoint" Title="Volumes normalises" Height="320">
+                            <ApexChart TItem="MetricPlotPoint" Title="Volumes normalises" Height="320" Options="@GetComparisonBarChartOptions(response.Players.Count)">
                                 @foreach (var player in response.Players)
                                 {
                                     <ApexPointSeries TItem="MetricPlotPoint"
@@ -539,14 +553,14 @@
         new("Journee", string.IsNullOrWhiteSpace(Day) ? "Toutes" : Day),
         new("Slots", CompareSlotCount.ToString())
     ];
-    private IReadOnlyList<ScopeSummaryItem> ComparedPlayerScopeItems => Response is null
+    private IReadOnlyList<ScopeSummaryItem> ComparedPlayerScopeItems => Response is null || Response.Players.Count == 0
         ? []
         :
         [
             new("Profils", Response.Players.Count.ToString()),
-            new("Matchs", Response.Players.Sum(item => item.MatchesPlayed).ToString()),
-            new("Buts", Response.Players.Sum(item => item.TotalGoals).ToString()),
-            new("Passes", Response.Players.Sum(item => item.AssistCount).ToString()),
+            new("Matchs moy.", $"{Response.Players.Average(item => item.MatchesPlayed):0.#}"),
+            new("Buts cumules", Response.Players.Sum(item => item.TotalGoals).ToString()),
+            new("Passes cumulees", Response.Players.Sum(item => item.AssistCount).ToString()),
             new("Saison", string.IsNullOrWhiteSpace(Season) ? "Toutes" : Season),
             new("Journee", string.IsNullOrWhiteSpace(Day) ? "Toutes" : Day)
         ];
@@ -573,7 +587,7 @@
     {
         EnsureCompareSlotCapacity();
         SyncSelectedPlayers();
-        return InvokeAsync(StateHasChanged);
+        return RefreshComparisonAsync();
     }
 
     private Task SetActiveLens(string lens)
@@ -600,9 +614,11 @@
             return;
         }
 
+        var loadStartedAt = DateTimeOffset.UtcNow;
+
         try
         {
-            IsBusy = true;
+            await BusyUiHelper.EnterAsync(() => IsBusy = true, () => InvokeAsync(StateHasChanged));
             ErrorMessage = null;
             Response = null;
             ReferenceData = await ReferenceDataService.GetReferenceDataAsync();
@@ -648,6 +664,7 @@
 
             EnsureCompareSlotCapacity();
             SyncSelectedPlayers();
+            await RefreshComparisonAsync(manageBusyState: false);
         }
         catch (Exception ex)
         {
@@ -655,15 +672,26 @@
         }
         finally
         {
-            IsBusy = false;
+            await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
         }
     }
 
-    private async Task RunComparisonAsync()
+    private Task RunComparisonAsync()
     {
+        return RefreshComparisonAsync();
+    }
+
+    private async Task RefreshComparisonAsync(bool manageBusyState = true)
+    {
+        var loadStartedAt = DateTimeOffset.UtcNow;
+
         try
         {
-            IsBusy = true;
+            if (manageBusyState)
+            {
+                await BusyUiHelper.EnterAsync(() => IsBusy = true, () => InvokeAsync(StateHasChanged));
+            }
+
             ErrorMessage = null;
 
             var selectedIds = SelectedPlayerIds
@@ -675,7 +703,6 @@
 
             if (selectedIds.Count < 2)
             {
-                ErrorMessage = "Selectionnez au moins deux joueuses distinctes pour lancer la comparaison.";
                 Response = null;
                 return;
             }
@@ -701,10 +728,14 @@
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
+            Response = null;
         }
         finally
         {
-            IsBusy = false;
+            if (manageBusyState)
+            {
+                await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
+            }
         }
     }
 
@@ -845,18 +876,20 @@
         return InvokeAsync(StateHasChanged);
     }
 
-    private void SelectPlayerSlot(int slot, int playerId)
+    private async Task SelectPlayerSlot(int slot, int playerId)
     {
         EnsureCompareSlotCapacity();
         SelectedPlayerIds[slot] = playerId;
         PlayerSearchTerms[slot] = string.Empty;
+        await RefreshComparisonAsync();
     }
 
-    private void ClearPlayerSlot(int slot)
+    private async Task ClearPlayerSlot(int slot)
     {
         EnsureCompareSlotCapacity();
         SelectedPlayerIds[slot] = null;
         PlayerSearchTerms[slot] = string.Empty;
+        await RefreshComparisonAsync();
     }
 
     private IReadOnlyList<MetricPlotPoint> GetVolumeSeries(PlayerGlobalStatsDto player)
@@ -1034,7 +1067,7 @@
         return Math.Round(Math.Clamp(value / maxValue * 100d, 0d, 100d), 1);
     }
 
-    private ApexChartOptions<MetricPlotPoint> GetComparisonRadarChartOptions()
+    private ApexChartOptions<MetricPlotPoint> GetComparisonRadarChartOptions(int seriesCount)
     {
         return new ApexChartOptions<MetricPlotPoint>
         {
@@ -1042,6 +1075,7 @@
             {
                 Type = ChartType.Radar
             },
+            Colors = ChartPalette.SeriesColors(seriesCount),
             DataLabels = new DataLabels
             {
                 Enabled = false
@@ -1049,6 +1083,62 @@
             Legend = new Legend
             {
                 Position = LegendPosition.Bottom
+            }
+        };
+    }
+
+    private ApexChartOptions<MetricPlotPoint> GetComparisonBarChartOptions(int seriesCount)
+    {
+        return new ApexChartOptions<MetricPlotPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Bar
+            },
+            Colors = ChartPalette.SeriesColors(seriesCount),
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            Legend = new Legend
+            {
+                Position = LegendPosition.Bottom
+            },
+            PlotOptions = new PlotOptions
+            {
+                Bar = new PlotOptionsBar
+                {
+                    BorderRadius = 10,
+                    Horizontal = false
+                }
+            }
+        };
+    }
+
+    private ApexChartOptions<MetricPlotPoint> GetComparisonLineChartOptions(int seriesCount)
+    {
+        return new ApexChartOptions<MetricPlotPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Line
+            },
+            Colors = ChartPalette.SeriesColors(seriesCount),
+            DataLabels = new DataLabels
+            {
+                Enabled = false
+            },
+            Legend = new Legend
+            {
+                Position = LegendPosition.Bottom
+            },
+            Markers = new Markers
+            {
+                Size = 4
+            },
+            Stroke = new Stroke
+            {
+                Width = 3
             }
         };
     }

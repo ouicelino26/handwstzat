@@ -1,60 +1,98 @@
 <article class="mini-card match-card @(IsSelected ? "is-selected" : string.Empty)">
-    <div class="match-card-main">
-        <div class="match-card-head">
-            <div class="match-card-copy">
-                @if (!string.IsNullOrWhiteSpace(Kicker))
-                {
-                    <p class="match-card-kicker">@Kicker</p>
-                }
-
-                <h4 class="match-card-title">@Title</h4>
-
-                @if (!string.IsNullOrWhiteSpace(Meta))
-                {
-                    <p class="match-card-meta">@Meta</p>
-                }
-
-                @if (!string.IsNullOrWhiteSpace(SecondaryMeta))
-                {
-                    <p class="match-card-meta match-card-secondary">@SecondaryMeta</p>
-                }
-            </div>
-
-            <div class="match-card-score">
-                <strong>@Score</strong>
-
-                @if (!string.IsNullOrWhiteSpace(Badge))
-                {
-                    <span>@Badge</span>
-                }
-            </div>
-        </div>
-
-                @if (ChildContent is not null)
+    <div class="match-card-eyebrow">
+        @if (!string.IsNullOrWhiteSpace(Kicker))
         {
-            <div class="match-card-extra">
-                @ChildContent
+            <p class="match-card-kicker">@Kicker</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Badge))
+        {
+            <span class="match-card-badge">@Badge</span>
+        }
+    </div>
+
+    @if (!_hasTeamPair && !string.IsNullOrWhiteSpace(_headline))
+    {
+        <div class="match-card-titleline">
+            <h4 class="match-card-title">@_headline</h4>
+        </div>
+    }
+
+    <div class="match-card-scoreboard @(_hasScorePair ? string.Empty : "is-single")">
+        @if (_hasScorePair)
+        {
+            <div class="match-card-side match-card-side-home">
+                <div class="match-card-scorebox match-card-scorebox-home">
+                    <div class="match-card-scorebox-value">@_homeScore</div>
+                </div>
+
+                @if (_hasTeamPair)
+                {
+                    <div class="match-card-team-pill match-card-team-pill-home">@_homeTeam</div>
+                }
+            </div>
+
+            <div class="match-card-score-separator" aria-hidden="true">
+                <span>VS</span>
+            </div>
+
+            <div class="match-card-side match-card-side-away">
+                <div class="match-card-scorebox match-card-scorebox-away">
+                    <div class="match-card-scorebox-value">@_awayScore</div>
+                </div>
+
+                @if (_hasTeamPair)
+                {
+                    <div class="match-card-team-pill match-card-team-pill-away">@_awayTeam</div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="match-card-scorebox match-card-scorebox-single">
+                <div class="match-card-scorebox-value">@Score</div>
             </div>
         }
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(DetailsHref) || OnCardClick.HasDelegate)
+    @if (ChildContent is not null)
     {
-        <div class="match-card-actions">
-            @if (!string.IsNullOrWhiteSpace(DetailsHref))
-            {
-                <a class="ghost-button filter-ghost match-card-button" href="@DetailsHref">@DetailsLabel</a>
-            }
-            else
-            {
-                <button type="button"
-                        class="ghost-button filter-ghost match-card-button"
-                        @onclick="HandleCardClickAsync">
-                    @DetailsLabel
-                </button>
-            }
+        <div class="match-card-extra">
+            @ChildContent
         </div>
     }
+
+    <div class="match-card-footer">
+        <div class="match-card-info">
+            @if (!string.IsNullOrWhiteSpace(Meta))
+            {
+                <p class="match-card-meta">@Meta</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(SecondaryMeta))
+            {
+                <p class="match-card-meta match-card-secondary">@SecondaryMeta</p>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(DetailsHref) || OnCardClick.HasDelegate)
+        {
+            <div class="match-card-actions">
+                @if (!string.IsNullOrWhiteSpace(DetailsHref))
+                {
+                    <a class="ghost-button filter-ghost match-card-button" href="@DetailsHref">@DetailsLabel</a>
+                }
+                else
+                {
+                    <button type="button"
+                            class="ghost-button filter-ghost match-card-button"
+                            @onclick="HandleCardClickAsync">
+                        @DetailsLabel
+                    </button>
+                }
+            </div>
+        }
+    </div>
 </article>
 
 @code {
@@ -91,8 +129,97 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
+    private string _headline = string.Empty;
+
+    private string? _homeTeam;
+
+    private string? _awayTeam;
+
+    private string? _homeScore;
+
+    private string? _awayScore;
+
+    private bool _hasTeamPair;
+
+    private bool _hasScorePair;
+
+    protected override void OnParametersSet()
+    {
+        _headline = (Title ?? string.Empty).Trim();
+
+        if (TrySplitTeams(_headline, out var homeTeam, out var awayTeam))
+        {
+            _homeTeam = homeTeam;
+            _awayTeam = awayTeam;
+            _hasTeamPair = true;
+        }
+        else
+        {
+            _homeTeam = null;
+            _awayTeam = null;
+            _hasTeamPair = false;
+        }
+
+        if (TrySplitScore(Score, out var homeScore, out var awayScore))
+        {
+            _homeScore = homeScore;
+            _awayScore = awayScore;
+            _hasScorePair = true;
+        }
+        else
+        {
+            _homeScore = null;
+            _awayScore = null;
+            _hasScorePair = false;
+        }
+    }
+
     private Task HandleCardClickAsync()
     {
         return OnCardClick.HasDelegate ? OnCardClick.InvokeAsync() : Task.CompletedTask;
+    }
+
+    private static bool TrySplitTeams(string? value, out string? homeTeam, out string? awayTeam)
+    {
+        homeTeam = null;
+        awayTeam = null;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var separatorIndex = value.IndexOf(" vs ", StringComparison.OrdinalIgnoreCase);
+        if (separatorIndex < 0)
+        {
+            return false;
+        }
+
+        homeTeam = value[..separatorIndex].Trim();
+        awayTeam = value[(separatorIndex + 4)..].Trim();
+
+        return !string.IsNullOrWhiteSpace(homeTeam) && !string.IsNullOrWhiteSpace(awayTeam);
+    }
+
+    private static bool TrySplitScore(string? value, out string? homeScore, out string? awayScore)
+    {
+        homeScore = null;
+        awayScore = null;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var parts = value.Split('-', 2, StringSplitOptions.TrimEntries);
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        homeScore = parts[0];
+        awayScore = parts[1];
+
+        return !string.IsNullOrWhiteSpace(homeScore) && !string.IsNullOrWhiteSpace(awayScore);
     }
 }

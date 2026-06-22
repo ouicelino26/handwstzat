@@ -83,6 +83,7 @@ public sealed class StatsDashboardService
                 .ToList();
 
             var selectedPlayerId = ResolveSelectedPlayerId(filters.SpotlightPlayerId, playerStats, topScorersTask.Result, requestedTask.Result);
+            var globalBoardsTask = LoadGlobalBoardsAsync(queryOptions, playerStats, cancellationToken);
 
             if (!selectedPlayerId.HasValue)
             {
@@ -100,6 +101,7 @@ public sealed class StatsDashboardService
                         overview.TurnoverCount,
                         overview.SanctionCount),
                     Players = players,
+                    GlobalBoards = await globalBoardsTask,
                     TopScorers = MapRanking(topScorersTask.Result),
                     EfficiencyRanking = MapRanking(efficiencyTask.Result),
                     RequestedRanking = MapRanking(requestedTask.Result),
@@ -136,7 +138,8 @@ public sealed class StatsDashboardService
                 sanctionsTask,
                 goalkeeperTask,
                 spatialTask,
-                playerMatchesTask);
+                playerMatchesTask,
+                globalBoardsTask);
 
             var selectedDirectory = playerStats.FirstOrDefault(player => player.PlayerId == selectedPlayerId.Value);
             var profile = profileTask.Result ?? CreateProfileFallback(selectedDirectory, selectedPlayerId.Value);
@@ -164,6 +167,7 @@ public sealed class StatsDashboardService
                     overview.TurnoverCount,
                     overview.SanctionCount),
                 Players = players,
+                GlobalBoards = globalBoardsTask.Result,
                 TopScorers = MapRanking(topScorersTask.Result),
                 EfficiencyRanking = MapRanking(efficiencyTask.Result),
                 RequestedRanking = MapRanking(requestedTask.Result),
@@ -194,6 +198,125 @@ public sealed class StatsDashboardService
         {
             throw new InvalidOperationException($"Impossible de charger les dernieres donnees. {ex.Message}", ex);
         }
+    }
+
+    public async Task<(IReadOnlyList<PlayerRankingItem> Ranking, string Label)> LoadRequestedRankingAsync(
+        DashboardFilterState filters,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_authService.Session.IsAuthenticated)
+        {
+            throw new InvalidOperationException("Connexion requise pour ouvrir l'interface live.");
+        }
+
+        var queryOptions = filters.ToStatsQueryOptions();
+        var rankingMetric = NormalizeRankingMetric(filters.RankingMetric);
+        var rankingTop = Math.Clamp(filters.Top, 3, 12);
+
+        var requestedTask = _statsApiClient.GetRankingsAsync(rankingMetric, queryOptions, rankingTop, cancellationToken);
+        var requestedRanking = await requestedTask;
+
+        return (MapRanking(requestedRanking), GetRankingLabel(rankingMetric));
+    }
+
+    private async Task<DashboardGlobalBoards> LoadGlobalBoardsAsync(
+        StatsQueryOptionsDto queryOptions,
+        IReadOnlyList<PlayerGlobalStatsDto> playerStats,
+        CancellationToken cancellationToken)
+    {
+        if (playerStats.Count == 0)
+        {
+            return DashboardGlobalBoards.Empty;
+        }
+
+        var response = await _statsApiClient.ComparePlayersAsync(new ComparePlayersRequestDto
+        {
+            PlayerIds = playerStats
+                .Select(player => player.PlayerId)
+                .Distinct()
+                .ToList(),
+            CompetitionId = queryOptions.CompetitionId,
+            TeamId = queryOptions.TeamId,
+            PositionId = queryOptions.PositionId,
+            MatchId = queryOptions.MatchId,
+            From = queryOptions.From,
+            To = queryOptions.To,
+            Year = queryOptions.Year,
+            Season = queryOptions.Season,
+            Day = queryOptions.Day
+        }, cancellationToken) ?? new ComparePlayersResponseDto();
+
+        return BuildGlobalBoards(response);
+    }
+
+    private static DashboardGlobalBoards BuildGlobalBoards(ComparePlayersResponseDto response)
+    {
+        var offenseByPlayer = response.Offense.ToDictionary(item => item.PlayerId);
+        var defenseByPlayer = response.Defense.ToDictionary(item => item.PlayerId);
+        var passingByPlayer = response.Passing.ToDictionary(item => item.PlayerId);
+        var sanctionsByPlayer = response.Sanctions.ToDictionary(item => item.PlayerId);
+        var goalkeeperByPlayer = response.Goalkeeper.ToDictionary(item => item.PlayerId);
+
+        var fieldPlayers = response.Players
+            .Where(player => !player.IsGoalkeeper)
+            .Select(player =>
+            {
+                offenseByPlayer.TryGetValue(player.PlayerId, out var offense);
+                defenseByPlayer.TryGetValue(player.PlayerId, out var defense);
+                passingByPlayer.TryGetValue(player.PlayerId, out var passing);
+                sanctionsByPlayer.TryGetValue(player.PlayerId, out var sanctions);
+
+                return new GlobalFieldRankingRow(
+                    player.PlayerId,
+                    player.FullName,
+                    Clean(player.TeamName, "Equipe non renseignee"),
+                    player.PositionId,
+                    Clean(player.PositionCode ?? player.PositionName, "Poste non renseigne"),
+                    player.IsGoalkeeper,
+                    player.MatchesPlayed,
+                    offense?.TotalButs ?? player.TotalGoals,
+                    offense?.Buts7m ?? player.PenaltyGoalCount,
+                    passing?.PasseDecisive ?? player.AssistCount,
+                    defense?.Interceptions ?? player.InterceptionCount,
+                    defense?.Contres ?? 0,
+                    defense?.Neutralisations ?? 0,
+                    passing?.TotalPertes ?? player.TurnoverCount,
+                    sanctions?.PenaltyConcede ?? 0,
+                    offense?.TauxReussiteTir ?? player.ShotSuccessRate);
+            })
+            .OrderByDescending(player => player.Goals)
+            .ThenBy(player => player.FullName)
+            .ToList();
+
+        var goalkeepers = response.Players
+            .Where(player => player.IsGoalkeeper)
+            .Select(player =>
+            {
+                goalkeeperByPlayer.TryGetValue(player.PlayerId, out var goalkeeper);
+
+                return new GlobalGoalkeeperRankingRow(
+                    player.PlayerId,
+                    player.FullName,
+                    Clean(player.TeamName, "Equipe non renseignee"),
+                    player.PositionId,
+                    Clean(player.PositionCode ?? player.PositionName, "GB"),
+                    player.MatchesPlayed,
+                    goalkeeper?.Buts ?? player.TotalGoals,
+                    goalkeeper?.PasseDecisives ?? player.AssistCount,
+                    (goalkeeper?.Arrets ?? 0) + (goalkeeper?.ArretsPenalty ?? 0),
+                    goalkeeper?.ArretsPenalty ?? 0,
+                    goalkeeper?.TauxArret ?? player.GoalkeeperSaveRate,
+                    (goalkeeper?.ButsPris ?? 0) + (goalkeeper?.ButsPenalty ?? 0),
+                    goalkeeper?.ButsPenalty ?? 0,
+                    goalkeeper?.TirsSubis ?? player.SaveCount,
+                    goalkeeper?.TauxReussiteTir ?? player.ShotSuccessRate,
+                    (goalkeeper?.PerteDeBalle ?? 0) + (goalkeeper?.MauvaisePasse ?? 0));
+            })
+            .OrderByDescending(player => player.Saves)
+            .ThenBy(player => player.FullName)
+            .ToList();
+
+        return new DashboardGlobalBoards(fieldPlayers, goalkeepers);
     }
 
     private static int? ResolveSelectedPlayerId(
@@ -322,6 +445,7 @@ public sealed class StatsDashboardService
             Birthday = player?.Birthday,
             IsGoalkeeper = player?.IsGoalkeeper ?? false,
             MatchesPlayed = player?.MatchesPlayed ?? 0,
+            TeamHistory = player?.TeamHistory is null ? [] : [..player.TeamHistory],
             TotalGoals = player?.TotalGoals ?? 0,
             TotalAssists = player?.AssistCount ?? 0,
             TotalInterceptions = player?.InterceptionCount ?? 0,
@@ -350,6 +474,7 @@ public sealed class StatsDashboardService
             Birthday = profile.Birthday,
             IsGoalkeeper = profile.IsGoalkeeper,
             MatchesPlayed = profile.MatchesPlayed,
+            TeamHistory = profile.TeamHistory is null ? [] : [..profile.TeamHistory],
             TotalGoals = profile.TotalGoals,
             AssistCount = profile.TotalAssists,
             InterceptionCount = profile.TotalInterceptions,
@@ -378,6 +503,7 @@ public sealed class StatsDashboardService
             Birthday = profile.Birthday,
             IsGoalkeeper = profile.IsGoalkeeper,
             MatchesPlayed = global.MatchesPlayed,
+            TeamHistory = profile.TeamHistory is null ? [] : [..profile.TeamHistory],
             Buts = Math.Max(global.TotalGoals - global.PenaltyGoalCount, 0),
             Buts7m = global.PenaltyGoalCount,
             TotalButs = global.TotalGoals,
@@ -427,6 +553,7 @@ public sealed class StatsDashboardService
             Birthday = profile.Birthday,
             IsGoalkeeper = profile.IsGoalkeeper,
             MatchesPlayed = global.MatchesPlayed,
+            TeamHistory = profile.TeamHistory is null ? [] : [..profile.TeamHistory],
             Technical = new TechnicalStatsDto
             {
                 ShotAttempts = shotAttempts,
@@ -465,7 +592,8 @@ public sealed class StatsDashboardService
             Age = profile.Age,
             Number = profile.Number,
             Birthday = profile.Birthday,
-            IsGoalkeeper = profile.IsGoalkeeper
+            IsGoalkeeper = profile.IsGoalkeeper,
+            TeamHistory = profile.TeamHistory is null ? [] : [..profile.TeamHistory]
         };
     }
 
@@ -485,7 +613,8 @@ public sealed class StatsDashboardService
             Age = profile.Age,
             Number = profile.Number,
             Birthday = profile.Birthday,
-            IsGoalkeeper = profile.IsGoalkeeper
+            IsGoalkeeper = profile.IsGoalkeeper,
+            TeamHistory = profile.TeamHistory is null ? [] : [..profile.TeamHistory]
         };
     }
 
@@ -505,7 +634,8 @@ public sealed class StatsDashboardService
             Age = profile.Age,
             Number = profile.Number,
             Birthday = profile.Birthday,
-            IsGoalkeeper = profile.IsGoalkeeper
+            IsGoalkeeper = profile.IsGoalkeeper,
+            TeamHistory = profile.TeamHistory is null ? [] : [..profile.TeamHistory]
         };
     }
 
@@ -525,7 +655,8 @@ public sealed class StatsDashboardService
             Age = profile.Age,
             Number = profile.Number,
             Birthday = profile.Birthday,
-            IsGoalkeeper = profile.IsGoalkeeper
+            IsGoalkeeper = profile.IsGoalkeeper,
+            TeamHistory = profile.TeamHistory is null ? [] : [..profile.TeamHistory]
         };
     }
 

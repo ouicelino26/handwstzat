@@ -83,13 +83,13 @@ public static class RankingMetricCatalog
     public static IReadOnlyList<RankingMetricOption> Default { get; } =
     [
         new("goals", "Buts"),
-        new("interceptions", "Interceptions"),
-        new("assists", "Passes decisives"),
-        new("shotsuccess", "Taux de reussite"),
-        new("penaltysuccess", "Taux penalty"),
         new("saves", "Arrets"),
+        new("shotsuccess", "Taux reussite tir"),
+        new("assists", "Passes decisives"),
+        new("interceptions", "Interceptions"),
         new("saverate", "Taux d'arret"),
         new("turnovers", "Pertes de balle"),
-        new("sanctions", "Sanctions")
+        new("sanctions", "Sanctions"),
+        new("penaltysuccess", "Taux penalty")
     ];
 }
