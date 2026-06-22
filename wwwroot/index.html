@@ -39,7 +39,7 @@
 
             var preferredTheme = storedTheme === "dark" || storedTheme === "light"
                 ? storedTheme
-                : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+                : "dark";
 
             applyTheme(preferredTheme, false);
 

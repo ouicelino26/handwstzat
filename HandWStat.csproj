@@ -67,8 +67,18 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     </ItemGroup>
 
+    <PropertyGroup>
+      <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == ''">C:\Users\donovan.bierque\source\repos\ouicelino26\HandballManagerMaui</HandballManagerCorePath>
+    </PropertyGroup>
+
     <ItemGroup>
-      <ProjectReference Include="D:\repos\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj" />
+      <Compile Remove="HandWStat.Tests\**\*" />
+      <EmbeddedResource Remove="HandWStat.Tests\**\*" />
+      <None Remove="HandWStat.Tests\**\*" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="$(HandballManagerCorePath)\HandballManagerCore\HandballManagerCore.csproj" />
     </ItemGroup>
 
 </Project>
