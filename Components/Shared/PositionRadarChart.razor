@@ -1,21 +1,21 @@
 @inject ILogger<PositionRadarChart> Logger
 
-<article class="page-panel">
-    <div class="panel-head">
+<article class="chart-stage chart-stage--radar">
+    <header class="chart-stage__head">
         <div>
-            <p class="section-kicker">@Kicker</p>
-            <h4>@Title</h4>
+            <span>@Kicker</span>
+            <h3>@Title</h3>
             @if (!string.IsNullOrWhiteSpace(Subtitle))
             {
-                <p class="page-subtitle">@Subtitle</p>
+                <p>@Subtitle</p>
             }
         </div>
 
         @if (AxisCount > 0)
         {
-            <span class="hero-badge">@AxisCount axes</span>
+            <strong>@AxisCount.ToString("00") <small>axes</small></strong>
         }
-    </div>
+    </header>
 
     @if (!HasData)
     {
@@ -27,7 +27,7 @@
     }
     else
     {
-        <div class="radar-legend-strip" aria-label="Legende radar">
+        <div class="chart-stage__legend" aria-label="Legende radar">
             <div class="radar-legend-item radar-legend-item-player">
                 <span class="radar-legend-swatch" style="@GetSwatchStyle(ChartPalette.Player)"></span>
                 <strong>@SelectedSeriesLabel</strong>
@@ -108,7 +108,7 @@
             </svg>
         </div>
 
-        <p class="tiny-note">La courbe joueuse et la courbe pointillee sont normalisees sur la cohorte du poste, axe par axe. La mediane est projetee sur la meme echelle 0-100.</p>
+        <footer class="chart-stage__note">Joueuse et mediane sont projetees axe par axe sur la meme echelle favorable 0-100.</footer>
     }
 </article>
 

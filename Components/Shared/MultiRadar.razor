@@ -1,21 +1,21 @@
 @inject ILogger<MultiRadar> Logger
 
-<article class="page-panel">
-    <div class="panel-head">
+<article class="chart-stage chart-stage--multi-radar">
+    <header class="chart-stage__head">
         <div>
-            <p class="section-kicker">@Kicker</p>
-            <h4>@Title</h4>
+            <span>@Kicker</span>
+            <h3>@Title</h3>
             @if (!string.IsNullOrWhiteSpace(Subtitle))
             {
-                <p class="page-subtitle">@Subtitle</p>
+                <p>@Subtitle</p>
             }
         </div>
 
         @if (Players.Count > 0)
         {
-            <span class="hero-badge">@($"{VisiblePlayers.Count}/{Players.Count} visibles")</span>
+            <strong>@VisiblePlayers.Count/@Players.Count <small>visibles</small></strong>
         }
-    </div>
+    </header>
 
     @if (!HasData)
     {
@@ -27,7 +27,7 @@
     }
     else
     {
-        <div class="page-section-switch ranking-chip-row">
+        <div class="series-switcher">
             @foreach (var player in Players)
             {
                 var isVisible = _visiblePlayerIds.Contains(player.PlayerId.ToString());
@@ -109,7 +109,7 @@
             </svg>
         </div>
 
-        <p class="tiny-note">Les pastilles affichent la moyenne radar normalisee de chaque joueuse visible. La mediane du poste se projette sur la meme echelle 0-100, avec une moyenne actuelle de @GetMedianSummaryLabel().</p>
+        <footer class="chart-stage__note">Moyenne radar des profils visibles. Mediane favorable actuelle: @GetMedianSummaryLabel().</footer>
     }
 </article>
 
@@ -609,7 +609,8 @@
     {
         if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
         {
-            return Math.Clamp(axis.HigherIsBetter ? axis.Percentile : 100d - axis.Percentile, 0d, 100d);
+            // The API percentile is already oriented so that a higher score is favorable.
+            return Math.Clamp(axis.Percentile, 0d, 100d);
         }
 
         var normalized = (value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);

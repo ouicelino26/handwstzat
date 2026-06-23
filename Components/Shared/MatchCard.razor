@@ -1,98 +1,85 @@
-<article class="mini-card match-card @(IsSelected ? "is-selected" : string.Empty)">
-    <div class="match-card-eyebrow">
+<article class="game-ticket @(IsSelected ? "is-selected" : string.Empty)">
+    <header class="game-ticket__meta">
         @if (!string.IsNullOrWhiteSpace(Kicker))
         {
-            <p class="match-card-kicker">@Kicker</p>
+            <span>@Kicker</span>
         }
 
         @if (!string.IsNullOrWhiteSpace(Badge))
         {
-            <span class="match-card-badge">@Badge</span>
+            <strong>@Badge</strong>
         }
-    </div>
+    </header>
 
     @if (!_hasTeamPair && !string.IsNullOrWhiteSpace(_headline))
     {
-        <div class="match-card-titleline">
-            <h4 class="match-card-title">@_headline</h4>
-        </div>
+        <h3 class="game-ticket__title">@_headline</h3>
     }
 
-    <div class="match-card-scoreboard @(_hasScorePair ? string.Empty : "is-single")">
+    <div class="game-ticket__score @(_hasScorePair ? string.Empty : "is-single")">
         @if (_hasScorePair)
         {
-            <div class="match-card-side match-card-side-home">
-                <div class="match-card-scorebox match-card-scorebox-home">
-                    <div class="match-card-scorebox-value">@_homeScore</div>
-                </div>
-
+            <div class="game-ticket__team">
                 @if (_hasTeamPair)
                 {
-                    <div class="match-card-team-pill match-card-team-pill-home">@_homeTeam</div>
+                    <span>@_homeTeam</span>
                 }
+                <strong>@_homeScore</strong>
             </div>
 
-            <div class="match-card-score-separator" aria-hidden="true">
-                <span>VS</span>
-            </div>
+            <i aria-hidden="true">:</i>
 
-            <div class="match-card-side match-card-side-away">
-                <div class="match-card-scorebox match-card-scorebox-away">
-                    <div class="match-card-scorebox-value">@_awayScore</div>
-                </div>
-
+            <div class="game-ticket__team game-ticket__team--away">
                 @if (_hasTeamPair)
                 {
-                    <div class="match-card-team-pill match-card-team-pill-away">@_awayTeam</div>
+                    <span>@_awayTeam</span>
                 }
+                <strong>@_awayScore</strong>
             </div>
         }
         else
         {
-            <div class="match-card-scorebox match-card-scorebox-single">
-                <div class="match-card-scorebox-value">@Score</div>
-            </div>
+            <strong>@Score</strong>
         }
     </div>
 
     @if (ChildContent is not null)
     {
-        <div class="match-card-extra">
+        <div class="game-ticket__extra">
             @ChildContent
         </div>
     }
 
-    <div class="match-card-footer">
-        <div class="match-card-info">
+    <footer class="game-ticket__footer">
+        <div>
             @if (!string.IsNullOrWhiteSpace(Meta))
             {
-                <p class="match-card-meta">@Meta</p>
+                <strong>@Meta</strong>
             }
 
             @if (!string.IsNullOrWhiteSpace(SecondaryMeta))
             {
-                <p class="match-card-meta match-card-secondary">@SecondaryMeta</p>
+                <small>@SecondaryMeta</small>
             }
         </div>
 
         @if (!string.IsNullOrWhiteSpace(DetailsHref) || OnCardClick.HasDelegate)
         {
-            <div class="match-card-actions">
+            <div class="game-ticket__action">
                 @if (!string.IsNullOrWhiteSpace(DetailsHref))
                 {
-                    <a class="ghost-button filter-ghost match-card-button" href="@DetailsHref">@DetailsLabel</a>
+                    <a href="@DetailsHref"><span>@DetailsLabel</span><span aria-hidden="true">→</span></a>
                 }
                 else
                 {
                     <button type="button"
-                            class="ghost-button filter-ghost match-card-button"
                             @onclick="HandleCardClickAsync">
-                        @DetailsLabel
+                        <span>@DetailsLabel</span><span aria-hidden="true">→</span>
                     </button>
                 }
             </div>
         }
-    </div>
+    </footer>
 </article>
 
 @code {

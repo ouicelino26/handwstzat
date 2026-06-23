@@ -1,1 +1,90 @@
-/* Styles moved to wwwroot/app.css */
+.metric-orbit {
+    --orbit-color: var(--electric-400);
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 6rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+}
+
+.metric-orbit.is-positive {
+    --orbit-color: var(--court-400);
+}
+
+.metric-orbit.is-warning {
+    --orbit-color: var(--warning-400);
+}
+
+.metric-orbit.is-danger {
+    --orbit-color: var(--danger-400);
+}
+
+.metric-orbit__copy {
+    min-width: 0;
+    display: grid;
+    gap: 0.2rem;
+}
+
+.metric-orbit__copy > span,
+.metric-orbit__copy > small {
+    color: var(--text-muted);
+    font-size: 0.58rem;
+}
+
+.metric-orbit__copy > span {
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.metric-orbit__copy > strong {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.metric-orbit__copy > p {
+    margin: 0.35rem 0 0;
+    color: var(--text-body);
+    font-size: 0.65rem;
+    line-height: 1.4;
+}
+
+.metric-orbit__visual {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+}
+
+.metric-orbit__visual svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    transform: rotate(-90deg);
+}
+
+.metric-orbit__track,
+.metric-orbit__value {
+    fill: none;
+    stroke-width: 7;
+}
+
+.metric-orbit__track {
+    stroke: var(--line);
+}
+
+.metric-orbit__value {
+    stroke: var(--orbit-color);
+    stroke-linecap: round;
+}
+
+.metric-orbit__visual > span {
+    color: var(--orbit-color);
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+}

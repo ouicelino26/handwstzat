@@ -1,88 +1,85 @@
-<section class="state-card @ToneClass @CssClass"
+<section class="studio-state @ToneClass @CssClass"
+         data-state="@Tone"
          role="@Role"
          aria-live="@AriaLive"
          aria-busy="@IsBusy">
-    <div class="state-card-mark" aria-hidden="true"></div>
+    <div class="studio-state__signal" aria-hidden="true">
+        <span>@StateSymbol</span>
+    </div>
 
-    <div class="state-card-copy">
+    <div class="studio-state__body">
         @if (!string.IsNullOrWhiteSpace(Kicker))
         {
-            <p class="section-kicker">@Kicker</p>
+            <span class="studio-state__kicker">@Kicker</span>
         }
 
         @if (!string.IsNullOrWhiteSpace(Title))
         {
-            <h3>@Title</h3>
+            <h2 data-page-title>@Title</h2>
         }
 
         @if (!string.IsNullOrWhiteSpace(Message))
         {
-            <p class="page-subtitle">@Message</p>
+            <p>@Message</p>
+        }
+
+        @if (ChildContent is not null)
+        {
+            <div class="studio-state__content">
+                @ChildContent
+            </div>
+        }
+
+        @if (Actions is not null)
+        {
+            <div class="studio-state__actions">
+                @Actions
+            </div>
         }
     </div>
 
-    @if (ChildContent is not null)
-    {
-        <div class="state-card-content">
-            @ChildContent
-        </div>
-    }
-
-    @if (Actions is not null)
-    {
-        <div class="toolbar state-card-actions">
-            @Actions
-        </div>
-    }
+    <div class="studio-state__code" aria-hidden="true">@StateCode</div>
 </section>
 
 @code {
-    [Parameter]
-    public string? Kicker { get; set; }
+    [Parameter] public string? Kicker { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string Tone { get; set; } = "neutral";
+    [Parameter] public string CssClass { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
 
-    [Parameter]
-    public string? Title { get; set; }
-
-    [Parameter]
-    public string? Message { get; set; }
-
-    [Parameter]
-    public string Tone { get; set; } = "neutral";
-
-    [Parameter]
-    public string CssClass { get; set; } = string.Empty;
-
-    [Parameter]
-    public RenderFragment? ChildContent { get; set; }
-
-    [Parameter]
-    public RenderFragment? Actions { get; set; }
-
-    private string ToneClass => Tone?.ToLowerInvariant() switch
-    {
-        "loading" => "is-loading",
-        "empty" => "is-empty",
-        "error" => "is-error",
-        "success" => "is-success",
-        "warning" => "is-warning",
-        _ => "is-neutral"
-    };
-
+    private string ToneClass => $"studio-state--{Tone?.ToLowerInvariant() ?? "neutral"}";
     private bool IsBusy => string.Equals(Tone, "loading", StringComparison.OrdinalIgnoreCase);
-
+    private string StateSymbol => Tone?.ToLowerInvariant() switch
+    {
+        "loading" => "···",
+        "error" => "!",
+        "success" => "✓",
+        "warning" => "△",
+        "empty" => "○",
+        _ => "•"
+    };
+    private string StateCode => Tone?.ToUpperInvariant() switch
+    {
+        "ERROR" => "ERR",
+        "LOADING" => "SYNC",
+        "WARNING" => "CHECK",
+        "EMPTY" => "NULL",
+        "SUCCESS" => "OK",
+        _ => "INFO"
+    };
     private string Role => Tone?.ToLowerInvariant() switch
     {
         "error" => "alert",
-        "loading" => "status",
-        "success" => "status",
+        "loading" or "success" => "status",
         _ => "region"
     };
-
     private string AriaLive => Tone?.ToLowerInvariant() switch
     {
         "error" => "assertive",
-        "loading" => "polite",
-        "success" => "polite",
+        "loading" or "success" => "polite",
         _ => "off"
     };
 }

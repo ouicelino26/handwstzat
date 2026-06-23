@@ -2,123 +2,127 @@
 @layout PublicLayout
 @inject NavigationManager Navigation
 
-<PageTitle>Aperçu</PageTitle>
+<PageTitle>Visite guidee</PageTitle>
 
-<div class="demo-shell">
-    <section class="page-hero demo-hero">
-        <div>
-            <p class="section-kicker">Aperçu produit</p>
-            <h2>Une démonstration claire avant l’accès live.</h2>
-            <p class="page-subtitle">
-                Cette page présente la logique d’interface, la lecture globale, le focus joueuse
-                et les cartes spatiales sans mélanger cela avec la session utilisateur.
+<div class="guided-tour">
+    <header class="guided-tour__hero">
+        <div class="guided-tour__copy">
+            <span class="auth-overline">Product walkthrough / 03 actes</span>
+            <h1 data-page-title>Une decision se construit, elle ne se devine pas.</h1>
+            <p>
+                Suivez le chemin complet: detecter un signal collectif, ouvrir la trajectoire
+                d'une joueuse, puis verifier la preuve sur le terrain.
             </p>
         </div>
 
-        <div class="toolbar">
-            <button type="button" class="ghost-button" @onclick="GoToLogin">Connexion live</button>
-            <button type="button" class="primary-button" @onclick="GoToLogin">Accéder à l’interface</button>
+        <div class="guided-tour__actions">
+            <button type="button" class="ghost-button" @onclick="GoToLogin">Retour</button>
+            <button type="button" class="primary-button" @onclick="GoToLogin">Connexion live</button>
+        </div>
+    </header>
+
+    <nav class="guided-tour__rail" aria-label="Etapes de la demonstration">
+        <a href="#act-one"><span>01</span><strong>Signal</strong><small>Lire le collectif</small></a>
+        <a href="#act-two"><span>02</span><strong>Profil</strong><small>Comprendre la joueuse</small></a>
+        <a href="#act-three"><span>03</span><strong>Preuve</strong><small>Explorer le terrain</small></a>
+    </nav>
+
+    <section class="tour-act tour-act--signal" id="act-one">
+        <div class="tour-act__intro">
+            <span>Acte 01</span>
+            <h2>Le signal collectif.</h2>
+            <p>Le volume de competition donne le contexte avant toute comparaison individuelle.</p>
+        </div>
+
+        <div class="tour-metric-wall">
+            <article><span>Joueuses</span><strong>@Snapshot.Overview.PlayerCount</strong></article>
+            <article><span>Equipes</span><strong>@Snapshot.Overview.TeamCount</strong></article>
+            <article><span>Matchs</span><strong>@Snapshot.Overview.MatchCount</strong></article>
+            <article class="tour-metric-wall__accent"><span>Buts</span><strong>@Snapshot.Overview.GoalCount</strong></article>
+        </div>
+
+        <div class="tour-ranking">
+            <div class="tour-ranking__head">
+                <span>Top production</span>
+                <small>Scope demonstration</small>
+            </div>
+            @foreach (var item in Snapshot.TopScorers.Take(5).Select((value, index) => (value, index)))
+            {
+                <div class="tour-ranking__row">
+                    <span>@((item.index + 1).ToString("00"))</span>
+                    <strong>@item.value.PlayerName</strong>
+                    <span>@item.value.ValueLabel</span>
+                </div>
+            }
         </div>
     </section>
 
-    <section class="stats-grid">
-        <div class="mini-card"><span>Joueuses</span><strong>@Snapshot.Overview.PlayerCount</strong></div>
-        <div class="mini-card"><span>Equipes</span><strong>@Snapshot.Overview.TeamCount</strong></div>
-        <div class="mini-card"><span>Matchs</span><strong>@Snapshot.Overview.MatchCount</strong></div>
-        <div class="mini-card"><span>Buts</span><strong>@Snapshot.Overview.GoalCount</strong></div>
+    <section class="tour-act tour-act--profile" id="act-two">
+        <div class="tour-profile-card">
+            <div class="tour-profile-card__number">07</div>
+            <div class="tour-profile-card__identity">
+                <span>Acte 02 / Athlete brief</span>
+                <h2>@Snapshot.Spotlight.FullName</h2>
+                <p>@Snapshot.Spotlight.TeamName · @Snapshot.Spotlight.PositionName</p>
+            </div>
+            <div class="tour-profile-card__metrics">
+                <article><span>Buts</span><strong>@Snapshot.Spotlight.TotalGoals</strong></article>
+                <article><span>Passes</span><strong>@Snapshot.Spotlight.Assists</strong></article>
+                <article><span>Taux tir</span><strong>@FormatRate(Snapshot.Spotlight.ShootingRate)%</strong></article>
+                <article><span>Matchs</span><strong>@Snapshot.Spotlight.MatchesPlayed</strong></article>
+            </div>
+        </div>
     </section>
 
-    <section class="dual-grid">
-        <article class="page-panel">
-            <div class="panel-head">
-                <div>
-                    <p class="section-kicker">Ce que montre la démo</p>
-                    <h3>Lecture ligue et classement</h3>
-                </div>
+    <section class="tour-act tour-act--court" id="act-three">
+        <div class="tour-act__intro">
+            <span>Acte 03</span>
+            <h2>La preuve spatiale.</h2>
+            <p>Selectionnez une zone pour passer du resultat global au detail des actions.</p>
+        </div>
+
+        <div class="tour-court-grid">
+            <div class="tour-court-stage">
+                <GoalKpi GoalZones="@Snapshot.Spotlight.GoalZones"
+                         TriggerZones="@Snapshot.Spotlight.TriggerZones"
+                         IsGoalkeeper="@Snapshot.Spotlight.IsGoalkeeper"
+                         ActiveZoneKey="@ActiveZoneKey"
+                         OnZoneSelected="HandleZoneSelectionAsync" />
             </div>
 
-            <div class="compact-list">
-                @foreach (var item in Snapshot.TopScorers.Take(5))
-                {
-                    <div class="outcome-row">
-                        <span>@item.PlayerName</span>
-                        <strong>@item.ValueLabel</strong>
-                    </div>
-                }
-            </div>
-        </article>
-
-        <article class="page-panel">
-            <div class="panel-head">
-                <div>
-                <p class="section-kicker">Focus joueuse</p>
-                <h3>@Snapshot.Spotlight.FullName</h3>
-                <p class="page-subtitle">@Snapshot.Spotlight.TeamName - @Snapshot.Spotlight.PositionName</p>
-                </div>
-            </div>
-
-            <div class="badge-row">
-                <div class="mini-card"><span>Buts</span><strong>@Snapshot.Spotlight.TotalGoals</strong></div>
-                <div class="mini-card"><span>Passes</span><strong>@Snapshot.Spotlight.Assists</strong></div>
-                <div class="mini-card"><span>Taux tir</span><strong>@FormatRate(Snapshot.Spotlight.ShootingRate)%</strong></div>
-                <div class="mini-card"><span>Matchs</span><strong>@Snapshot.Spotlight.MatchesPlayed</strong></div>
-            </div>
-        </article>
-    </section>
-
-    <section class="dual-grid">
-        <article class="page-panel">
-            <div class="panel-head">
-                <div>
-                    <p class="section-kicker">Carte spatiale</p>
-                    <h3>But et declenchements</h3>
-                </div>
-            </div>
-
-            <GoalKpi GoalZones="@Snapshot.Spotlight.GoalZones"
-                     TriggerZones="@Snapshot.Spotlight.TriggerZones"
-                     IsGoalkeeper="@Snapshot.Spotlight.IsGoalkeeper"
-                     ActiveZoneKey="@ActiveZoneKey"
-                     OnZoneSelected="HandleZoneSelectionAsync" />
-        </article>
-
-        <article class="page-panel">
-            <div class="panel-head">
-                <div>
-                    <p class="section-kicker">Lecture de zone</p>
-                    <h3>@(CurrentZone?.Label ?? "Selectionnez une zone")</h3>
-                </div>
+            <aside class="tour-zone-lens">
+                <span>Zone active</span>
+                <h3>@(CurrentZone?.Label ?? "Selectionnez une zone")</h3>
                 @if (CurrentZone is not null)
                 {
-                    <span class="panel-pill">@FormatRate(CurrentZone.Rate)%</span>
+                    <strong>@FormatRate(CurrentZone.Rate)%</strong>
+                    <div class="tour-zone-lens__metrics">
+                        <article><span>Volume</span><strong>@CurrentZone.Attempts</strong></article>
+                        <article><span>Succes</span><strong>@CurrentZone.Successes</strong></article>
+                        <article><span>Echecs</span><strong>@CurrentZone.Failures</strong></article>
+                    </div>
+                    <div class="tour-zone-lens__outcomes">
+                        @foreach (var outcome in CurrentZone.Outcomes)
+                        {
+                            <div><span>@outcome.Label</span><strong>@outcome.Count</strong></div>
+                        }
+                    </div>
                 }
-            </div>
-
-            @if (CurrentZone is not null)
-            {
-                <div class="badge-row">
-                    <div class="mini-card"><span>Volume</span><strong>@CurrentZone.Attempts</strong></div>
-                    <div class="mini-card"><span>Succes</span><strong>@CurrentZone.Successes</strong></div>
-                    <div class="mini-card"><span>Echecs</span><strong>@CurrentZone.Failures</strong></div>
-                </div>
-
-                <div class="compact-list">
-                    @foreach (var outcome in CurrentZone.Outcomes)
-                    {
-                        <div class="outcome-row">
-                            <span>@outcome.Label</span>
-                            <strong>@outcome.Count</strong>
-                        </div>
-                    }
-                </div>
-            }
-        </article>
+            </aside>
+        </div>
     </section>
+
+    <footer class="guided-tour__closing">
+        <div>
+            <span>La suite</span>
+            <h2>Ouvrez les donnees live.</h2>
+        </div>
+        <button type="button" class="primary-button" @onclick="GoToLogin">Se connecter <span aria-hidden="true">→</span></button>
+    </footer>
 </div>
 
 @code {
     private DashboardSnapshot Snapshot { get; } = DemoDataFactory.Create(null);
-
     private string? ActiveZoneKey { get; set; }
 
     private ZoneStat? CurrentZone => Snapshot.Spotlight.GoalZones.Concat(Snapshot.Spotlight.TriggerZones)
@@ -140,10 +144,6 @@
         return InvokeAsync(StateHasChanged);
     }
 
-    private void GoToLogin()
-    {
-        Navigation.NavigateTo("/");
-    }
-
+    private void GoToLogin() => Navigation.NavigateTo("/");
     private static string FormatRate(double value) => value.ToString("0.#");
 }

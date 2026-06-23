@@ -1,115 +1,83 @@
 @using HandWStat.Models.Analytics
 
-<article class="page-panel">
-    <div class="panel-head panel-head-wrap">
+<section class="insight-board">
+    <header class="insight-board__head">
         <div>
-            <p class="section-kicker">@Kicker</p>
-            <h4>@Title</h4>
+            <span>@Kicker</span>
+            <h3>@Title</h3>
             @if (!string.IsNullOrWhiteSpace(Subtitle))
             {
-                <p class="page-subtitle">@Subtitle</p>
+                <p>@Subtitle</p>
             }
         </div>
-
-        @if (_cards.Count > 0)
-        {
-            <span class="hero-badge">@_cards.Count cartes</span>
-        }
-    </div>
+        <strong>@_cards.Count.ToString("00")</strong>
+    </header>
 
     @if (_cards.Count == 0)
     {
         <StateCard Kicker="Lecture coach"
                    Title="@EmptyTitle"
                    Message="@EmptyMessage"
-                   Tone="empty"
-                   CssClass="empty-card-inline" />
+                   Tone="empty" />
     }
     else
     {
-        <div class="coach-card-grid">
-            @foreach (var card in _cards)
+        <div class="insight-board__grid">
+            @foreach (var entry in _cards.Select((card, index) => (card, index)))
             {
-                <article class="mini-card coach-card coach-card-@GetToneClass(card.Tone)">
-                    <div class="coach-card-head">
-                        <span class="coach-card-label">@GetTypeLabel(card.Type, card.Label)</span>
-                        <span class="axis-badge axis-badge-@GetToneClass(card.Tone)">@GetToneLabel(card.Tone)</span>
+                <article class="insight-note insight-note--@GetToneClass(entry.card.Tone)">
+                    <span class="insight-note__index">@((entry.index + 1).ToString("00"))</span>
+                    <div>
+                        <span>@GetTypeLabel(entry.card.Type, entry.card.Label)</span>
+                        <p>@entry.card.Sentence</p>
                     </div>
-                    <p class="coach-card-text">@card.Sentence</p>
+                    <strong>@GetToneLabel(entry.card.Tone)</strong>
                 </article>
             }
         </div>
     }
-</article>
+</section>
 
 @code {
-    [Parameter]
-    public string Kicker { get; set; } = "Lecture coach";
-
-    [Parameter]
-    public string Title { get; set; } = "Ce que le staff doit retenir tout de suite";
-
-    [Parameter]
-    public string? Subtitle { get; set; }
-
-    [Parameter]
-    public IReadOnlyList<CoachCardViewModel> Cards { get; set; } = [];
-
-    [Parameter]
-    public string EmptyTitle { get; set; } = "Choisissez une joueuse pour afficher les cartes coach";
-
-    [Parameter]
-    public string EmptyMessage { get; set; } = "Les cartes coach condensent les forces, les faiblesses, les alertes et le role dans une lecture immediate.";
-
-    [Parameter]
-    public int MaxCards { get; set; } = 4;
+    [Parameter] public string Kicker { get; set; } = "Lecture coach";
+    [Parameter] public string Title { get; set; } = "Ce que le staff doit retenir";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public IReadOnlyList<CoachCardViewModel> Cards { get; set; } = [];
+    [Parameter] public string EmptyTitle { get; set; } = "Choisissez une joueuse pour afficher les insights";
+    [Parameter] public string EmptyMessage { get; set; } = "Les signaux condensent forces, fragilites, alertes et adequation au role.";
 
     private IReadOnlyList<CoachCardViewModel> _cards = [];
 
     protected override void OnParametersSet()
     {
-        _cards = Cards
-            .Where(card => card is not null)
-            .Take(MaxCards)
-            .ToList();
+        _cards = Cards ?? [];
     }
 
-    private static string GetToneClass(string? tone)
+    private static string GetTypeLabel(CoachCardType type, string fallback) => type switch
     {
-        return tone?.ToLowerInvariant() switch
-        {
-            "positive" => "positive",
-            "good" => "good",
-            "warning" => "warning",
-            "danger" => "danger",
-            "info" => "info",
-            _ => "neutral"
-        };
-    }
+        CoachCardType.Strength => "Force",
+        CoachCardType.Weakness => "Vigilance",
+        CoachCardType.Role => "Role",
+        CoachCardType.Tactical => "Tactique",
+        CoachCardType.Alert => "Alerte",
+        _ => fallback
+    };
 
-    private static string GetToneLabel(string? tone)
+    private static string GetToneClass(string tone) => tone?.ToLowerInvariant() switch
     {
-        return tone?.ToLowerInvariant() switch
-        {
-            "positive" => "Fort",
-            "good" => "Stable",
-            "warning" => "Vigilance",
-            "danger" => "Alerte",
-            "info" => "Role",
-            _ => "Note"
-        };
-    }
+        "positive" => "positive",
+        "good" => "good",
+        "warning" => "warning",
+        "danger" => "danger",
+        _ => "neutral"
+    };
 
-    private static string GetTypeLabel(CoachCardType type, string fallback)
+    private static string GetToneLabel(string tone) => tone?.ToLowerInvariant() switch
     {
-        return type switch
-        {
-            CoachCardType.Strength => "Force",
-            CoachCardType.Weakness => "Vigilance",
-            CoachCardType.Alert => "Alerte",
-            CoachCardType.Role => "Role",
-            CoachCardType.Tactical => "Tactique",
-            _ => fallback
-        };
-    }
+        "positive" => "Fort",
+        "good" => "Stable",
+        "warning" => "A suivre",
+        "danger" => "Alerte",
+        _ => "Repere"
+    };
 }

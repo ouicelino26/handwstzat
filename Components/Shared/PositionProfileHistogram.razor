@@ -1,21 +1,21 @@
 @inject ILogger<PositionProfileHistogram> Logger
 
-<article class="page-panel position-profile-histogram">
-    <div class="panel-head">
+<article class="chart-stage chart-stage--histogram">
+    <header class="chart-stage__head">
         <div>
-            <p class="section-kicker">@Kicker</p>
-            <h4>@Title</h4>
+            <span>@Kicker</span>
+            <h3>@Title</h3>
             @if (!string.IsNullOrWhiteSpace(Subtitle))
             {
-                <p class="page-subtitle">@Subtitle</p>
+                <p>@Subtitle</p>
             }
         </div>
 
         @if (Axes.Count > 0)
         {
-            <span class="hero-badge">@Axes.Count axes</span>
+            <strong>@Axes.Count.ToString("00") <small>axes</small></strong>
         }
-    </div>
+    </header>
 
     @if (!HasData)
     {
@@ -27,7 +27,7 @@
     }
     else
     {
-        <div class="radar-legend-strip" aria-label="Legende histogramme">
+        <div class="chart-stage__legend" aria-label="Legende histogramme">
             <div class="radar-legend-item radar-legend-item-player">
                 <span class="radar-legend-swatch" style="@GetSwatchStyle(ChartPalette.Player)"></span>
                 <strong>@SelectedSeriesLabel</strong>
@@ -100,7 +100,7 @@
             </ChildContent>
         </ApexChart>
 
-        <p class="tiny-note">Les barres comparent la valeur brute de la joueuse a la mediane brute du poste. Le radar voisin projette maintenant chaque axe sur une echelle normalisee 0-100.</p>
+        <footer class="chart-stage__note">Valeurs brutes joueuse et mediane. Le radar voisin utilise une echelle normalisee 0-100.</footer>
     }
 </article>
 

@@ -1,1 +1,288 @@
-/* Styles moved to wwwroot/app.css */
+.auth-portal {
+    width: min(100%, 92rem);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(20rem, 0.7fr);
+    align-items: center;
+    gap: clamp(2rem, 7vw, 8rem);
+    color: #f7f5ed;
+}
+
+.auth-manifesto {
+    position: relative;
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    padding: clamp(1rem, 3vw, 3rem) 0;
+}
+
+.auth-manifesto__index {
+    color: #60766d;
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    letter-spacing: 0.24em;
+}
+
+.auth-manifesto__copy {
+    display: grid;
+    gap: 1rem;
+}
+
+.auth-overline {
+    color: var(--signal-500);
+    font-size: 0.62rem;
+    font-weight: 850;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.auth-manifesto h1 {
+    max-width: 10ch;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(4rem, 8.5vw, 8.8rem);
+    font-weight: 650;
+    line-height: 0.78;
+    letter-spacing: -0.06em;
+}
+
+.auth-manifesto__copy p {
+    max-width: 42rem;
+    margin: 0;
+    color: #91a49b;
+    font-size: clamp(0.88rem, 1.2vw, 1.05rem);
+    line-height: 1.6;
+}
+
+.auth-signal-board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.auth-signal-board article {
+    display: grid;
+    gap: 0.2rem;
+    padding: 1rem 0.8rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.auth-signal-board article:last-child {
+    border-right: 0;
+}
+
+.auth-signal-board span,
+.auth-signal-board small {
+    color: #657a71;
+    font-size: 0.58rem;
+}
+
+.auth-signal-board strong {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+}
+
+.auth-demo-link {
+    width: fit-content;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0;
+    border: 0;
+    color: #f7f5ed;
+    text-align: left;
+    background: transparent;
+    cursor: pointer;
+}
+
+.auth-demo-link__play {
+    width: 2.9rem;
+    height: 2.9rem;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 50%;
+    color: var(--court-400);
+}
+
+.auth-demo-link > span:nth-child(2) {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.auth-demo-link strong {
+    font-size: 0.74rem;
+}
+
+.auth-demo-link small {
+    color: #70867c;
+    font-size: 0.6rem;
+}
+
+.auth-console {
+    position: relative;
+    display: grid;
+    gap: 2rem;
+    padding: clamp(1.3rem, 3vw, 2.5rem);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0.4rem 2rem 0.4rem 0.4rem;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025));
+    box-shadow: 0 40px 90px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(22px);
+}
+
+.auth-console::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    right: 3rem;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--signal-500), transparent);
+}
+
+.auth-console__status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #81968c;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.auth-console__status span {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--court-400);
+    box-shadow: 0 0 0 0.28rem rgba(143, 225, 178, 0.1);
+}
+
+.auth-console__heading {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.auth-console__heading > span {
+    color: var(--signal-500);
+    font-size: 0.58rem;
+    font-weight: 850;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.auth-console h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 4vw, 3.8rem);
+    font-weight: 620;
+    line-height: 0.9;
+}
+
+.auth-console__heading p {
+    margin: 0;
+    color: #82978d;
+    font-size: 0.72rem;
+    line-height: 1.5;
+}
+
+.auth-console__form {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.auth-console__form label {
+    display: grid;
+    gap: 0.32rem;
+}
+
+.auth-console__form label > span {
+    color: #768a81;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.auth-console__form input {
+    min-height: 3.3rem;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 0;
+    color: #f7f5ed;
+    background: transparent;
+}
+
+.auth-submit {
+    min-height: 3.45rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.4rem;
+    padding: 0 1rem;
+    border: 0;
+    border-radius: 0.35rem;
+    color: #071412;
+    font-weight: 850;
+    background: var(--court-400);
+    cursor: pointer;
+}
+
+.auth-console__feedback {
+    min-height: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: #71867c;
+    font-size: 0.62rem;
+}
+
+.auth-console__feedback-dot {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 50%;
+    background: var(--signal-500);
+}
+
+.auth-console__loader {
+    width: 0.8rem;
+    height: 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--court-400);
+    border-radius: 50%;
+    animation: spin 700ms linear infinite;
+}
+
+@media (max-width: 850px) {
+    .auth-portal {
+        grid-template-columns: minmax(0, 1fr);
+        align-content: start;
+        padding: 3rem 0;
+    }
+
+    .auth-manifesto h1 {
+        max-width: 11ch;
+        font-size: clamp(3.5rem, 15vw, 6rem);
+    }
+}
+
+@media (max-width: 520px) {
+    .auth-signal-board {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .auth-signal-board article {
+        grid-template-columns: auto 1fr;
+        align-items: baseline;
+        border-right: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .auth-signal-board small {
+        grid-column: 2;
+    }
+}

@@ -1,1 +1,111 @@
-/* Styles moved to wwwroot/app.css */
+.court-studio {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.court-studio__head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.court-studio__head > div:first-child {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.court-studio__head > div:first-child > span,
+.court-stage__head > div > span {
+    color: var(--signal-500);
+    font-size: 0.54rem;
+    font-weight: 850;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.court-studio__head h3,
+.court-stage__head h4 {
+    margin: 0;
+    font-family: var(--font-display);
+}
+
+.court-studio__head p {
+    max-width: 38rem;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.63rem;
+}
+
+.court-studio__modes {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.court-studio__modes ::deep button {
+    min-height: 2.3rem;
+    padding: 0 0.65rem;
+}
+
+.court-stage {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background:
+        linear-gradient(135deg, var(--court-soft), transparent 50%),
+        var(--surface);
+}
+
+.court-stage__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.goal-map-wrap,
+.pitch-map-wrap {
+    padding: 0.65rem;
+}
+
+.goal-map,
+.pitch-map {
+    width: 100%;
+    min-height: 22rem;
+}
+
+.zone-shape {
+    cursor: pointer;
+    transition: opacity 140ms ease, filter 140ms ease, stroke-width 140ms ease;
+}
+
+.zone-shape:hover,
+.zone-shape:focus,
+.zone-active {
+    filter: brightness(1.15) saturate(1.1);
+}
+
+.zone-label {
+    display: grid;
+    place-items: center;
+    color: #071412;
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 750;
+}
+
+@media (max-width: 640px) {
+    .court-studio__head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .court-studio__modes {
+        overflow-x: auto;
+    }
+}

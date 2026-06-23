@@ -1,5 +1,4 @@
 using ApexCharts;
-using BlazorBootstrap;
 using HandWStat.Configuration;
 using HandWStat.Services;
 using HandWStat.Services.Api;
@@ -23,7 +22,6 @@ public static class MauiProgram
 
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddApexChartsMaui();
-        builder.Services.AddBlazorBootstrap();
         builder.Services.AddSingleton(apiSettings);
         builder.Services.AddSingleton(new HttpClient
         {
@@ -39,6 +37,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<StatsApiClient>();
         builder.Services.AddSingleton<ReferenceDataService>();
         builder.Services.AddSingleton<StatsDashboardService>();
+        builder.Services.AddSingleton<AnalysisScopeService>();
+        builder.Services.AddSingleton<GlobalSearchService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();

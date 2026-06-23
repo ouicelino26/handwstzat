@@ -2,7 +2,7 @@
         OnNavigateAsync="HandleNavigateAsync">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1, h2" />
+        <FocusOnNavigate RouteData="routeData" Selector="[data-page-title], h1, h2" />
     </Found>
     <NotFound>
         <LayoutView Layout="typeof(Layout.PublicLayout)">
@@ -11,54 +11,55 @@
     </NotFound>
 </Router>
 
-@if (_showLoader)
+@if (_showTransition)
 {
-    <PageLoader Kicker="Chargement"
-                Title="Ouverture de la page"
-                Message="Preparation du contenu et des filtres." />
+    <div class="studio-route-transition" role="status" aria-live="polite">
+        <div class="studio-route-transition__mark" aria-hidden="true">
+            <span></span><span></span><span></span>
+        </div>
+        <div>
+            <strong>Changement de scene</strong>
+            <small>Le contexte analytique reste synchronise.</small>
+        </div>
+    </div>
 }
 
 @code {
-    private bool _showLoader;
-    private bool _hideLoaderAfterRender;
-    private bool _hasCompletedInitialNavigation;
-    private DateTimeOffset _loaderStartedAt;
-
-    private static readonly TimeSpan MinimumLoaderDuration = TimeSpan.FromMilliseconds(240);
+    private bool _showTransition;
+    private bool _hideAfterRender;
+    private bool _initialNavigationCompleted;
+    private DateTimeOffset _startedAt;
+    private static readonly TimeSpan MinimumDuration = TimeSpan.FromMilliseconds(170);
 
     private Task HandleNavigateAsync(NavigationContext args)
     {
-        if (!_hasCompletedInitialNavigation)
+        if (!_initialNavigationCompleted)
         {
-            _hasCompletedInitialNavigation = true;
-            _showLoader = false;
-            _hideLoaderAfterRender = false;
+            _initialNavigationCompleted = true;
             return Task.CompletedTask;
         }
 
-        _loaderStartedAt = DateTimeOffset.UtcNow;
-        _showLoader = true;
-        _hideLoaderAfterRender = true;
-
+        _startedAt = DateTimeOffset.UtcNow;
+        _showTransition = true;
+        _hideAfterRender = true;
         return InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_hideLoaderAfterRender)
+        if (!_hideAfterRender)
         {
             return;
         }
 
-        _hideLoaderAfterRender = false;
-
-        var elapsed = DateTimeOffset.UtcNow - _loaderStartedAt;
-        if (elapsed < MinimumLoaderDuration)
+        _hideAfterRender = false;
+        var elapsed = DateTimeOffset.UtcNow - _startedAt;
+        if (elapsed < MinimumDuration)
         {
-            await Task.Delay(MinimumLoaderDuration - elapsed);
+            await Task.Delay(MinimumDuration - elapsed);
         }
 
-        _showLoader = false;
+        _showTransition = false;
         await InvokeAsync(StateHasChanged);
     }
 }

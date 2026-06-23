@@ -1,1 +1,11 @@
-/* Styles moved to wwwroot/app.css */
+.studio-domain-nav ::deep a {
+    user-select: none;
+}
+
+.studio-domain-nav ::deep a.active .studio-domain-nav__icon {
+    transform: scale(1.06);
+}
+
+.studio-domain-nav__icon {
+    transition: transform 150ms ease;
+}

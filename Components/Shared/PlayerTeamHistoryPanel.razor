@@ -5,88 +5,68 @@
     var otherHistory = GetOtherHistory(orderedHistory, primaryHistory);
     var clubCount = orderedHistory.Count;
 
-    <section class="@CssClass">
-        <div class="scope-summary-copy">
+    <section class="career-line @CssClass">
+        <header class="career-line__head">
             @if (!string.IsNullOrWhiteSpace(Kicker))
             {
-                <p class="section-kicker">@Kicker</p>
+                <span>@Kicker</span>
             }
 
             @if (!string.IsNullOrWhiteSpace(Title))
             {
-                <h4>@Title</h4>
+                <h3>@Title</h3>
             }
 
             @if (!string.IsNullOrWhiteSpace(Subtitle))
             {
-                <p class="page-subtitle">@Subtitle</p>
+                <p>@Subtitle</p>
             }
-        </div>
+            <strong>@clubCount.ToString("00")</strong>
+        </header>
 
-        <div class="player-team-history-body">
-            <div class="player-team-history-current @(primaryHistory is not null ? "has-history" : "is-empty")">
-                <div class="player-team-history-current-copy">
-                    <div class="player-team-history-current-row">
-                        <span class="hero-badge">Club principal</span>
-                        <span class="panel-pill">@(clubCount == 0 ? "Aucun historique" : $"{clubCount} club{(clubCount > 1 ? "s" : string.Empty)}")</span>
-                    </div>
-
+        <div class="career-line__track">
+            <article class="career-stop career-stop--current @(primaryHistory is not null ? "has-history" : "is-empty")">
+                <span class="career-stop__marker" aria-hidden="true"></span>
+                <div class="career-stop__identity">
+                    <span>Club principal</span>
                     <strong>@(Profile.TeamName ?? "Equipe non renseignee")</strong>
-
                     <small>@GetCurrentNote(primaryHistory, orderedHistory.Count)</small>
                 </div>
 
                 @if (primaryHistory is not null)
                 {
-                    <div class="player-team-history-current-meta">
-                        <div class="player-team-history-stat">
-                            <span>Matchs</span>
-                            <strong>@primaryHistory.MatchesPlayed</strong>
-                        </div>
-                        <div class="player-team-history-stat">
-                            <span>Minutes</span>
-                            <strong>@FormatMinutes(primaryHistory.PlayingTimeMinutes)</strong>
-                        </div>
-                        <div class="player-team-history-stat">
-                            <span>Events</span>
-                            <strong>@primaryHistory.EventCount</strong>
-                        </div>
+                    <div class="career-stop__metrics">
+                        <div><span>Matchs</span><strong>@primaryHistory.MatchesPlayed</strong></div>
+                        <div><span>Minutes</span><strong>@FormatMinutes(primaryHistory.PlayingTimeMinutes)</strong></div>
+                        <div><span>Events</span><strong>@primaryHistory.EventCount</strong></div>
                     </div>
                 }
-            </div>
+            </article>
 
             @if (otherHistory.Count > 0)
             {
-                <div class="player-team-history-grid">
-                    @foreach (var item in otherHistory)
-                    {
-                        <article class="player-team-history-card">
-                            <div class="player-team-history-card-head">
-                                <strong class="player-team-history-team">@GetTeamLabel(item)</strong>
-                                <span class="panel-pill">Autre club</span>
+                @foreach (var item in otherHistory)
+                {
+                    <article class="career-stop">
+                        <span class="career-stop__marker" aria-hidden="true"></span>
+                        <div class="career-stop__identity">
+                            <span>Historique</span>
+                            <strong>@GetTeamLabel(item)</strong>
+                        </div>
+                        <div class="career-stop__metrics">
+                            <div><span>Matchs</span><strong>@item.MatchesPlayed</strong></div>
+                            <div><span>Minutes</span><strong>@FormatMinutes(item.PlayingTimeMinutes)</strong></div>
+                            <div><span>Events</span><strong>@item.EventCount</strong></div>
                             </div>
-
-                            <div class="player-team-history-meta">
-                                <div class="player-team-history-stat">
-                                    <span>Matchs</span>
-                                    <strong>@item.MatchesPlayed</strong>
-                                </div>
-                                <div class="player-team-history-stat">
-                                    <span>Minutes</span>
-                                    <strong>@FormatMinutes(item.PlayingTimeMinutes)</strong>
-                                </div>
-                                <div class="player-team-history-stat">
-                                    <span>Events</span>
-                                    <strong>@item.EventCount</strong>
-                                </div>
-                            </div>
-                        </article>
-                    }
-                </div>
+                    </article>
+                }
             }
-
-            <p class="player-team-history-note">@Footnote</p>
         </div>
+
+        @if (!string.IsNullOrWhiteSpace(Footnote))
+        {
+            <p class="career-line__note">@Footnote</p>
+        }
     </section>
 }
 
@@ -107,7 +87,7 @@
     public string Footnote { get; set; } = "";
 
     [Parameter]
-    public string CssClass { get; set; } = "scope-summary-bar player-team-history-bar";
+    public string CssClass { get; set; } = string.Empty;
 
     private IReadOnlyList<PlayerTeamHistoryDto> GetOrderedHistory()
     {

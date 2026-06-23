@@ -20,7 +20,7 @@
         <Nullable>enable</Nullable>
 
         <!-- Display name -->
-        <ApplicationTitle>HandWStat</ApplicationTitle>
+        <ApplicationTitle>HandWStat Studio</ApplicationTitle>
 
         <!-- App Identifier -->
         <ApplicationId>com.companyname.handwstat</ApplicationId>
@@ -41,14 +41,13 @@
 
     <ItemGroup>
         <!-- App Icon -->
-        <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+        <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#071412" />
 
         <!-- Splash Screen -->
-        <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+        <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#071412" BaseSize="168,168" />
 
         <!-- Images -->
         <MauiImage Include="Resources\Images\*" />
-        <MauiImage Update="Resources\Images\dotnet_bot.svg" BaseSize="168,208" />
 
         <!-- Custom Fonts -->
         <MauiFont Include="Resources\Fonts\*" />
@@ -60,15 +59,14 @@
 
     <ItemGroup>
         <PackageReference Include="Blazor-ApexCharts-MAUI" Version="6.0.2" />
-        <PackageReference Include="Blazor.Bootstrap" Version="3.4.0" />
-        <PackageReference Include="jQWidgets.Blazor" Version="1.3.0" />
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     </ItemGroup>
 
     <PropertyGroup>
-      <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == ''">C:\Users\donovan.bierque\source\repos\ouicelino26\HandballManagerMaui</HandballManagerCorePath>
+      <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('D:\repos\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj')">D:\repos\HandballManagerCore</HandballManagerCorePath>
+      <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('..\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj')">..\HandballManagerCore</HandballManagerCorePath>
     </PropertyGroup>
 
     <ItemGroup>

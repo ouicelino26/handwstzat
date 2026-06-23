@@ -1,7 +1,7 @@
 @page "/dashboard"
 @inherits HomeBase
 
-<PageTitle>Tableau de bord</PageTitle>
+<PageTitle>Today</PageTitle>
 
 @if (IsBusy && Snapshot is null)
 {
@@ -20,7 +20,7 @@ else if (!string.IsNullOrWhiteSpace(ErrorMessage))
 }
 else if (Snapshot is not null)
 {
-    <div class="dashboard-shell">
+    <div class="today-workspace" data-workspace="today">
         @if (IsBusy)
         {
             <PageLoader Kicker="Chargement"
@@ -28,46 +28,51 @@ else if (Snapshot is not null)
                         Message="Les filtres, classements et KPI se recalculent." />
         }
 
-        <section class="dashboard-hero">
-            <div class="dashboard-hero-copy">
-                <p class="section-kicker">Tableau de bord</p>
-                <h2>Vue globale sur les statistiques de la ligue</h2>
+        <section class="today-brief">
+            <div class="today-brief__copy">
+                <span>Morning brief / @Snapshot.DataOrigin</span>
+                <h2 data-page-title>Le scope en un regard.</h2>
+                <p>Les signaux collectifs, le classement actif et les dernieres activites sont synchronises sur le meme contexte.</p>
 
-                <div class="hero-badges">
-                    <span class="hero-badge">@Snapshot.DataOrigin</span>
-                    <span class="hero-badge">@Snapshot.RequestedRankingLabel</span>
-                    <span class="hero-badge">@Snapshot.Overview.MatchCount matchs</span>
+                <div class="today-brief__meta">
+                    <span>@Snapshot.RequestedRankingLabel</span>
+                    <span>@Snapshot.Overview.MatchCount matchs observes</span>
                 </div>
             </div>
 
-            <div class="dashboard-hero-side">
-                <div class="hero-stat-grid">
-                    <article class="hero-stat-card">
+            <div class="today-pulse">
+                    <article>
                         <span>Equipes actives</span>
                         <strong>@Snapshot.Overview.TeamCount</strong>
                         <small>clubs dans le perimetre filtre</small>
                     </article>
 
-                    <article class="hero-stat-card">
+                    <article>
                         <span>Cadence offensive</span>
                         <strong>@((Snapshot.Overview.MatchCount == 0 ? 0 : Snapshot.Overview.GoalCount / (double)Snapshot.Overview.MatchCount).ToString("0.0"))</strong>
                         <small>buts par match sur la selection</small>
                     </article>
 
-                    <article class="hero-stat-card">
+                    <article class="today-pulse__signal">
                         <span>Jeu prepare</span>
                         <strong>@((Snapshot.Overview.GoalCount == 0 ? 0 : Snapshot.Overview.AssistCount * 100d / Snapshot.Overview.GoalCount).ToString("0"))%</strong>
                         <small>buts amenes par une passe decisive</small>
                     </article>
-                </div>
-
             </div>
         </section>
-        <section class="page-panel filter-strip">
+
+        <AudienceLensSelector Kicker="Espace de lecture"
+                              Title="Adaptez le tableau de bord à votre mission"
+                              Subtitle="Le contenu se réorganise pour le pilotage du club, l'analyse détaillée ou le débrief joueuse."
+                              Value="@ActiveLens"
+                              ValueChanged="SetActiveLens" />
+
+        <section class="scope-sheet">
 
             <div class="panel-head panel-head-wrap">
                 <div>
-                    <p class="section-kicker">Filtres</p>
+                    <p class="section-kicker">Scope local</p>
+                    <h3>Ajuster le brief</h3>
                 </div>
 
                 <div class="toolbar">
@@ -152,28 +157,28 @@ else if (Snapshot is not null)
         }
         else
         {
-            <div class="page-section-switch">
+            <div class="scene-switcher" role="tablist" aria-label="Scenes Today">
                 <button type="button" class="section-chip @(ActiveDashboardSection == "league" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("league")' disabled="@IsBusy">
-                    Ligue
-                    <small>Pilotage global</small>
+                    Pulse
+                    <small>Signaux collectifs</small>
                 </button>
                 <button type="button" class="section-chip @(ActiveDashboardSection == "spotlight" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("spotlight")' disabled="@IsBusy">
-                    Focus joueuse
-                    <small>Profil et spatial</small>
+                    Athlete signal
+                    <small>Profil et court</small>
                 </button>
                 <button type="button" class="section-chip @(ActiveDashboardSection == "recent" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("recent")' disabled="@IsBusy">
-                    Activite recente
-                    <small>Matchs et feuilles</small>
+                    Recent games
+                    <small>Dernieres rencontres</small>
                 </button>
                 <button type="button" class="section-chip @(ActiveDashboardSection == "global-rankings" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("global-rankings")' disabled="@IsBusy">
-                    Classements globaux
-                    <small>Toutes les joueuses</small>
+                    Data index
+                    <small>Tables completes</small>
                 </button>
             </div>
 
             @if (ActiveDashboardSection == "league")
             {
-                <section class="stats-grid">
+                <section class="signal-matrix">
                     <div class="mini-card"><span>Joueuses</span><strong>@Snapshot.Overview.PlayerCount</strong></div>
                     <div class="mini-card"><span>Matchs</span><strong>@Snapshot.Overview.MatchCount</strong></div>
                     <div class="mini-card"><span>Buts</span><strong>@Snapshot.Overview.GoalCount</strong></div>
@@ -876,7 +881,12 @@ else if (Snapshot is not null)
         builder.AddAttribute(1, "type", "button");
         builder.AddAttribute(2, "class", $"table-sort-button {(FieldBoardSort.IsActive(column) || GoalkeeperBoardSort.IsActive(column) ? "is-active" : string.Empty)}");
         builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => onSort(column)));
-        builder.AddContent(4, label);
+        var sortState = column.StartsWith("keeper-", StringComparison.OrdinalIgnoreCase)
+            ? GoalkeeperBoardSort
+            : FieldBoardSort;
+        builder.AddAttribute(4, "aria-label", sortState.SortButtonLabel(column, label));
+        builder.AddAttribute(5, "aria-pressed", sortState.IsActive(column));
+        builder.AddContent(6, label);
 
         var glyph = FieldBoardSort.IsActive(column)
             ? FieldBoardSort.Glyph(column)
@@ -884,9 +894,10 @@ else if (Snapshot is not null)
 
         if (!string.IsNullOrWhiteSpace(glyph))
         {
-            builder.OpenElement(5, "span");
-            builder.AddAttribute(6, "class", "sort-indicator");
-            builder.AddContent(7, glyph);
+            builder.OpenElement(7, "span");
+            builder.AddAttribute(8, "class", "sort-indicator");
+            builder.AddAttribute(9, "aria-hidden", "true");
+            builder.AddContent(10, glyph);
             builder.CloseElement();
         }
 

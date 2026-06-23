@@ -1,91 +1,69 @@
-<aside class="player-list-panel selection-column @(IsPlayerListOpen ? "is-open" : "is-collapsed")"
+<aside class="entity-index @(IsPlayerListOpen ? "is-open" : "is-collapsed")"
        aria-label="@Kicker">
-    <div class="player-list-panel__head">
-        <div class="player-list-panel__copy">
-            <strong class="player-list-panel__kicker">@Kicker</strong>
-            <strong class="player-list-panel__count">@Players.Count joueuses</strong>
+    <header class="entity-index__head">
+        <div>
+            <span>@Kicker</span>
+            <strong>@Players.Count.ToString("00")</strong>
             @if (!string.IsNullOrWhiteSpace(Subtitle))
             {
-                <span class="player-list-panel__subtitle">@Subtitle</span>
+                <small>@Subtitle</small>
             }
         </div>
-
         <button type="button"
-                class="player-list-toggle"
                 @onclick="TogglePlayerListAsync"
                 aria-expanded="@IsPlayerListOpen"
                 aria-controls="@_contentId"
-                aria-label="@(IsPlayerListOpen ? "Reduire la liste des joueuses" : "Ouvrir la liste des joueuses")">
-            <span class="player-list-toggle__icon" aria-hidden="true">@(IsPlayerListOpen ? "\u2039" : "\u203A")</span>
+                aria-label="@(IsPlayerListOpen ? "Reduire l'index" : "Ouvrir l'index")">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@TogglePath"></path></svg>
         </button>
-    </div>
+    </header>
 
     <div id="@_contentId"
-         class="player-list-panel__body @(Scrollable ? "is-scrollable" : "is-relaxed")"
+         class="entity-index__body @(Scrollable ? "is-scrollable" : string.Empty)"
          aria-hidden="@(!IsPlayerListOpen)">
         @if (Players.Count == 0)
         {
             <StateCard Kicker="@EmptyKicker"
                        Title="@EmptyTitle"
                        Message="@EmptyMessage"
-                       Tone="empty"
-                       CssClass="empty-card-inline" />
+                       Tone="empty" />
         }
         else
         {
-            <div class="player-mosaic">
-                @foreach (var player in Players)
-                {
-                    <div class="list-item @(SelectedPlayerId == player.PlayerId ? "is-selected" : string.Empty)">
-                        <button type="button" @onclick="() => SelectPlayerAsync(player.PlayerId)">
-                            <div class="key-metric">
-                                <strong>@player.FullName</strong>
-                                <span>@(player.PositionCode ?? player.PositionName ?? "-")</span>
-                            </div>
-                            <p class="tiny-note">@player.TeamName - @(player.Nationality ?? "Nationalite inconnue")</p>
-                        </button>
-                    </div>
-                }
-            </div>
+            @foreach (var player in Players)
+            {
+                <button type="button"
+                        class="entity-index__item @(SelectedPlayerId == player.PlayerId ? "is-selected" : string.Empty)"
+                        aria-pressed="@(SelectedPlayerId == player.PlayerId)"
+                        @onclick="() => SelectPlayerAsync(player.PlayerId)">
+                    <span class="entity-index__avatar">@GetInitials(player.FullName)</span>
+                    <span class="entity-index__identity">
+                        <strong>@player.FullName</strong>
+                        <small>@(player.TeamName ?? "Equipe inconnue")</small>
+                    </span>
+                    <span class="entity-index__role">@(player.PositionCode ?? player.PositionName ?? "—")</span>
+                    <span class="entity-index__arrow" aria-hidden="true">→</span>
+                </button>
+            }
         }
     </div>
 </aside>
 
 @code {
-    [Parameter]
-    public string Kicker { get; set; } = "Repertoire";
+    [Parameter] public string Kicker { get; set; } = "Athlete index";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public IReadOnlyList<PlayerListItemDto> Players { get; set; } = [];
+    [Parameter] public int? SelectedPlayerId { get; set; }
+    [Parameter] public bool Scrollable { get; set; }
+    [Parameter] public bool IsPlayerListOpen { get; set; } = true;
+    [Parameter] public EventCallback<bool> IsPlayerListOpenChanged { get; set; }
+    [Parameter] public string EmptyKicker { get; set; } = "Aucune joueuse";
+    [Parameter] public string EmptyTitle { get; set; } = "Le scope ne retourne aucune joueuse";
+    [Parameter] public string EmptyMessage { get; set; } = "Elargissez le filtre ou changez de poste.";
+    [Parameter] public EventCallback<int> OnSelectedPlayerChanged { get; set; }
 
-    [Parameter]
-    public string? Subtitle { get; set; }
-
-    [Parameter]
-    public IReadOnlyList<PlayerListItemDto> Players { get; set; } = [];
-
-    [Parameter]
-    public int? SelectedPlayerId { get; set; }
-
-    [Parameter]
-    public bool Scrollable { get; set; }
-
-    [Parameter]
-    public bool IsPlayerListOpen { get; set; } = true;
-
-    [Parameter]
-    public EventCallback<bool> IsPlayerListOpenChanged { get; set; }
-
-    [Parameter]
-    public string EmptyKicker { get; set; } = "Aucune joueuse";
-
-    [Parameter]
-    public string EmptyTitle { get; set; } = "Le cadre actuel ne remonte aucune joueuse";
-
-    [Parameter]
-    public string EmptyMessage { get; set; } = "Ouvrez un peu le filtre ou changez de poste.";
-
-    [Parameter]
-    public EventCallback<int> OnSelectedPlayerChanged { get; set; }
-
-    private readonly string _contentId = $"player-list-body-{Guid.NewGuid():N}";
+    private readonly string _contentId = $"entity-index-{Guid.NewGuid():N}";
+    private string TogglePath => IsPlayerListOpen ? "m15 5-7 7 7 7" : "m9 5 7 7-7 7";
 
     private async Task SelectPlayerAsync(int playerId)
     {
@@ -104,5 +82,11 @@
         }
 
         IsPlayerListOpen = !IsPlayerListOpen;
+    }
+
+    private static string GetInitials(string? fullName)
+    {
+        var parts = (fullName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])));
     }
 }

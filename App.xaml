@@ -5,13 +5,13 @@
              x:Class="HandWStat.App">
     <Application.Resources>
         <ResourceDictionary>
-
-            <!--
-                For information about styling .NET MAUI pages
-                please refer to the documentation:
-                https://go.microsoft.com/fwlink/?linkid=2282329
-            -->
-
+            <Color x:Key="StudioInk">#071412</Color>
+            <Color x:Key="StudioPaper">#F2F0E8</Color>
+            <Color x:Key="StudioSignal">#FF5B2E</Color>
+            <Style TargetType="ContentPage">
+                <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource StudioPaper}, Dark={StaticResource StudioInk}}" />
+                <Setter Property="Shell.NavBarIsVisible" Value="False" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

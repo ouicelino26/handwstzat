@@ -1,30 +1,24 @@
-<div class="page-loader-overlay" role="status" aria-live="polite" aria-busy="true">
-    <div class="page-loader-card">
-        <div class="page-loader-spinner" aria-hidden="true"></div>
-
-        <div class="page-loader-copy">
-            @if (!string.IsNullOrWhiteSpace(Kicker))
-            {
-                <p class="section-kicker page-loader-kicker">@Kicker</p>
-            }
-
-            <h3>@Title</h3>
-
+<div class="studio-sync" role="status" aria-live="polite" aria-busy="true">
+    <div class="studio-sync__panel">
+        <div class="studio-sync__meter" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+        </div>
+        <div class="studio-sync__copy">
+            <span>@Kicker</span>
+            <strong>@Title</strong>
             @if (!string.IsNullOrWhiteSpace(Message))
             {
-                <p class="page-subtitle">@Message</p>
+                <small>@Message</small>
             }
+        </div>
+        <div class="studio-sync__skeleton" aria-hidden="true">
+            <i></i><i></i><i></i>
         </div>
     </div>
 </div>
 
 @code {
-    [Parameter]
-    public string Kicker { get; set; } = "Chargement";
-
-    [Parameter]
-    public string Title { get; set; } = "Ouverture de la page";
-
-    [Parameter]
-    public string? Message { get; set; } = "Preparation du contenu et des filtres.";
+    [Parameter] public string Kicker { get; set; } = "Synchronisation";
+    [Parameter] public string Title { get; set; } = "Preparation de la scene";
+    [Parameter] public string? Message { get; set; } = "Le contexte et les donnees sont actualises.";
 }

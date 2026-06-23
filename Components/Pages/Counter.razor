@@ -1,16 +1,18 @@
-﻿@page "/counter"
+@page "/counter"
 
-<h1>Counter</h1>
+<PageTitle>Diagnostic interaction</PageTitle>
 
-<p role="status">Current count: @currentCount</p>
-
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+<section class="diagnostic-scene">
+    <span>Internal diagnostic</span>
+    <h2 data-page-title>Interaction counter</h2>
+    <p>Cette route technique reste disponible pour verifier le cycle de rendu Blazor.</p>
+    <button type="button" @onclick="IncrementCount">
+        <span>Signal emis</span>
+        <strong>@CurrentCount</strong>
+    </button>
+</section>
 
 @code {
-    private int currentCount = 0;
-
-    private void IncrementCount()
-    {
-        currentCount++;
-    }
+    private int CurrentCount { get; set; }
+    private void IncrementCount() => CurrentCount++;
 }

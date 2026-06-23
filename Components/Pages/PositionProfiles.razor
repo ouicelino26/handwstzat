@@ -1,15 +1,24 @@
 @page "/position-profiles"
 @inherits PositionProfilesBase
 
-<PageTitle>Profil poste</PageTitle>
+<PageTitle>Role benchmark</PageTitle>
 
-<div class="page-shell position-profiles-page">
+<div class="role-workspace" data-workspace="role-benchmark">
     @if (!AuthService.Session.IsAuthenticated)
     {
         <AccessRequiredCard Message="Connectez-vous pour ouvrir le module profil poste et comparer les joueuses a la mediane de leur role." />
     }
     else
     {
+        <header class="role-manifesto">
+            <div>
+                <span>Experiment 02 / Cohort lab</span>
+                <h2 data-page-title>Le role comme reference, pas comme etiquette.</h2>
+                <p>Valeurs brutes, mediane de cohorte et percentile favorable restent separes dans chaque lecture.</p>
+            </div>
+            <a href="/compare">Retour au Compare lab <span aria-hidden="true">↗</span></a>
+        </header>
+
         <PositionFilters Search="@Search"
                          SearchChanged="OnSearchChangedAsync"
                          CompetitionId="@CompetitionId"
@@ -58,7 +67,7 @@
                             Message="Le radar, le scatter et la comparaison se recalculent." />
             }
 
-            <section class="position-profile-workflow">
+            <section class="role-stage">
                 <div class="position-profile-directory-band">
                     <PlayerList Kicker="Repertoire"
                                 Subtitle="Selectionnez une joueuse pour ouvrir la lecture poste"
@@ -73,7 +82,7 @@
                                 OnSelectedPlayerChanged="SelectPlayerAsync" />
                 </div>
 
-                <article class="page-panel detail-column players-detail-column position-profile-analysis-panel">
+                <article class="role-stage__analysis">
                     @if (PositionProfile?.SelectedPlayer is null || PositionProfile.MedianProfile is null)
                     {
                         <StateCard Kicker="Profil en attente"
@@ -88,15 +97,16 @@
                         var selected = profile.SelectedPlayer!;
                         var insights = PositionProfileInsights;
 
-                        <div class="panel-head panel-head-wrap">
-                            <div>
-                                <p class="section-kicker">Module dedie</p>
-                                <h3>@selected.FullName</h3>
+                        <header class="entity-identity">
+                            <div class="entity-identity__number">@profile.CohortPlayerCount</div>
+                            <div class="entity-identity__copy">
+                                <span>Role benchmark / cohorte</span>
+                                <h2 data-page-title>@selected.FullName</h2>
                                 <p class="page-subtitle">@(profile.PositionName ?? selected.PositionName ?? "Poste non renseigne") - @(selected.TeamName ?? "Equipe non renseignee")</p>
                             </div>
 
-                            <span class="hero-badge">Cohorte @profile.CohortPlayerCount</span>
-                        </div>
+                            <div class="entity-identity__score"><span>Cohorte</span><strong>@profile.CohortPlayerCount joueuses</strong></div>
+                        </header>
 
                         <div class="position-profile-summary-stack">
                             <ScopeSummaryBar Kicker="Cadre commun"
@@ -166,11 +176,11 @@
                                                 Height="520" />
                         </div>
 
-                        <section class="page-panel position-profile-panel @(IsPositionProfileBusy ? "is-loading" : string.Empty)">
+                        <section class="export-station @(IsPositionProfileBusy ? "is-loading" : string.Empty)">
                             <div class="panel-head panel-head-wrap">
                                 <div>
-                                    <p class="section-kicker">Comparaison</p>
-                                    <h4>Comparer la joueuse avec une autre joueuse du meme poste</h4>
+                                    <p class="section-kicker">Shortlist</p>
+                                    <h4>Ajouter des joueuses du meme role</h4>
                                 </div>
                                 <span class="hero-badge">@PositionProfileComparisonPlayers.Count joueuses</span>
                             </div>

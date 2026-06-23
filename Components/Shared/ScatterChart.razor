@@ -1,21 +1,21 @@
 @inject ILogger<ScatterChart> Logger
 
-<article class="page-panel">
-    <div class="panel-head">
+<article class="chart-stage chart-stage--scatter">
+    <header class="chart-stage__head">
         <div>
-            <p class="section-kicker">@Kicker</p>
-            <h4>@Title</h4>
+            <span>@Kicker</span>
+            <h3>@Title</h3>
             @if (!string.IsNullOrWhiteSpace(Subtitle))
             {
-                <p class="page-subtitle">@Subtitle</p>
+                <p>@Subtitle</p>
             }
         </div>
 
         @if (Axes.Count > 0)
         {
-            <span class="hero-badge">@Axes.Count axes</span>
+            <strong>@Axes.Count.ToString("00") <small>axes</small></strong>
         }
-    </div>
+    </header>
 
     @if (!HasData)
     {
@@ -27,7 +27,7 @@
     }
     else
     {
-        <div class="scatter-annotation-strip">
+        <div class="chart-stage__annotations">
             @foreach (var summary in _quadrantSummaries)
             {
                 <article class="scatter-annotation-guide scatter-annotation-guide-@summary.Tone">
@@ -128,7 +128,7 @@
             </ChildContent>
         </ApexChart>
 
-        <div class="scatter-axis-summary">
+        <div class="chart-stage__evidence">
             <div class="scatter-axis-summary-head">
                 <div>
                     <p class="section-kicker">Axes marquants</p>

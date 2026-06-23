@@ -1,6 +1,6 @@
 @if (Items.Count > 0)
 {
-    <section class="@CssClass">
+    <section class="metric-orbit-grid @CssClass" aria-label="Indicateurs de performance">
         @foreach (var item in Items)
         {
             <BarGaugeKpiCard @key="item.Label" Item="item" />
@@ -13,5 +13,5 @@
     public IReadOnlyList<BarGaugeKpiItem> Items { get; set; } = [];
 
     [Parameter]
-    public string CssClass { get; set; } = "gauge-kpi-grid";
+    public string CssClass { get; set; } = string.Empty;
 }

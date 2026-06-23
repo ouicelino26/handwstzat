@@ -32,7 +32,8 @@ public sealed record PositionProfileAxisViewModel(
 
     public double Impact => Math.Abs(Delta);
 
-    public double DirectionalPercentile => HigherIsBetter ? Percentile : 100d - Percentile;
+    // The API contract already returns a favorable percentile for negative axes.
+    public double DirectionalPercentile => Percentile;
 
     public string StatusLabel => DirectionalPercentile > 65
         ? "Fort"

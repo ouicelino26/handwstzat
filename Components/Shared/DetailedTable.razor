@@ -1,27 +1,28 @@
-<article class="page-panel">
-    <div class="panel-head">
+<section class="evidence-table">
+    <header class="evidence-table__head">
         <div>
-            <p class="section-kicker">@Kicker</p>
-            <h4>@Title</h4>
+            <span>@Kicker</span>
+            <h3>@Title</h3>
             @if (!string.IsNullOrWhiteSpace(Subtitle))
             {
-                <p class="page-subtitle">@Subtitle</p>
+                <p>@Subtitle</p>
             }
         </div>
-
         @if (_sortedRows.Count > 0)
         {
-            <span class="hero-badge">Tri par impact</span>
+            <div>
+                <span>@_sortedRows.Count axes</span>
+                <strong>Impact ↓</strong>
+            </div>
         }
-    </div>
+    </header>
 
     @if (_sortedRows.Count == 0)
     {
-        <StateCard Kicker="Lecture detaillee"
+        <StateCard Kicker="Evidence"
                    Title="@EmptyTitle"
                    Message="@EmptyMessage"
-                   Tone="empty"
-                   CssClass="empty-card-inline" />
+                   Tone="empty" />
     }
     else
     {
@@ -29,31 +30,31 @@
             <table class="stat-table position-profile-table">
                 <thead>
                     <tr>
-                        <th>Axe</th>
-                        <th>Joueuse</th>
-                        <th>Mediane</th>
-                        <th>Delta</th>
-                        <th>Percentile favorable</th>
-                        <th>Analyse</th>
+                        <th scope="col">Axe</th>
+                        <th scope="col">Joueuse</th>
+                        <th scope="col">Mediane</th>
+                        <th scope="col">Delta</th>
+                        <th scope="col">Percentile favorable</th>
+                        <th scope="col">Lecture</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var axis in _sortedRows)
                     {
-                        <tr class="@GetRowClass(axis)" title="@GetRowTooltip(axis)">
+                        <tr class="@GetRowClass(axis)" title="@axis.TooltipDeltaTitle">
                             <td>
                                 <div class="table-primary-cell">
                                     <strong>@axis.Label</strong>
                                     <span>@axis.Category</span>
                                 </div>
                             </td>
-                            <td><span class="stat-pill stat-pill-@axis.StatusTone">@axis.PlayerDisplayValue</span></td>
+                            <td><strong>@axis.PlayerDisplayValue</strong></td>
                             <td>@axis.MedianDisplayValue</td>
                             <td class="@GetDeltaCellClass(axis)" title="@GetDeltaTooltip(axis)">@axis.DeltaDisplayValue</td>
-                            <td>@FormatPercentile(axis.DirectionalPercentile)</td>
+                            <td><span class="axis-badge axis-badge-@axis.StatusTone">@FormatPercentile(axis.DirectionalPercentile)</span></td>
                             <td>
                                 <div class="axis-insight-cell">
-                                    <span class="axis-badge axis-badge-@axis.StatusTone">@axis.StatusLabel</span>
+                                    <strong>@axis.StatusLabel</strong>
                                     <span>@axis.Summary</span>
                                 </div>
                             </td>
@@ -63,83 +64,43 @@
             </table>
         </div>
     }
-</article>
+</section>
 
 @code {
-    [Parameter]
-    public string Kicker { get; set; } = "Lecture detaillee";
-
-    [Parameter]
-    public string Title { get; set; } = "Chaque axe du poste";
-
-    [Parameter]
-    public string? Subtitle { get; set; }
-
-    [Parameter]
-    public IReadOnlyList<PositionProfileAxisViewModel> Rows { get; set; } = [];
-
-    [Parameter]
-    public IReadOnlyCollection<string> HighlightedAxisKeys { get; set; } = [];
-
-    [Parameter]
-    public IReadOnlyCollection<string> AlertAxisKeys { get; set; } = [];
-
-    [Parameter]
-    public string EmptyTitle { get; set; } = "Choisissez une joueuse pour afficher le tableau detaille";
-
-    [Parameter]
-    public string EmptyMessage { get; set; } = "Le tableau classe les axes par ecart a la mediane et explicite le delta, le percentile et la lecture coach.";
+    [Parameter] public string Kicker { get; set; } = "Evidence";
+    [Parameter] public string Title { get; set; } = "Lecture axe par axe";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public IReadOnlyList<PositionProfileAxisViewModel> Rows { get; set; } = [];
+    [Parameter] public IReadOnlyCollection<string> HighlightedAxisKeys { get; set; } = [];
+    [Parameter] public IReadOnlyCollection<string> AlertAxisKeys { get; set; } = [];
+    [Parameter] public string EmptyTitle { get; set; } = "Aucune donnee detaillee";
+    [Parameter] public string EmptyMessage { get; set; } = "Selectionnez une joueuse et un scope pour construire le tableau.";
 
     private IReadOnlyList<PositionProfileAxisViewModel> _sortedRows = [];
     private HashSet<string> _highlightedAxisKeys = new(StringComparer.OrdinalIgnoreCase);
     private HashSet<string> _alertAxisKeys = new(StringComparer.OrdinalIgnoreCase);
 
-    protected override Task OnParametersSetAsync()
+    protected override void OnParametersSet()
     {
-        _sortedRows = Rows
-            .OrderByDescending(axis => axis.Impact)
-            .ThenBy(axis => axis.Label)
-            .ToList();
-        _highlightedAxisKeys = HighlightedAxisKeys is null ? new(StringComparer.OrdinalIgnoreCase) : new HashSet<string>(HighlightedAxisKeys, StringComparer.OrdinalIgnoreCase);
-        _alertAxisKeys = AlertAxisKeys is null ? new(StringComparer.OrdinalIgnoreCase) : new HashSet<string>(AlertAxisKeys, StringComparer.OrdinalIgnoreCase);
-
-        return Task.CompletedTask;
+        _sortedRows = Rows.OrderByDescending(axis => axis.Impact).ThenBy(axis => axis.Label).ToList();
+        _highlightedAxisKeys = new HashSet<string>(HighlightedAxisKeys ?? [], StringComparer.OrdinalIgnoreCase);
+        _alertAxisKeys = new HashSet<string>(AlertAxisKeys ?? [], StringComparer.OrdinalIgnoreCase);
     }
 
-    private static string GetRowTooltip(PositionProfileAxisViewModel axis)
+    private static string GetDeltaTooltip(PositionProfileAxisViewModel axis) =>
+        $"Valeur joueuse moins mediane du poste. {axis.Summary}";
+
+    private static string GetDeltaCellClass(PositionProfileAxisViewModel axis) => axis.Bucket switch
     {
-        return axis.TooltipDeltaTitle;
-    }
+        PositionProfileScatterBucket.Above => "metric-cell metric-cell-positive",
+        PositionProfileScatterBucket.Level => "metric-cell metric-cell-warning",
+        _ => "metric-cell metric-cell-danger"
+    };
 
-    private static string GetDeltaTooltip(PositionProfileAxisViewModel axis)
-    {
-        return $"Ecart calcule comme valeur joueuse - mediane du poste. {axis.Summary}";
-    }
-
-    private static string GetDeltaCellClass(PositionProfileAxisViewModel axis)
-    {
-        return axis.Bucket switch
-        {
-            PositionProfileScatterBucket.Above => "metric-cell metric-cell-positive",
-            PositionProfileScatterBucket.Level => "metric-cell metric-cell-warning",
-            _ => "metric-cell metric-cell-danger"
-        };
-    }
-
-    private string GetRowClass(PositionProfileAxisViewModel axis)
-    {
-        if (_alertAxisKeys.Contains(axis.Key))
-        {
-            return "is-alert";
-        }
-
-        if (_highlightedAxisKeys.Contains(axis.Key))
-        {
-            return "is-highlighted";
-        }
-
-        return string.Empty;
-    }
+    private string GetRowClass(PositionProfileAxisViewModel axis) =>
+        _alertAxisKeys.Contains(axis.Key) ? "is-alert"
+        : _highlightedAxisKeys.Contains(axis.Key) ? "is-highlighted"
+        : string.Empty;
 
     private static string FormatPercentile(double value) => $"{value:0.#}%";
 }

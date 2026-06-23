@@ -4,22 +4,30 @@
 @inject MatchEventsApiClient MatchEventsApiClient
 @inject StatsApiClient StatsApiClient
 @inject IApiAuthService AuthService
+@inject AnalysisScopeService ScopeService
+@implements IDisposable
 
-<PageTitle>Matchs</PageTitle>
+<PageTitle>Games</PageTitle>
 
-<div class="page-shell matches-page">
+<div class="games-workspace" data-workspace="games">
     @if (!AuthService.Session.IsAuthenticated)
     {
         <AccessRequiredCard Message="Connectez-vous pour ouvrir les rencontres, les resumes et la lecture spatiale des matchs." />
     }
     else
     {
-        <section class="page-panel filter-strip matches-directory-panel @(IsBusy ? "is-loading" : string.Empty)">
+        <AudienceLensSelector Kicker="Lecture du match"
+                              Title="Un même match, trois niveaux d'analyse"
+                              Subtitle="Le mode choisi ajuste les indicateurs, les scénarios et la densité des panneaux de détail."
+                              Value="@ActiveLens"
+                              ValueChanged="SetActiveLens" />
+
+        <section class="directory-command @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
                 <div>
-                    <p class="section-kicker">Rencontres</p>
-                    <h3>Filtrer les matchs en direct</h3>
-                    <p class="page-subtitle">Competition, equipe, saison, journee et recherche restent visibles en continu.</p>
+                    <p class="section-kicker">Game directory</p>
+                    <h3>@(ShowMatchDetailView ? "Contexte de la rencontre" : "Trouver une rencontre")</h3>
+                    <p class="page-subtitle">Le scope, la recherche et le retour a la liste restent memorises.</p>
                 </div>
 
                 <div class="toolbar">
@@ -126,7 +134,7 @@
 
                 @if (!ShowMatchDetailView)
                 {
-                <article class="page-panel selection-column">
+                <article class="game-directory">
                             <div class="panel-head">
                                 <div>
                                     <h3>@FilteredMatchList.Count matchs</h3>
@@ -161,7 +169,7 @@
 
                 @if (ShowMatchDetailView)
                 {
-                <article class="page-panel detail-column matches-detail-column">
+                <article class="game-room">
                     @if (IsMatchDetailLoading)
                     {
                         <StateCard Kicker="Chargement"
@@ -179,22 +187,20 @@
                     }
                     else
                     {
-                        <div class="panel-head panel-head-wrap">
-                            <div>
-                                <p class="section-kicker">Resume match</p>
-                                <h3>@(SelectedMatch.Team1Name ?? "Equipe A") vs @(SelectedMatch.Team2Name ?? "Equipe B")</h3>
-                                <p class="page-subtitle">
-                                    @(SelectedMatch.CompetitionName ?? "Competition") - @MatchFilterCatalog.FormatSeasonDay(SelectedMatch)
-                                </p>
+                        <header class="game-scoreboard">
+                            <div class="game-scoreboard__team">
+                                <span>Home</span>
+                                <strong>@(SelectedMatch.Team1Name ?? "Equipe A")</strong>
                             </div>
-
-                            <div class="toolbar">
-                                <a class="ghost-button filter-ghost" href="/matches">Retour aux cartes</a>
-                                <span class="hero-badge">@(SelectedMatch.Team1Score ?? 0) - @(SelectedMatch.Team2Score ?? 0)</span>
+                            <div class="game-scoreboard__score">
+                                <span>@(SelectedMatch.CompetitionName ?? "Competition") · @MatchFilterCatalog.FormatSeasonDay(SelectedMatch)</span>
+                                <strong>@(SelectedMatch.Team1Score ?? 0)<i>:</i>@(SelectedMatch.Team2Score ?? 0)</strong>
                             </div>
-                        </div>
-
-
+                            <div class="game-scoreboard__team game-scoreboard__team--away">
+                                <span>Away</span>
+                                <strong>@(SelectedMatch.Team2Name ?? "Equipe B")</strong>
+                            </div>
+                        </header>
 
                         <div class="match-scope-toolbar">
                             <div class="match-scope-copy">
@@ -224,10 +230,10 @@
                             </div>
                         </div>
 
-                        <div class="tab-strip">
-                            <button type="button" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Synthese</button>
-                            <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Zones</button>
-                            <button type="button" class="tab-button @(ActiveSection == "players" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("players")'>Effectif</button>
+                        <div class="scene-switcher" role="tablist" aria-label="Scenes du match">
+                            <button type="button" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Story</button>
+                            <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Court</button>
+                            <button type="button" class="tab-button @(ActiveSection == "players" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("players")'>Players</button>
                         </div>
 
                         @if (ActiveSection == "summary")
@@ -636,6 +642,7 @@
     private TableSortState MatchPlayerSort { get; set; } = new("goals", SortDirection.Desc);
     private long SelectedMatchLoadToken { get; set; }
     private long SpatialLoadToken;
+    private bool _publishingScope;
     private bool ShowMatchDetailView => MatchIdFromQuery.HasValue;
     private string? SpatialFocusKey { get; set; }
 
@@ -652,7 +659,7 @@
     {
         MatchTeamScopeTeam1 => SelectedMatch?.Team1Id,
         MatchTeamScopeTeam2 => SelectedMatch?.Team2Id,
-        _ => SelectedMatch?.Team1Id ?? SelectedMatch?.Team2Id
+        _ => null
     };
     private string MatchSpatialLabel => MatchTeamScope switch
     {
@@ -726,6 +733,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        ApplyGlobalScope();
+        ScopeService.Changed += HandleGlobalScopeChanged;
         await ApplyFiltersAsync();
     }
 
@@ -736,6 +745,7 @@
 
     private Task OnScopeSelectionChangedAsync()
     {
+        PublishGlobalScope();
         return ApplyFiltersAsync();
     }
 
@@ -817,6 +827,7 @@
         MatchPlayerSort = new TableSortState("goals", SortDirection.Desc);
         MatchTeamScope = MatchTeamScopeBoth;
         ActiveSection = "summary";
+        PublishGlobalScope();
         await ApplyFiltersAsync();
     }
 
@@ -841,13 +852,61 @@
             Day = null;
         }
 
+        PublishGlobalScope();
         await SyncSelectedMatchAsync();
     }
 
     private async Task OnDayChangedAsync(ChangeEventArgs args)
     {
         Day = MatchFilterCatalog.NormalizeSelection(args.Value?.ToString());
+        PublishGlobalScope();
         await SyncSelectedMatchAsync();
+    }
+
+    public void Dispose()
+    {
+        ScopeService.Changed -= HandleGlobalScopeChanged;
+    }
+
+    private void HandleGlobalScopeChanged()
+    {
+        if (_publishingScope)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            ApplyGlobalScope();
+            await ApplyFiltersAsync();
+        });
+    }
+
+    private void ApplyGlobalScope()
+    {
+        CompetitionId = ScopeService.Current.CompetitionId;
+        TeamId = ScopeService.Current.TeamId;
+        Season = ScopeService.Current.Season;
+        Day = ScopeService.Current.Day;
+    }
+
+    private void PublishGlobalScope()
+    {
+        _publishingScope = true;
+        try
+        {
+            ScopeService.Update(new AnalysisScopeSnapshot(
+                CompetitionId,
+                AvailableCompetitions.FirstOrDefault(item => item.CompetitionId == CompetitionId)?.CompetitionName,
+                TeamId,
+                AvailableTeams.FirstOrDefault(item => item.TeamId == TeamId)?.TeamName,
+                Season,
+                Day));
+        }
+        finally
+        {
+            _publishingScope = false;
+        }
     }
 
     private Task OnMatchPlayerSearchChanged(ChangeEventArgs args)
@@ -1565,14 +1624,17 @@
         builder.AddAttribute(1, "type", "button");
         builder.AddAttribute(2, "class", $"table-sort-button {(MatchPlayerSort.IsActive(column) ? "is-active" : string.Empty)}");
         builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => onSort(column)));
-        builder.AddContent(4, label);
+        builder.AddAttribute(4, "aria-label", MatchPlayerSort.SortButtonLabel(column, label));
+        builder.AddAttribute(5, "aria-pressed", MatchPlayerSort.IsActive(column));
+        builder.AddContent(6, label);
 
         var glyph = MatchPlayerSort.Glyph(column);
         if (!string.IsNullOrWhiteSpace(glyph))
         {
-            builder.OpenElement(5, "span");
-            builder.AddAttribute(6, "class", "sort-indicator");
-            builder.AddContent(7, glyph);
+            builder.OpenElement(7, "span");
+            builder.AddAttribute(8, "class", "sort-indicator");
+            builder.AddAttribute(9, "aria-hidden", "true");
+            builder.AddContent(10, glyph);
             builder.CloseElement();
         }
 

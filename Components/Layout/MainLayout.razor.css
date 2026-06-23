@@ -1,1 +1,12 @@
-/* Styles moved to wwwroot/app.css */
+.studio-workbench {
+    isolation: isolate;
+}
+
+.studio-stage__content ::deep [data-page-title] {
+    scroll-margin-top: 7rem;
+}
+
+.studio-context-lens ::deep a:hover,
+.studio-context-lens ::deep button:hover {
+    color: var(--signal-500);
+}

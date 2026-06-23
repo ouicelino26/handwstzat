@@ -11,6 +11,10 @@ namespace HandWStat.Components.Pages;
 
 public class PositionProfilesBase : ComponentBase, IDisposable
 {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "playerId")]
+    public int? PlayerIdFromQuery { get; set; }
+
     [Inject]
     protected ReferenceDataService ReferenceDataService { get; set; } = default!;
 
@@ -25,6 +29,9 @@ public class PositionProfilesBase : ComponentBase, IDisposable
 
     [Inject]
     protected IJSRuntime JS { get; set; } = default!;
+
+    [Inject]
+    protected AnalysisScopeService ScopeService { get; set; } = default!;
 
     [Inject]
     protected ILogger<PositionProfilesBase> Logger { get; set; } = default!;
@@ -102,6 +109,8 @@ public class PositionProfilesBase : ComponentBase, IDisposable
     protected string PositionProfileComparisonKey { get; set; } = string.Empty;
 
     private CancellationTokenSource? _searchDebounceCts;
+    private bool _publishingScope;
+    private bool _preserveDeepLinkedPlayer;
 
     private static readonly TimeSpan SearchDebounceDelay = TimeSpan.FromMilliseconds(300);
 
@@ -140,6 +149,11 @@ public class PositionProfilesBase : ComponentBase, IDisposable
 
     protected override async Task OnInitializedAsync()
     {
+        ApplyGlobalScope();
+        SelectedPlayerId = PlayerIdFromQuery;
+        IsPlayerListOpen = !PlayerIdFromQuery.HasValue;
+        _preserveDeepLinkedPlayer = PlayerIdFromQuery.HasValue;
+        ScopeService.Changed += HandleGlobalScopeChanged;
         await LoadAsync(refreshReferenceData: true);
     }
 
@@ -152,12 +166,14 @@ public class PositionProfilesBase : ComponentBase, IDisposable
     protected Task OnCompetitionChangedAsync(int? value)
     {
         CompetitionId = value;
+        PublishGlobalScope();
         return ApplyFiltersAsync();
     }
 
     protected Task OnTeamChangedAsync(int? value)
     {
         TeamId = value;
+        PublishGlobalScope();
         return ApplyFiltersAsync();
     }
 
@@ -170,12 +186,14 @@ public class PositionProfilesBase : ComponentBase, IDisposable
     protected Task OnSeasonChangedAsync(string? value)
     {
         Season = string.IsNullOrWhiteSpace(value) ? null : value;
+        PublishGlobalScope();
         return ApplyFiltersAsync();
     }
 
     protected Task OnDayChangedAsync(string? value)
     {
         Day = string.IsNullOrWhiteSpace(value) ? null : value;
+        PublishGlobalScope();
         return ApplyFiltersAsync();
     }
 
@@ -190,6 +208,7 @@ public class PositionProfilesBase : ComponentBase, IDisposable
         SelectedPlayerId = null;
         IsPlayerListOpen = true;
         ResetPositionProfileCompareSelections();
+        PublishGlobalScope();
         await LoadAsync(refreshReferenceData: true);
     }
 
@@ -291,9 +310,53 @@ public class PositionProfilesBase : ComponentBase, IDisposable
 
     public void Dispose()
     {
+        ScopeService.Changed -= HandleGlobalScopeChanged;
         var cts = Interlocked.Exchange(ref _searchDebounceCts, null);
         cts?.Cancel();
         cts?.Dispose();
+    }
+
+    private void HandleGlobalScopeChanged()
+    {
+        if (_publishingScope)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            ApplyGlobalScope();
+            SelectedPlayerId = null;
+            ResetPositionProfileCompareSelections();
+            await LoadAsync(refreshReferenceData: false);
+        });
+    }
+
+    private void ApplyGlobalScope()
+    {
+        CompetitionId = ScopeService.Current.CompetitionId;
+        TeamId = ScopeService.Current.TeamId;
+        Season = ScopeService.Current.Season;
+        Day = ScopeService.Current.Day;
+    }
+
+    private void PublishGlobalScope()
+    {
+        _publishingScope = true;
+        try
+        {
+            ScopeService.Update(new AnalysisScopeSnapshot(
+                CompetitionId,
+                AvailableCompetitions.FirstOrDefault(item => item.CompetitionId == CompetitionId)?.CompetitionName,
+                TeamId,
+                AvailableTeams.FirstOrDefault(item => item.TeamId == TeamId)?.TeamName,
+                Season,
+                Day));
+        }
+        finally
+        {
+            _publishingScope = false;
+        }
     }
 
     private async Task DebounceSearchAsync()
@@ -347,7 +410,7 @@ public class PositionProfilesBase : ComponentBase, IDisposable
                 ReferenceData = await ReferenceDataService.GetReferenceDataAsync(refreshReferenceData);
             }
 
-            if (!HasDirectoryCriteria)
+            if (!HasDirectoryCriteria && !SelectedPlayerId.HasValue)
             {
                 ClearAnalysisData();
                 return;
@@ -367,12 +430,15 @@ public class PositionProfilesBase : ComponentBase, IDisposable
                 pageSize: IsCompetitionOnlyDirectoryFilter ? 1000 : 250);
 
             SelectedPlayerId ??= PlayerDirectory.FirstOrDefault()?.PlayerId;
-            if (SelectedPlayerId.HasValue && PlayerDirectory.All(player => player.PlayerId != SelectedPlayerId.Value))
+            if (SelectedPlayerId.HasValue
+                && PlayerDirectory.All(player => player.PlayerId != SelectedPlayerId.Value)
+                && !_preserveDeepLinkedPlayer)
             {
                 SelectedPlayerId = PlayerDirectory.FirstOrDefault()?.PlayerId;
             }
 
             await LoadPositionProfileAsync(manageBusyState: false);
+            _preserveDeepLinkedPlayer = false;
         }
         catch (Exception ex)
         {
@@ -864,7 +930,8 @@ public class PositionProfilesBase : ComponentBase, IDisposable
     {
         if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
         {
-            return Math.Clamp(axis.HigherIsBetter ? axis.Percentile : 100d - axis.Percentile, 0d, 100d);
+            // The API percentile is already oriented so that a higher score is favorable.
+            return Math.Clamp(axis.Percentile, 0d, 100d);
         }
 
         var normalized = (axis.Value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);
@@ -1530,8 +1597,7 @@ public class PositionProfilesBase : ComponentBase, IDisposable
 
     private static string GetPositionProfileInsight(PositionProfileAxisDto axis)
     {
-        var percentile = axis.HigherIsBetter ? axis.Percentile : 100d - axis.Percentile;
-        return GetPositionProfileInsight(axis.Label, percentile);
+        return GetPositionProfileInsight(axis.Label, axis.Percentile);
     }
 
     private static string GetPositionProfileInsight(string label, double percentile)

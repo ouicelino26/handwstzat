@@ -3,12 +3,18 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:HandWStat"
              xmlns:components="clr-namespace:HandWStat.Components"
-             x:Class="HandWStat.MainPage">
+             x:Class="HandWStat.MainPage"
+             BackgroundColor="{AppThemeBinding Light=#F2F0E8, Dark=#071412}"
+             Shell.NavBarIsVisible="False">
 
-    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
+    <Grid BackgroundColor="{AppThemeBinding Light=#F2F0E8, Dark=#071412}">
+    <BlazorWebView x:Name="blazorWebView"
+                   HostPage="wwwroot/index.html"
+                   BackgroundColor="Transparent">
         <BlazorWebView.RootComponents>
             <RootComponent Selector="#app" ComponentType="{x:Type components:Routes}" />
         </BlazorWebView.RootComponents>
     </BlazorWebView>
+    </Grid>
 
 </ContentPage>

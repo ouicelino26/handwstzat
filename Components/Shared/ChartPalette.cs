@@ -4,19 +4,19 @@ namespace HandWStat.Components.Shared;
 
 internal static class ChartPalette
 {
-    public const string Player = "#e85d24";
-    public const string Reference = "#94a3b8";
-    public const string Primary = "#0f766e";
-    public const string Secondary = "#2563eb";
-    public const string Positive = "#16a34a";
-    public const string Warning = "#d97706";
-    public const string Danger = "#dc2626";
-    public const string Accent = "#7c3aed";
-    public const string Info = "#0891b2";
-    public const string Pink = "#db2777";
-    public const string Lime = "#65a30d";
-    public const string Slate = "#64748b";
-    public const string Gold = "#f59e0b";
+    public const string Player = "#ff5b2e";
+    public const string Reference = "#8fa39a";
+    public const string Primary = "#177a5b";
+    public const string Secondary = "#3979d8";
+    public const string Positive = "#48bb7b";
+    public const string Warning = "#e6ab4a";
+    public const string Danger = "#e95c57";
+    public const string Accent = "#d66f35";
+    public const string Info = "#4d9cb3";
+    public const string Pink = "#c55d79";
+    public const string Lime = "#83a84e";
+    public const string Slate = "#667a72";
+    public const string Gold = "#d69832";
 
     public static readonly List<string> PlayerMedianColors = [Player, Reference];
 
@@ -60,26 +60,26 @@ internal static class ChartPalette
 
     public static readonly string[] GoalHeatColors =
     [
-        "#b56a63",
-        "#c47668",
-        "#d18470",
-        "#db9378",
-        "#e4a481",
-        "#eaba8c",
-        "#efc997",
-        "#f2d7a1",
-        "#f2e4ac",
-        "#e7e7a9",
-        "#cce0a0",
-        "#afd196",
-        "#8cc388",
-        "#5fa377"
+        "#b9635a",
+        "#c8705e",
+        "#d47e62",
+        "#df9069",
+        "#e8a377",
+        "#edb784",
+        "#f0ca91",
+        "#efdaa0",
+        "#e7e3aa",
+        "#d5e2a7",
+        "#b9d99c",
+        "#94ca8c",
+        "#70b979",
+        "#48a36c"
     ];
 
-    public const string GoalZoneNeutralFill = "#d9d9d9";
-    public const string GoalStrokeActive = "#17303d";
-    public const string GoalStrokeInactive = "#0b2330";
-    public const string TriggerStrokeInactive = "#0f1f28";
+    public const string GoalZoneNeutralFill = "#dce2de";
+    public const string GoalStrokeActive = "#17332a";
+    public const string GoalStrokeInactive = "#10251f";
+    public const string TriggerStrokeInactive = "#152b24";
 
     public static string SeriesColor(int index)
     {

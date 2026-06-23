@@ -6,23 +6,24 @@
 @inject StatsApiClient StatsApiClient
 @inject IApiAuthService AuthService
 @inject IJSRuntime JS
+@inject AnalysisScopeService ScopeService
 @implements IDisposable
 
-<PageTitle>Joueuses</PageTitle>
+<PageTitle>Athletes</PageTitle>
 
-<div class="page-shell players-page">
+<div class="athlete-workspace" data-workspace="athletes">
     @if (!AuthService.Session.IsAuthenticated)
     {
         <AccessRequiredCard Message="Connectez-vous pour ouvrir les fiches joueuses, les zones et les feuilles de match." />
     }
     else
     {
-        <details class="page-panel filter-strip filter-drawer players-directory-panel players-directory-drawer @(IsBusy ? "is-loading" : string.Empty)" open="@IsDirectoryDrawerOpen">
+        <details class="directory-command @(IsBusy ? "is-loading" : string.Empty)" open="@IsDirectoryDrawerOpen">
             <summary @onclick="ToggleDirectoryDrawer">
 
                 <div class="drawer-copy">
-                    <strong>Joueuses</strong>
-                    <span>Filtrez le repertoire en direct</span>
+                    <strong>Athlete index</strong>
+                    <span>Recherche instantanee et scope local</span>
                 </div>
 
                 <div class="toolbar drawer-actions">
@@ -130,9 +131,9 @@
                             Message="La liste et la fiche de la joueuse se recalculent." />
             }
 
-            <section class="workspace-grid players-workspace-grid">
-                <PlayerList Kicker="Liste"
-                            Subtitle="Selectionnez une joueuse pour afficher sa fiche"
+            <section class="entity-workspace">
+                <PlayerList Kicker="Athlete index"
+                            Subtitle="Ouvrez un workspace individuel"
                             Players="@PlayerDirectory"
                             SelectedPlayerId="@SelectedPlayerId"
                             Scrollable="@UseScrollableDirectory"
@@ -143,7 +144,7 @@
                             EmptyMessage="Essayez un contexte plus large ou retirez un filtre trop restrictif."
                             OnSelectedPlayerChanged="SelectPlayerAsync" />
 
-                <article class="page-panel detail-column players-detail-column">
+                <article class="entity-stage">
                     @if (Profile is null || Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null)
                     {
                         <StateCard Kicker="Aucune fiche"
@@ -163,31 +164,28 @@
                         var goalkeeper = Goalkeeper!;
                         PlayerTechnicalStatsDto? technical = Technical!;
 
-                        <div class="panel-head panel-head-wrap">
-                            <div>
-                                <p class="section-kicker">Fiche joueuse</p>
-                                <h3>@profile.FullName</h3>
+                        <header class="entity-identity">
+                            <div class="entity-identity__number">@(profile.Number?.ToString("00") ?? "—")</div>
+                            <div class="entity-identity__copy">
+                                <span>Athlete workspace</span>
+                                <h2 data-page-title>@profile.FullName</h2>
                                 <p class="page-subtitle">
-                                    Club principal: @(profile.TeamName ?? "Equipe non renseignee") - @(profile.PositionName ?? "Poste non renseigne")
-                                    @if (profile.Number.HasValue)
-                                    {
-                                        <span>- #@profile.Number.Value</span>
-                                    }
+                                    @(profile.TeamName ?? "Equipe non renseignee") · @(profile.PositionName ?? "Poste non renseigne")
                                     @if (!string.IsNullOrWhiteSpace(profile.Nationality))
                                     {
-                                        <span>- @profile.Nationality</span>
+                                        <span> · @profile.Nationality</span>
                                     }
                                 </p>
                             </div>
 
-                            <div class="toolbar">
+                            <div class="entity-identity__actions">
+                                <a class="ghost-button" href="@($"/position-profiles?playerId={profile.PlayerId}")">Role benchmark</a>
                                 <button type="button"
-                                        class="ghost-button filter-ghost"
+                                        class="primary-button"
                                         @onclick="ExportPlayerSheetAsync"
-                                        disabled="@(!CanExportPlayerSheet || IsBusy || IsPlayerSheetExportBusy)">Exporter fiche + radar</button>
-                                <span class="hero-badge">@(profile.IsGoalkeeper ? "Gardienne" : "Joueuse de champ")</span>
+                                        disabled="@(!CanExportPlayerSheet || IsBusy || IsPlayerSheetExportBusy)">Exporter</button>
                             </div>
-                        </div>
+                        </header>
 
                         <PlayerTeamHistoryPanel Profile="@profile" />
 
@@ -197,12 +195,12 @@
                                          Items="@SelectedPlayerScopeItems"
                                          Message="Le detail conserve le filtre courant pour eviter les comparaisons faussees." />
 
-                        <div class="tab-strip">
-                            <button type="button" class="tab-button @(ActiveSection == "overview" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("overview")'>Synthese</button>
-                            <button type="button" class="tab-button @(ActiveSection == "analysis" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("analysis")'>Analyse</button>
-                            <button type="button" class="tab-button @(ActiveSection == "graphs" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("graphs")'>Graphes</button>
-                            <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Zones</button>
-                            <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Matchs</button>
+                        <div class="scene-switcher" role="tablist" aria-label="Scenes de la joueuse">
+                            <button type="button" class="tab-button @(ActiveSection == "overview" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("overview")'>Brief</button>
+                            <button type="button" class="tab-button @(ActiveSection == "analysis" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("analysis")'>Performance</button>
+                            <button type="button" class="tab-button @(ActiveSection == "graphs" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("graphs")'>Trajectory</button>
+                            <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Court</button>
+                            <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Games</button>
                         </div>
 
                         @if (ActiveSection == "overview")
@@ -645,6 +643,10 @@
     private int? PositionId { get; set; }
     private string? SpatialFocusKey { get; set; }
     private long SpatialLoadToken;
+    private bool _publishingScope;
+
+    [Parameter, SupplyParameterFromQuery(Name = "playerId")]
+    public int? PlayerIdFromQuery { get; set; }
     private int? Year { get; set; }
     private string? Season { get; set; }
     private string? Day { get; set; }
@@ -734,11 +736,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        ApplyGlobalScope();
+        ScopeService.Changed += HandleGlobalScopeChanged;
         await LoadAsync(refreshReferenceData: true);
     }
 
     private Task OnDirectoryScopeChangedAsync()
     {
+        PublishGlobalScope();
         return ApplyFiltersAsync();
     }
 
@@ -797,6 +802,7 @@
         ActiveSection = "overview";
         IsDirectoryDrawerOpen = true;
         IsPlayerListOpen = true;
+        PublishGlobalScope();
         await LoadAsync(refreshReferenceData: true);
     }
 
@@ -1014,6 +1020,15 @@
 
             if (!HasDirectoryCriteria)
             {
+                if (PlayerIdFromQuery.HasValue)
+                {
+                    var linkedPlayer = await PlayersApiClient.GetPlayerAsync(PlayerIdFromQuery.Value);
+                    PlayerDirectory = linkedPlayer is null ? [] : [linkedPlayer];
+                    SelectedPlayerId = linkedPlayer?.PlayerId;
+                    await LoadPlayerDetailsAsync(manageBusyState: false);
+                    return;
+                }
+
                 ScopedMatches = [];
                 PlayerDirectory = [];
                 await LoadPlayerDetailsAsync(manageBusyState: false);
@@ -1061,6 +1076,11 @@
                 search: Search,
                 pageSize: IsCompetitionOnlyDirectoryFilter ? 1000 : 250);
 
+            if (PlayerIdFromQuery.HasValue && PlayerDirectory.Any(player => player.PlayerId == PlayerIdFromQuery.Value))
+            {
+                SelectedPlayerId = PlayerIdFromQuery.Value;
+            }
+
             SelectedPlayerId ??= PlayerDirectory.FirstOrDefault()?.PlayerId;
 
             if (SelectedPlayerId.HasValue && PlayerDirectory.All(player => player.PlayerId != SelectedPlayerId.Value))
@@ -1082,9 +1102,52 @@
 
     public void Dispose()
     {
+        ScopeService.Changed -= HandleGlobalScopeChanged;
         var cts = Interlocked.Exchange(ref _searchDebounceCts, null);
         cts?.Cancel();
         cts?.Dispose();
+    }
+
+    private void HandleGlobalScopeChanged()
+    {
+        if (_publishingScope)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            ApplyGlobalScope();
+            SelectedPlayerId = null;
+            await LoadAsync(refreshReferenceData: false);
+        });
+    }
+
+    private void ApplyGlobalScope()
+    {
+        CompetitionId = ScopeService.Current.CompetitionId;
+        TeamId = ScopeService.Current.TeamId;
+        Season = ScopeService.Current.Season;
+        Day = ScopeService.Current.Day;
+    }
+
+    private void PublishGlobalScope()
+    {
+        _publishingScope = true;
+        try
+        {
+            ScopeService.Update(new AnalysisScopeSnapshot(
+                CompetitionId,
+                AvailableCompetitions.FirstOrDefault(item => item.CompetitionId == CompetitionId)?.CompetitionName,
+                TeamId,
+                AvailableTeams.FirstOrDefault(item => item.TeamId == TeamId)?.TeamName,
+                Season,
+                Day));
+        }
+        finally
+        {
+            _publishingScope = false;
+        }
     }
 
     private async Task LoadPlayerDetailsAsync(bool manageBusyState = true)
@@ -2069,7 +2132,8 @@
     {
         if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
         {
-            return Math.Clamp(axis.HigherIsBetter ? axis.Percentile : 100d - axis.Percentile, 0d, 100d);
+            // The API percentile is already oriented so that a higher score is favorable.
+            return Math.Clamp(axis.Percentile, 0d, 100d);
         }
 
         var normalized = (value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);
@@ -2111,14 +2175,17 @@
         builder.AddAttribute(1, "type", "button");
         builder.AddAttribute(2, "class", $"table-sort-button {(PlayerMatchSort.IsActive(column) ? "is-active" : string.Empty)}");
         builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => onSort(column)));
-        builder.AddContent(4, label);
+        builder.AddAttribute(4, "aria-label", PlayerMatchSort.SortButtonLabel(column, label));
+        builder.AddAttribute(5, "aria-pressed", PlayerMatchSort.IsActive(column));
+        builder.AddContent(6, label);
 
         var glyph = PlayerMatchSort.Glyph(column);
         if (!string.IsNullOrWhiteSpace(glyph))
         {
-            builder.OpenElement(5, "span");
-            builder.AddAttribute(6, "class", "sort-indicator");
-            builder.AddContent(7, glyph);
+            builder.OpenElement(7, "span");
+            builder.AddAttribute(8, "class", "sort-indicator");
+            builder.AddAttribute(9, "aria-hidden", "true");
+            builder.AddContent(10, glyph);
             builder.CloseElement();
         }
 

@@ -1,1 +1,14 @@
-/* Styles moved to wwwroot/app.css */
+.studio-public-stage {
+    width: 100%;
+}
+
+.studio-public-stage ::deep .primary-button {
+    color: #071412;
+    border-color: var(--court-400);
+    background: var(--court-400);
+}
+
+.studio-public-stage ::deep .ghost-button {
+    color: #f7f5ed;
+    border-color: rgba(255, 255, 255, 0.16);
+}

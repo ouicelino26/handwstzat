@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace HandWStat.Components.Pages;
 
-public class HomeBase : ComponentBase
+public class HomeBase : ComponentBase, IDisposable
 {
     [Inject]
     protected StatsDashboardService DashboardService { get; set; } = default!;
@@ -23,6 +23,11 @@ public class HomeBase : ComponentBase
 
     [Inject]
     protected NavigationManager Navigation { get; set; } = default!;
+
+    [Inject]
+    protected AnalysisScopeService ScopeService { get; set; } = default!;
+
+    private bool _publishingScope;
 
     protected DashboardSnapshot? Snapshot { get; set; }
 
@@ -99,6 +104,8 @@ public class HomeBase : ComponentBase
             return;
         }
 
+        ApplyGlobalScope();
+        ScopeService.Changed += HandleGlobalScopeChanged;
         await LoadSnapshotAsync(forceRefresh: true);
     }
 
@@ -120,6 +127,7 @@ public class HomeBase : ComponentBase
             SpotlightPlayerId = spotlightPlayerId
         };
 
+        PublishGlobalScope();
         await LoadSnapshotAsync(forceRefresh: true);
     }
 
@@ -134,7 +142,54 @@ public class HomeBase : ComponentBase
 
     protected Task OnScopeSelectionChangedAsync()
     {
+        PublishGlobalScope();
         return LoadSnapshotAsync(forceRefresh: false);
+    }
+
+    public void Dispose()
+    {
+        ScopeService.Changed -= HandleGlobalScopeChanged;
+    }
+
+    private void HandleGlobalScopeChanged()
+    {
+        if (_publishingScope)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            ApplyGlobalScope();
+            await LoadSnapshotAsync(forceRefresh: false);
+        });
+    }
+
+    private void ApplyGlobalScope()
+    {
+        Filters.CompetitionId = ScopeService.Current.CompetitionId;
+        Filters.TeamId = ScopeService.Current.TeamId;
+        Filters.Season = ScopeService.Current.Season;
+        Filters.Day = ScopeService.Current.Day;
+    }
+
+    private void PublishGlobalScope()
+    {
+        _publishingScope = true;
+        try
+        {
+            ScopeService.Update(new AnalysisScopeSnapshot(
+                Filters.CompetitionId,
+                AvailableCompetitions.FirstOrDefault(item => item.CompetitionId == Filters.CompetitionId)?.CompetitionName,
+                Filters.TeamId,
+                AvailableTeams.FirstOrDefault(item => item.TeamId == Filters.TeamId)?.TeamName,
+                Filters.Season,
+                Filters.Day));
+        }
+        finally
+        {
+            _publishingScope = false;
+        }
     }
 
     protected Task HandleZoneSelectionAsync(string zoneKey)

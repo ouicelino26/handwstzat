@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>HandWStat</title>
+    <title>HandWStat Studio</title>
     <base href="/" />
     <script>
         (function () {
@@ -83,38 +83,73 @@
                     return Promise.resolve();
                 }
             };
+
+            window.handwstatCommands = {
+                dotnet: null,
+                handler: null,
+                register: function (dotnetReference) {
+                    this.unregister();
+                    this.dotnet = dotnetReference;
+                    this.handler = function (event) {
+                        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+                            event.preventDefault();
+                            if (window.handwstatCommands.dotnet) {
+                                window.handwstatCommands.dotnet.invokeMethodAsync("OpenCommandPaletteFromKeyboard");
+                            }
+                        }
+                    };
+                    document.addEventListener("keydown", this.handler);
+                },
+                unregister: function () {
+                    if (this.handler) {
+                        document.removeEventListener("keydown", this.handler);
+                    }
+                    this.handler = null;
+                    this.dotnet = null;
+                }
+            };
+
+            window.handwstatViewport = {
+                isMobile: function () {
+                    return window.matchMedia("(max-width: 980px)").matches;
+                }
+            };
         })();
     </script>
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="_content/Blazor.Bootstrap/blazor.bootstrap.css" />
     <link rel="stylesheet" href="_content/Blazor-ApexCharts/css/apexcharts.css" />
-    <link rel="stylesheet" href="_content/jQWidgets.Blazor/jqwidgets/styles/jqx.base.css" />
-    <link rel="stylesheet" href="_content/jQWidgets.Blazor/jqwidgets/styles/jqx.material.css" />
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="HandWStat.styles.css" />
-    <link rel="icon" href="data:,">
+    <meta name="theme-color" content="#071412" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23071412'/><path d='M5 23 10 10l6 13 6-13 5 13M4 26h24' fill='none' stroke='%23ff5b2e' stroke-width='2.5'/></svg>">
 </head>
 
 <body>
     <div class="status-bar-safe-area"></div>
 
-    <div id="app">Chargement de HandWStat...</div>
-
-    <div id="blazor-error-ui" data-nosnippet>
-        Une erreur est survenue.
-        <a href="." class="reload">Recharger</a>
-        <span class="dismiss">x</span>
+    <div id="app">
+        <div class="studio-boot">
+            <div class="studio-boot__mark" aria-hidden="true">
+                <svg viewBox="0 0 64 64">
+                    <path d="M8 45 19 18l13 27 13-27 11 27"></path>
+                    <path d="M7 51h50"></path>
+                    <circle cx="32" cy="11" r="4"></circle>
+                </svg>
+            </div>
+            <div>
+                <strong>HandWStat Studio</strong>
+                <span>Initialisation du poste de performance</span>
+            </div>
+            <div class="studio-boot__progress"><span></span></div>
+        </div>
     </div>
 
-    <script src="_content/jQWidgets.Blazor/jqwidgets/jqxcore.js"></script>
-    <script src="_content/jQWidgets.Blazor/jqwidgets/jqxdraw.js"></script>
-    <script src="_content/jQWidgets.Blazor/jqwidgets/jqxbargauge.js"></script>
-    <script src="_content/jQWidgets.Blazor/jqxBlazor.js"></script>
-    <script src="js/jqxBarGaugeInterop.js"></script>
+    <div id="blazor-error-ui" data-nosnippet>
+        Le studio a rencontre une erreur.
+        <a href="." class="reload">Recharger</a>
+        <span class="dismiss">Fermer</span>
+    </div>
+
     <script src="_framework/blazor.webview.js" autostart="false"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="_content/Blazor.Bootstrap/blazor.bootstrap.js"></script>
 </body>
 
 </html>

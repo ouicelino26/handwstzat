@@ -1,18 +1,33 @@
-.players-page .players-workspace-grid {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 1.15rem;
-    align-items: start;
+.athlete-workspace ::deep .directory-command > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0.4rem 0.8rem;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    list-style: none;
+}
+
+.athlete-workspace ::deep .directory-command > summary::-webkit-details-marker {
+    display: none;
+}
+
+.athlete-workspace ::deep .players-detail-column {
     min-width: 0;
 }
 
-.players-page .players-workspace-grid > * {
-    min-width: 0;
+.athlete-workspace ::deep .player-team-history-card,
+.athlete-workspace ::deep .map-panel {
+    background: var(--surface);
+}
+
+.athlete-workspace ::deep .triple-grid > .page-panel {
+    min-height: 10rem;
 }
 
 @media (max-width: 900px) {
-    .players-page .players-workspace-grid {
+    .athlete-workspace ::deep .entity-workspace {
         grid-template-columns: minmax(0, 1fr);
-        gap: 0.9rem;
     }
 }

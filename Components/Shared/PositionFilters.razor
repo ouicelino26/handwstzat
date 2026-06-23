@@ -1,102 +1,78 @@
-<section class="page-panel filter-strip @(IsBusy ? "is-loading" : string.Empty)">
-    <div class="panel-head panel-head-wrap position-filters-head">
+<section class="cohort-composer @(IsBusy ? "is-loading" : string.Empty)">
+    <header class="cohort-composer__head">
         <div>
-            <p class="section-kicker">Profil poste</p>
+            <span>Cohort composer</span>
+            <h3>Definir la reference du role</h3>
+            <p>Le filtre equipe selectionne la joueuse, mais ne reduit pas la cohorte mediane.</p>
         </div>
 
-        <div class="toolbar">
-            <button type="button"
-                    class="ghost-button filter-ghost"
-                    @onclick="OnResetClicked"
-                    @onclick:stopPropagation="true"
-                    disabled="@IsBusy">Reinitialiser</button>
-        </div>
+        <button type="button"
+                @onclick="OnResetClicked"
+                disabled="@IsBusy">Reset</button>
+    </header>
+
+    <div class="cohort-composer__grid">
+        <label class="cohort-composer__search">
+            <span>Joueuse</span>
+            <input value="@Search" @oninput="HandleSearchChangedAsync" placeholder="Nom ou prenom" />
+        </label>
+
+        <label>
+            <span>Competition</span>
+            <select value="@GetSelectValue(CompetitionId)" @onchange="HandleCompetitionChangedAsync">
+                <option value="">Toutes</option>
+                @foreach (var competition in AvailableCompetitions)
+                {
+                    <option value="@competition.CompetitionId">@competition.CompetitionName</option>
+                }
+            </select>
+        </label>
+
+        <label>
+            <span>Equipe repertoire</span>
+            <select value="@GetSelectValue(TeamId)" @onchange="HandleTeamChangedAsync">
+                <option value="">Toutes</option>
+                @foreach (var team in AvailableTeams)
+                {
+                    <option value="@team.TeamId">@team.TeamName</option>
+                }
+            </select>
+        </label>
+
+        <label>
+            <span>Poste</span>
+            <select value="@GetSelectValue(PositionId)" @onchange="HandlePositionChangedAsync">
+                <option value="">Tous</option>
+                @foreach (var position in AvailablePositions)
+                {
+                    <option value="@position.Id">@position.Name</option>
+                }
+            </select>
+            <small>@GetPositionSummary()</small>
+        </label>
+
+        <label>
+            <span>Saison</span>
+            <select value="@Season" @onchange="HandleSeasonChangedAsync">
+                <option value="">Toutes</option>
+                @foreach (var season in SeasonOptions)
+                {
+                    <option value="@season">@season</option>
+                }
+            </select>
+        </label>
+
+        <label>
+            <span>Journee</span>
+            <select value="@Day" @onchange="HandleDayChangedAsync">
+                <option value="">Toutes</option>
+                @foreach (var day in DayOptions)
+                {
+                    <option value="@day">@day</option>
+                }
+            </select>
+        </label>
     </div>
-
-    <details class="filter-drawer" open>
-        <summary>
-            <div>
-                <strong>Filtres</strong>
-            </div>
-        </summary>
-
-        <div class="filter-drawer-body">
-            <div class="page-filters position-profile-filters">
-                <label class="filter-field player-search">
-                    <span>Recherche</span>
-                    <input value="@Search" @oninput="HandleSearchChangedAsync" placeholder="Nom ou prenom" />
-                </label>
-
-                <div class="position-profile-filter-grid">
-                    <label class="filter-field">
-                        <span>Competition</span>
-                        <select value="@GetSelectValue(CompetitionId)" @onchange="HandleCompetitionChangedAsync">
-                            <option value="">Toutes</option>
-                            @foreach (var competition in AvailableCompetitions)
-                            {
-                                <option value="@competition.CompetitionId">@competition.CompetitionName</option>
-                            }
-                        </select>
-                    </label>
-
-                    <label class="filter-field">
-                        <span>Equipe</span>
-                        <select value="@GetSelectValue(TeamId)" @onchange="HandleTeamChangedAsync">
-                            <option value="">Toutes</option>
-                            @foreach (var team in AvailableTeams)
-                            {
-                                <option value="@team.TeamId">@team.TeamName</option>
-                            }
-                        </select>
-                    </label>
-
-                    <label class="filter-field">
-                        <span>Saison</span>
-                        <select value="@Season" @onchange="HandleSeasonChangedAsync">
-                            <option value="">Toutes</option>
-                            @foreach (var season in SeasonOptions)
-                            {
-                                <option value="@season">@season</option>
-                            }
-                        </select>
-                    </label>
-
-                    <label class="filter-field">
-                        <span>Journee</span>
-                        <select value="@Day" @onchange="HandleDayChangedAsync">
-                            <option value="">Toutes</option>
-                            @foreach (var day in DayOptions)
-                            {
-                                <option value="@day">@day</option>
-                            }
-                        </select>
-                    </label>
-                </div>
-
-                <details class="filter-slot-extender" open="@IsPositionExtenderOpen">
-                    <summary @onclick="TogglePositionExtender">
-                        <div>
-                            <strong>Poste</strong>
-                            <span>@GetPositionSummary()</span>
-                        </div>
-                    </summary>
-
-                    <div class="filter-slot-extender-body">
-                        <label class="filter-field">
-                            <span>Choisir le poste</span>
-                            <select value="@GetSelectValue(PositionId)" @onchange="HandlePositionChangedAsync">
-                                <option value="">Tous</option>
-                                @foreach (var position in AvailablePositions)
-                                {
-                                    <option value="@position.Id">@position.Name</option>
-                                }
-                            </select>
-                        </label>
-                    </div>
-                </details>
-            </div>
-        </div>
-    </details>
 </section>
 
 @code {
@@ -157,7 +133,6 @@
     [Parameter]
     public EventCallback OnReset { get; set; }
 
-    private bool IsPositionExtenderOpen { get; set; }
     private int? _lastPositionId;
 
     private async Task OnResetClicked()
@@ -170,7 +145,6 @@
 
     protected override void OnInitialized()
     {
-        IsPositionExtenderOpen = !PositionId.HasValue;
         _lastPositionId = PositionId;
     }
 
@@ -179,11 +153,6 @@
         if (PositionId == _lastPositionId)
         {
             return;
-        }
-
-        if (!PositionId.HasValue)
-        {
-            IsPositionExtenderOpen = true;
         }
 
         _lastPositionId = PositionId;
@@ -255,10 +224,5 @@
         return selectedPosition is null
             ? "Poste selectionne"
             : $"Poste selectionne: {selectedPosition.Name}";
-    }
-
-    private void TogglePositionExtender()
-    {
-        IsPositionExtenderOpen = !IsPositionExtenderOpen;
     }
 }

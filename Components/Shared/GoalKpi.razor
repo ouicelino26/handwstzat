@@ -1,13 +1,14 @@
 @using System.Globalization
 
-<div class="kpi-shell @(IsLoading ? "is-loading" : string.Empty)" aria-busy="@(IsLoading ? "true" : "false")">
-    <div class="map-toolbar">
+<div class="court-studio @(IsLoading ? "is-loading" : string.Empty)" aria-busy="@(IsLoading ? "true" : "false")">
+    <header class="court-studio__head">
         <div>
-            <p class="map-kicker">Spatial match</p>
-            <h4>Lecture rapide des zones et des déclenchements</h4>
+            <span>Court intelligence</span>
+            <h3>Zones et declenchements</h3>
+            <p>Selectionnez un secteur pour isoler son volume, son efficacite et ses issues.</p>
         </div>
 
-        <div class="map-mode-toggle" role="group" aria-label="Filtre spatial">
+        <div class="court-studio__modes" role="group" aria-label="Filtre spatial">
             <button type="button"
                     class="map-mode-button @(IsViewModeActive(ViewModeBoth) ? "is-active" : string.Empty)"
                     aria-pressed="@(IsViewModeActive(ViewModeBoth))"
@@ -27,7 +28,7 @@
                 Déclenchements
             </button>
         </div>
-    </div>
+    </header>
 
     @if (HideZeroZones)
     {
@@ -41,10 +42,10 @@
 
     @if (ShowGoalMap)
     {
-        <section class="map-panel">
-            <div class="map-head">
+        <section class="court-stage">
+            <header class="court-stage__head">
                 <div>
-                    <p class="map-kicker">But</p>
+                    <span>Goal frame</span>
                     <h4>Precision par secteur</h4>
                 </div>
 
@@ -53,7 +54,7 @@
                     <span>@LegendMiddleLabel</span>
                     <span>@LegendEndLabel</span>
                 </div>
-            </div>
+            </header>
 
             <div class="goal-map-wrap">
                 <svg class="goal-map" viewBox="0 0 804 440" role="img" aria-label="Carte de precision du but">
@@ -121,13 +122,13 @@
 
     @if (ShowTriggerMap)
     {
-        <section class="map-panel">
-            <div class="map-head">
+        <section class="court-stage">
+            <header class="court-stage__head">
                 <div>
-                    <p class="map-kicker">Terrain</p>
+                    <span>Court map</span>
                     <h4>Declenchements et angles</h4>
                 </div>
-            </div>
+            </header>
 
             <div class="pitch-map-wrap">
                 <svg class="pitch-map" viewBox="0 0 706 464" role="img" aria-label="Carte terrain des declenchements">

@@ -1,41 +1,34 @@
 @using HandWStat.Models.Analytics
 
-<section class="audience-selector">
-    <div class="audience-selector-copy">
-        <p class="section-kicker">@Kicker</p>
-        <h4>@Title</h4>
-        <p class="page-subtitle">@Subtitle</p>
+<section class="reader-modes">
+    <div class="reader-modes__intro">
+        <span>@Kicker</span>
+        <h3>@Title</h3>
+        <p>@Subtitle</p>
     </div>
 
-    <div class="audience-selector-row">
-        @foreach (var option in AudienceLens.Options)
+    <div class="reader-modes__options" role="radiogroup" aria-label="@Title">
+        @foreach (var option in AudienceLens.Options.Select((value, index) => (value, index)))
         {
             <button type="button"
-                    class="audience-selector-button @(Value == option.Value ? "is-active" : string.Empty)"
-                    aria-pressed="@(Value == option.Value)"
-                    @onclick="() => ChangeAsync(option.Value)">
-                <span>@option.Label</span>
-                <small>@option.Description</small>
+                    class="reader-mode @(Value == option.value.Value ? "is-active" : string.Empty)"
+                    role="radio"
+                    aria-checked="@(Value == option.value.Value)"
+                    @onclick="() => ChangeAsync(option.value.Value)">
+                <span>@((option.index + 1).ToString("00"))</span>
+                <strong>@option.value.Label</strong>
+                <small>@option.value.Description</small>
             </button>
         }
     </div>
 </section>
 
 @code {
-    [Parameter]
-    public string Kicker { get; set; } = "Mode de lecture";
-
-    [Parameter]
-    public string Title { get; set; } = "Choisissez le bon niveau de lecture";
-
-    [Parameter]
-    public string Subtitle { get; set; } = "Chaque mode adapte la densité de l’écran à l’usage.";
-
-    [Parameter]
-    public string Value { get; set; } = AudienceLens.Club;
-
-    [Parameter]
-    public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Kicker { get; set; } = "Mode de lecture";
+    [Parameter] public string Title { get; set; } = "Choisissez la profondeur d'analyse";
+    [Parameter] public string Subtitle { get; set; } = "La scene adapte sa densite sans modifier le scope ni les calculs.";
+    [Parameter] public string Value { get; set; } = AudienceLens.Club;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
     private Task ChangeAsync(string value)
     {

@@ -4,21 +4,29 @@
 @inject MatchesApiClient MatchesApiClient
 @inject MatchEventsApiClient MatchEventsApiClient
 @inject IApiAuthService AuthService
+@inject AnalysisScopeService ScopeService
+@implements IDisposable
 
-<PageTitle>Équipes</PageTitle>
+<PageTitle>Squads</PageTitle>
 
-<div class="page-shell teams-page">
+<div class="squad-workspace" data-workspace="squads">
     @if (!AuthService.Session.IsAuthenticated)
     {
         <AccessRequiredCard Message="Connectez-vous pour ouvrir les bilans d'equipe et la production des joueuses." />
     }
     else
     {
-        <section class="page-panel filter-strip teams-directory-panel @(IsBusy ? "is-loading" : string.Empty)">
+        <AudienceLensSelector Kicker="Lecture de l'équipe"
+                              Title="Adaptez le bilan à votre usage"
+                              Subtitle="Le mode Club privilégie le pilotage, le mode Analyste approfondit les données et le mode Joueuse simplifie la restitution."
+                              Value="@ActiveLens"
+                              ValueChanged="SetActiveLens" />
+
+        <section class="directory-command @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
                 <div>
-                    <p class="section-kicker">Bilan d'Equipe</p>
-                    <h3>Statistiques Global par équipe</h3>
+                    <p class="section-kicker">Squad index</p>
+                    <h3>Choisir un collectif</h3>
                 </div>
 
                 <div class="toolbar">
@@ -130,25 +138,24 @@
                             Message="Les statistiques collectives et les graphes se recalculent." />
             }
 
-            <section class="page-panel">
-                <div class="panel-head panel-head-wrap">
-                    <div>
-                        <p class="section-kicker">Equipe</p>
-                        <h3>@TeamStats.TeamName</h3>
-                        <p class="page-subtitle">Code @(TeamStats.TeamCode ?? "-") - @TeamStats.MatchesPlayed matchs dans la selection.</p>
+            <section class="entity-stage">
+                <header class="entity-identity entity-identity--squad">
+                    <div class="entity-identity__number">@(TeamStats.TeamCode ?? "HWS")</div>
+                    <div class="entity-identity__copy">
+                        <span>Squad workspace</span>
+                        <h2 data-page-title>@TeamStats.TeamName</h2>
+                        <p>@TeamStats.MatchesPlayed matchs · @TeamPlayers.Count joueuses dans le scope</p>
                     </div>
+                    <div class="entity-identity__score">
+                        <span>Bilan</span>
+                        <strong>@TeamStats.Wins / @TeamStats.Draws / @TeamStats.Losses</strong>
+                    </div>
+                </header>
 
-                    <span class="hero-badge">@TeamPlayers.Count joueuses</span>
-                </div>
-
-
-
-
-
-                <div class="tab-strip">
-                    <button type="button" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Synthese</button>
+                <div class="scene-switcher" role="tablist" aria-label="Scenes de l'equipe">
+                    <button type="button" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Pulse</button>
                     <button type="button" class="tab-button @(ActiveSection == "roster" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("roster")'>Effectif</button>
-                    <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Matchs</button>
+                    <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Games</button>
                 </div>
 
                 @if (ActiveSection == "summary")
@@ -387,6 +394,10 @@
     private string ActiveLens { get; set; } = AudienceLens.Club;
     private string RosterSearch { get; set; } = string.Empty;
     private TableSortState RosterSort { get; set; } = new("goals", SortDirection.Desc);
+    private bool _publishingScope;
+
+    [Parameter, SupplyParameterFromQuery(Name = "teamId")]
+    public int? TeamIdFromQuery { get; set; }
 
     private MatchListItemDto? SelectedMatch => TeamMatches.FirstOrDefault(match => match.MatchId == SelectedMatchId);
     private IReadOnlyList<string> SeasonOptions => MatchFilterCatalog.GetSeasons(ScopedMatches);
@@ -453,7 +464,11 @@
         }
 
         ReferenceData = await ReferenceDataService.GetReferenceDataAsync();
-        TeamId = ReferenceData.Teams.FirstOrDefault()?.TeamId;
+        ApplyGlobalScope();
+        ScopeService.Changed += HandleGlobalScopeChanged;
+        TeamId = TeamIdFromQuery
+            ?? ScopeService.Current.TeamId
+            ?? ReferenceData.Teams.FirstOrDefault()?.TeamId;
 
         if (TeamId.HasValue)
         {
@@ -472,11 +487,13 @@
         RosterSort = new TableSortState("goals", SortDirection.Desc);
         TeamId = ReferenceData.Teams.FirstOrDefault()?.TeamId;
         ActiveSection = "summary";
+        PublishGlobalScope();
         await LoadTeamAsync();
     }
 
     private Task OnScopeSelectionChangedAsync()
     {
+        PublishGlobalScope();
         return LoadTeamAsync();
     }
 
@@ -489,6 +506,52 @@
     private Task OnRosterScopeChangedAsync()
     {
         return LoadTeamAsync();
+    }
+
+    public void Dispose()
+    {
+        ScopeService.Changed -= HandleGlobalScopeChanged;
+    }
+
+    private void HandleGlobalScopeChanged()
+    {
+        if (_publishingScope)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            ApplyGlobalScope();
+            await LoadTeamAsync();
+        });
+    }
+
+    private void ApplyGlobalScope()
+    {
+        CompetitionId = ScopeService.Current.CompetitionId;
+        TeamId = ScopeService.Current.TeamId ?? TeamId;
+        Season = ScopeService.Current.Season;
+        Day = ScopeService.Current.Day;
+    }
+
+    private void PublishGlobalScope()
+    {
+        _publishingScope = true;
+        try
+        {
+            ScopeService.Update(new AnalysisScopeSnapshot(
+                CompetitionId,
+                AvailableCompetitions.FirstOrDefault(item => item.CompetitionId == CompetitionId)?.CompetitionName,
+                TeamId,
+                AvailableTeams.FirstOrDefault(item => item.TeamId == TeamId)?.TeamName,
+                Season,
+                Day));
+        }
+        finally
+        {
+            _publishingScope = false;
+        }
     }
 
     private Task OnRosterSearchChanged(ChangeEventArgs args)
@@ -897,14 +960,17 @@
         builder.AddAttribute(1, "type", "button");
         builder.AddAttribute(2, "class", $"table-sort-button {(RosterSort.IsActive(column) ? "is-active" : string.Empty)}");
         builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => onSort(column)));
-        builder.AddContent(4, label);
+        builder.AddAttribute(4, "aria-label", RosterSort.SortButtonLabel(column, label));
+        builder.AddAttribute(5, "aria-pressed", RosterSort.IsActive(column));
+        builder.AddContent(6, label);
 
         var glyph = RosterSort.Glyph(column);
         if (!string.IsNullOrWhiteSpace(glyph))
         {
-            builder.OpenElement(5, "span");
-            builder.AddAttribute(6, "class", "sort-indicator");
-            builder.AddContent(7, glyph);
+            builder.OpenElement(7, "span");
+            builder.AddAttribute(8, "class", "sort-indicator");
+            builder.AddAttribute(9, "aria-hidden", "true");
+            builder.AddContent(10, glyph);
             builder.CloseElement();
         }
 

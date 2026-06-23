@@ -33,6 +33,18 @@ public readonly record struct TableSortState(string Column, SortDirection Direct
 
         return IsDescending ? "↓" : "↑";
     }
+
+    public string SortButtonLabel(string column, string label)
+    {
+        if (!IsActive(column))
+        {
+            return $"Trier {label} par ordre croissant";
+        }
+
+        var currentOrder = IsDescending ? "décroissant" : "croissant";
+        var nextOrder = IsDescending ? "croissant" : "décroissant";
+        return $"{label}, tri {currentOrder}. Activer pour trier par ordre {nextOrder}.";
+    }
 }
 
 public static class TextSearchHelper

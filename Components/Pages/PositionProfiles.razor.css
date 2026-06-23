@@ -1,19 +1,34 @@
-.position-profiles-page .position-profile-workflow {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 1rem;
-    align-items: start;
-    min-width: 0;
+.role-workspace ::deep .position-profile-directory-band {
+    position: sticky;
+    top: 1rem;
 }
 
-.position-profiles-page .position-profile-directory-band,
-.position-profiles-page .position-profile-analysis-panel {
-    min-width: 0;
+.role-workspace ::deep .position-profile-radar-grid {
+    align-items: stretch;
+}
+
+.role-workspace ::deep .position-profile-quick-insight {
+    padding: 1rem;
+    border-left: 0.2rem solid var(--court-400);
+}
+
+.role-workspace ::deep .position-profile-snapshot-panel {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.role-workspace ::deep .position-profile-toolbar {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line);
 }
 
 @media (max-width: 900px) {
-    .position-profiles-page .position-profile-workflow {
+    .role-workspace ::deep .role-stage {
         grid-template-columns: minmax(0, 1fr);
-        gap: 0.9rem;
+    }
+
+    .role-workspace ::deep .position-profile-directory-band {
+        position: static;
     }
 }

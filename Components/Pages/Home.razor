@@ -3,116 +3,112 @@
 @inject IApiAuthService AuthService
 @inject NavigationManager Navigation
 
-<PageTitle>Connexion</PageTitle>
+<PageTitle>HandWStat Studio</PageTitle>
 
-<div class="landing-shell">
-    <section class="landing-story page-hero">
-        <div class="landing-brand">
-            <div class="landing-mark" aria-hidden="true">
-                <svg viewBox="0 0 56 56">
-                    <circle cx="28" cy="28" r="26" class="landing-ball" />
-                    <path d="M14 20h8v22h-8zM24 14h8v28h-8zM34 26h8v16h-8z" class="landing-bars" />
-                    <path d="M16 16c6 3 18 3 24 0M14 28c10-6 18-6 28 0M16 40c6-3 18-3 24 0" class="landing-lines" />
-                </svg>
-            </div>
+<div class="auth-portal">
+    <section class="auth-manifesto">
+        <div class="auth-manifesto__index" aria-hidden="true">HWS / 26</div>
 
-            <div class="landing-brand-copy">
-                <p class="section-kicker">Handball analytics</p>
-                <h1>Un cockpit clair pour suivre le handball.</h1>
-                <p class="page-subtitle">
-                    Joueuses, matchs, équipes et zones de tir dans une interface pensée pour lire vite,
-                    comparer facilement et garder le contexte sans surcharge.
-                </p>
-            </div>
+        <div class="auth-manifesto__copy">
+            <span class="auth-overline">Performance operating system</span>
+            <h1 data-page-title>Voir le jeu avant qu'il ne devienne evident.</h1>
+            <p>
+                HandWStat transforme les rencontres, les trajectoires et les espaces en
+                decisions partageables pour les staffs, analystes et joueuses.
+            </p>
         </div>
 
-        <div class="landing-highlight-grid">
-            <article class="landing-highlight">
-                <span>Lecture globale</span>
-                <strong>Des KPI lisibles en un coup d’œil</strong>
-                <p>Le tableau de bord met en avant les chiffres vraiment utiles, sans bruit visuel.</p>
+        <div class="auth-signal-board" aria-label="Apercu des capacites">
+            <article>
+                <span>01</span>
+                <strong>Read</strong>
+                <small>Signaux et tendances</small>
             </article>
-
-            <article class="landing-highlight">
-                <span>Fiches joueuses</span>
-                <strong>Ouvrir, filtrer et comprendre rapidement</strong>
-                <p>Chaque fiche garde le même cadre de lecture pour éviter les allers-retours inutiles.</p>
+            <article>
+                <span>02</span>
+                <strong>Compare</strong>
+                <small>Roles et profils</small>
             </article>
-
-            <article class="landing-highlight">
-                <span>Comparaison</span>
-                <strong>Mettre plusieurs profils face à face</strong>
-                <p>Benchmarks, graphiques et tableaux partagent les mêmes repères de contexte.</p>
+            <article>
+                <span>03</span>
+                <strong>Decide</strong>
+                <small>Preuves et contexte</small>
             </article>
         </div>
 
-        <div class="landing-demo-card">
-            <div>
-                <p class="section-kicker">Mode démo</p>
-                <h3>Explorer l’interface avant de se connecter</h3>
-                <p>Découvrez la structure, les cartes et la logique d’analyse sans utiliser la session live.</p>
-            </div>
-
-            <button type="button" class="ghost-button" @onclick="OpenDemo">
-                Ouvrir la démo
-            </button>
-        </div>
+        <button type="button" class="auth-demo-link" @onclick="OpenDemo">
+            <span class="auth-demo-link__play" aria-hidden="true">▶</span>
+            <span>
+                <strong>Visite guidee</strong>
+                <small>Explorer le produit sans session live</small>
+            </span>
+            <span aria-hidden="true">↗</span>
+        </button>
     </section>
 
-    <section class="login-card">
-        <div class="login-card-head">
-            <div>
-                <p class="section-kicker">Accès live</p>
-                <h2>Connectez-vous pour ouvrir l’espace complet.</h2>
-                <p class="page-subtitle page-subtitle-inverse">
-                    Accès réservé à la session authentifiée pour les statistiques détaillées et les vues live.
-                </p>
-            </div>
-
-            <span class="hero-badge">API live</span>
+    <section class="auth-console" aria-labelledby="login-title">
+        <div class="auth-console__status">
+            <span aria-hidden="true"></span>
+            API live
         </div>
 
-        <div class="connection-grid light-grid">
-            <label class="filter-field login-field">
+        <div class="auth-console__heading">
+            <span>Secure access</span>
+            <h2 id="login-title">Ouvrir le studio.</h2>
+            <p>Retrouvez votre scope, vos analyses et les donnees de competition.</p>
+        </div>
+
+        <div class="auth-console__form">
+            <label>
                 <span>Identifiant</span>
-                <input @bind="UsernameInput" autocomplete="username" placeholder="Votre identifiant" />
+                <input @bind="UsernameInput"
+                       autocomplete="username"
+                       placeholder="nom.utilisateur"
+                       aria-describedby="login-status" />
             </label>
 
-            <label class="filter-field login-field">
+            <label>
                 <span>Mot de passe</span>
-                <input @bind="PasswordInput" type="password" autocomplete="current-password" placeholder="Votre mot de passe" />
+                <input @bind="PasswordInput"
+                       type="password"
+                       autocomplete="current-password"
+                       placeholder="Votre mot de passe"
+                       @onkeydown="HandlePasswordKeyDownAsync" />
             </label>
-        </div>
 
-        <div class="connection-actions">
-            <button type="button" class="primary-button" @onclick="LoginAsync" disabled="@IsBusy">
-                @(IsBusy ? "Connexion..." : "Se connecter")
-            </button>
-
-            <button type="button" class="ghost-button" @onclick="OpenDemo" disabled="@IsBusy">
-                Voir l’aperçu
+            <button type="button"
+                    class="auth-submit"
+                    @onclick="LoginAsync"
+                    disabled="@IsBusy">
+                <span>@(IsBusy ? "Connexion en cours" : "Entrer dans le studio")</span>
+                <span aria-hidden="true">→</span>
             </button>
         </div>
 
-        @if (!string.IsNullOrWhiteSpace(StatusMessage))
-        {
-            <p class="status-note-inline">@StatusMessage</p>
-        }
-
-        <div class="login-note">
-            <strong>Lecture rapide, sans friction</strong>
-            <p>La démo permet de découvrir l’expérience complète avant de saisir vos identifiants.</p>
+        <div id="login-status" class="auth-console__feedback" aria-live="polite">
+            @if (IsBusy)
+            {
+                <span class="auth-console__loader" aria-hidden="true"></span>
+                <span>Verification de la session...</span>
+            }
+            else if (!string.IsNullOrWhiteSpace(StatusMessage))
+            {
+                <span class="auth-console__feedback-dot" aria-hidden="true"></span>
+                <span>@StatusMessage</span>
+            }
+            else
+            {
+                <span class="auth-console__feedback-dot" aria-hidden="true"></span>
+                <span>Session chiffree, donnees synchronisees a la demande.</span>
+            }
         </div>
     </section>
 </div>
 
 @code {
     private bool IsBusy { get; set; }
-
     private string UsernameInput { get; set; } = string.Empty;
-
     private string PasswordInput { get; set; } = string.Empty;
-
     private string? StatusMessage { get; set; }
 
     protected override void OnInitialized()
@@ -120,6 +116,14 @@
         if (AuthService.Session.IsAuthenticated)
         {
             Navigation.NavigateTo("/dashboard");
+        }
+    }
+
+    private async Task HandlePasswordKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !IsBusy)
+        {
+            await LoginAsync();
         }
     }
 
@@ -145,8 +149,5 @@
         }
     }
 
-    private void OpenDemo()
-    {
-        Navigation.NavigateTo("/demo");
-    }
+    private void OpenDemo() => Navigation.NavigateTo("/demo");
 }

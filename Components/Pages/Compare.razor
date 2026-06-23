@@ -4,21 +4,36 @@
 @inject MatchesApiClient MatchesApiClient
 @inject StatsApiClient StatsApiClient
 @inject IApiAuthService AuthService
+@inject AnalysisScopeService ScopeService
+@implements IDisposable
 
-<PageTitle>Comparaison</PageTitle>
+<PageTitle>Lab</PageTitle>
 
-<div class="page-shell">
+<div class="lab-workspace" data-workspace="lab">
     @if (!AuthService.Session.IsAuthenticated)
     {
         <AccessRequiredCard Message="Connectez-vous pour comparer plusieurs joueuses sur un meme perimetre statistique." />
     }
     else
     {
-        <section class="page-panel filter-strip @(IsBusy ? "is-loading" : string.Empty)">
+        <header class="lab-manifesto">
+            <span>Experiment 01 / Compare</span>
+            <h2 data-page-title>Mettre les profils sous la meme lumiere.</h2>
+            <p>Le tray conserve de deux a six joueuses et verrouille un scope commun pour toutes les preuves.</p>
+            <a href="/position-profiles">Ouvrir Role benchmark <span aria-hidden="true">↗</span></a>
+        </header>
+
+        <AudienceLensSelector Kicker="Mode de comparaison"
+                              Title="Choisissez la profondeur de lecture"
+                              Subtitle="Passez d'une synthèse staff à une analyse complète ou à une restitution claire pour les joueuses."
+                              Value="@ActiveLens"
+                              ValueChanged="SetActiveLens" />
+
+        <section class="lab-setup @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
                 <div>
-                    <p class="section-kicker">Face a face</p>
-                    <h3>Comparer les joueuses sur un même périmètre</h3>
+                    <p class="section-kicker">Comparison tray</p>
+                    <h3>Construire l'experience</h3>
                 </div>
             </div>
 
@@ -106,12 +121,12 @@
                              Subtitle="Competition, equipe, poste, saison, journee et nombre de slots pilotent les graphes et les KPI."
                              Items="@ComparisonScopeItems" />
 
-            <div class="comparison-picker-grid">
+            <div class="comparison-tray">
                 @foreach (var slot in CompareSlots)
                 {
                     var selectedPlayer = GetSelectedPlayer(slot);
 
-                    <article class="page-panel comparison-picker-card">
+                    <article class="comparison-slot">
                         <div class="panel-head panel-head-wrap">
                             <div>
                                 <p class="section-kicker">Selection</p>
@@ -193,18 +208,18 @@
                              Items="@ComparedPlayerScopeItems"
                              Message="La vue tabulaire et les graphes reutilisent exactement la meme selection de joueuses." />
 
-            <div class="page-section-switch">
+            <div class="scene-switcher" role="tablist" aria-label="Scenes de comparaison">
                 <button type="button" class="section-chip @(ActiveComparisonSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetComparisonSection("summary")'>
-                    Synthese
-                    <small>KPI par profil</small>
+                    Brief
+                    <small>Ecarts cles</small>
                 </button>
                 <button type="button" class="section-chip @(ActiveComparisonSection == "charts" ? "is-active" : string.Empty)" @onclick='() => SetComparisonSection("charts")'>
-                    Graphes
-                    <small>Volumes et efficacite</small>
+                    Visual lab
+                    <small>Radars et volumes</small>
                 </button>
                 <button type="button" class="section-chip @(ActiveComparisonSection == "table" ? "is-active" : string.Empty)" @onclick='() => SetComparisonSection("table")'>
-                    Tableau
-                    <small>Lecture detaillee</small>
+                    Evidence
+                    <small>Table complete</small>
                 </button>
             </div>
 
@@ -519,6 +534,7 @@
     private string ActiveLens { get; set; } = AudienceLens.Analyst;
     private string ActiveComparisonSection { get; set; } = "summary";
     private int CompareSlotCount { get; set; } = 3;
+    private bool _publishingScope;
     private List<int?> SelectedPlayerIds { get; set; } = [null, null, null];
     private List<string> PlayerSearchTerms { get; set; } = [string.Empty, string.Empty, string.Empty];
     private IReadOnlyList<string> SeasonOptions => MatchFilterCatalog.GetSeasons(ScopedMatches);
@@ -575,12 +591,61 @@
 
     protected override async Task OnInitializedAsync()
     {
+        ApplyGlobalScope();
+        ScopeService.Changed += HandleGlobalScopeChanged;
         await RefreshPlayersAsync();
     }
 
     private Task OnScopeSelectionChangedAsync()
     {
+        PublishGlobalScope();
         return RefreshPlayersAsync();
+    }
+
+    public void Dispose()
+    {
+        ScopeService.Changed -= HandleGlobalScopeChanged;
+    }
+
+    private void HandleGlobalScopeChanged()
+    {
+        if (_publishingScope)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            ApplyGlobalScope();
+            await RefreshPlayersAsync();
+        });
+    }
+
+    private void ApplyGlobalScope()
+    {
+        CompetitionId = ScopeService.Current.CompetitionId;
+        TeamId = ScopeService.Current.TeamId;
+        Season = ScopeService.Current.Season;
+        Day = ScopeService.Current.Day;
+    }
+
+    private void PublishGlobalScope()
+    {
+        _publishingScope = true;
+        try
+        {
+            ScopeService.Update(new AnalysisScopeSnapshot(
+                CompetitionId,
+                AvailableCompetitions.FirstOrDefault(item => item.CompetitionId == CompetitionId)?.CompetitionName,
+                TeamId,
+                AvailableTeams.FirstOrDefault(item => item.TeamId == TeamId)?.TeamName,
+                Season,
+                Day));
+        }
+        finally
+        {
+            _publishingScope = false;
+        }
     }
 
     private Task OnCompareSlotCountChangedAsync()

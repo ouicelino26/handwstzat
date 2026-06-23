@@ -1,0 +1,197 @@
+@implements IDisposable
+@inject AnalysisScopeService ScopeService
+@inject ReferenceDataService ReferenceDataService
+@inject MatchesApiClient MatchesApiClient
+@inject IApiAuthService AuthService
+
+<section class="scope-ribbon" aria-label="Contexte d'analyse global">
+    <div class="scope-ribbon__summary">
+        <span class="scope-ribbon__pulse" aria-hidden="true"></span>
+        <div>
+            <span>Scope actif</span>
+            <strong>@ScopeTitle</strong>
+        </div>
+    </div>
+
+    @if (AuthService.Session.IsAuthenticated)
+    {
+        <div class="scope-ribbon__filters">
+            <label>
+                <span>Competition</span>
+                <select value="@ToValue(CompetitionId)" @onchange="OnCompetitionChangedAsync">
+                    <option value="">Toutes</option>
+                    @foreach (var competition in ReferenceData.Competitions)
+                    {
+                        <option value="@competition.CompetitionId">@competition.CompetitionName</option>
+                    }
+                </select>
+            </label>
+
+            <label>
+                <span>Equipe</span>
+                <select value="@ToValue(TeamId)" @onchange="OnTeamChangedAsync">
+                    <option value="">Toutes</option>
+                    @foreach (var team in ReferenceData.Teams)
+                    {
+                        <option value="@team.TeamId">@team.TeamName</option>
+                    }
+                </select>
+            </label>
+
+            <label>
+                <span>Saison</span>
+                <select value="@Season" @onchange="OnSeasonChanged">
+                    <option value="">Toutes</option>
+                    @foreach (var season in Seasons)
+                    {
+                        <option value="@season">@season</option>
+                    }
+                </select>
+            </label>
+
+            <label>
+                <span>Journee</span>
+                <select value="@Day" @onchange="OnDayChanged">
+                    <option value="">Toutes</option>
+                    @foreach (var day in Days)
+                    {
+                        <option value="@day">@day</option>
+                    }
+                </select>
+            </label>
+        </div>
+
+        <button type="button"
+                class="scope-ribbon__reset"
+                @onclick="Reset"
+                disabled="@(!ScopeService.Current.HasValue)"
+                aria-label="Effacer le scope global">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"></path></svg>
+            <span>Reset</span>
+        </button>
+    }
+</section>
+
+@code {
+    private AnalyticsReferenceData ReferenceData { get; set; } = AnalyticsReferenceData.Empty;
+    private IReadOnlyList<MatchListItemDto> Matches { get; set; } = [];
+    private int? CompetitionId { get; set; }
+    private int? TeamId { get; set; }
+    private string? Season { get; set; }
+    private string? Day { get; set; }
+
+    private IReadOnlyList<string> Seasons => MatchFilterCatalog.GetSeasons(Matches);
+    private IReadOnlyList<string> Days => MatchFilterCatalog.GetDays(Matches, Season);
+
+    private string ScopeTitle => ScopeService.Current.HasValue
+        ? string.Join(" / ", new[]
+        {
+            ScopeService.Current.CompetitionName,
+            ScopeService.Current.TeamName,
+            ScopeService.Current.Season,
+            ScopeService.Current.Day
+        }.Where(value => !string.IsNullOrWhiteSpace(value)))
+        : "Toutes les donnees";
+
+    protected override async Task OnInitializedAsync()
+    {
+        ScopeService.Changed += HandleScopeChanged;
+        SyncFromService();
+
+        if (!AuthService.Session.IsAuthenticated)
+        {
+            return;
+        }
+
+        try
+        {
+            var referenceTask = ReferenceDataService.GetReferenceDataAsync();
+            var matchesTask = MatchesApiClient.GetMatchesAsync(page: 1, pageSize: 500);
+            await Task.WhenAll(referenceTask, matchesTask);
+            ReferenceData = referenceTask.Result;
+            Matches = matchesTask.Result;
+        }
+        catch
+        {
+            ReferenceData = AnalyticsReferenceData.Empty;
+            Matches = [];
+        }
+    }
+
+    private Task OnCompetitionChangedAsync(ChangeEventArgs args)
+    {
+        CompetitionId = ParseId(args.Value);
+        Publish();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnTeamChangedAsync(ChangeEventArgs args)
+    {
+        TeamId = ParseId(args.Value);
+        Publish();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSeasonChanged(ChangeEventArgs args)
+    {
+        Season = Normalize(args.Value);
+        if (!string.IsNullOrWhiteSpace(Day) && !Days.Contains(Day, StringComparer.OrdinalIgnoreCase))
+        {
+            Day = null;
+        }
+        Publish();
+    }
+
+    private void OnDayChanged(ChangeEventArgs args)
+    {
+        Day = Normalize(args.Value);
+        Publish();
+    }
+
+    private void Reset()
+    {
+        CompetitionId = null;
+        TeamId = null;
+        Season = null;
+        Day = null;
+        ScopeService.Reset();
+    }
+
+    private void Publish()
+    {
+        ScopeService.Update(new AnalysisScopeSnapshot(
+            CompetitionId,
+            ReferenceData.Competitions.FirstOrDefault(item => item.CompetitionId == CompetitionId)?.CompetitionName,
+            TeamId,
+            ReferenceData.Teams.FirstOrDefault(item => item.TeamId == TeamId)?.TeamName,
+            Season,
+            Day));
+    }
+
+    private void HandleScopeChanged()
+    {
+        SyncFromService();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SyncFromService()
+    {
+        CompetitionId = ScopeService.Current.CompetitionId;
+        TeamId = ScopeService.Current.TeamId;
+        Season = ScopeService.Current.Season;
+        Day = ScopeService.Current.Day;
+    }
+
+    public void Dispose()
+    {
+        ScopeService.Changed -= HandleScopeChanged;
+    }
+
+    private static int? ParseId(object? value) =>
+        int.TryParse(value?.ToString(), out var id) ? id : null;
+
+    private static string? Normalize(object? value) =>
+        string.IsNullOrWhiteSpace(value?.ToString()) ? null : value!.ToString()!.Trim();
+
+    private static string ToValue(int? value) => value?.ToString() ?? string.Empty;
+}

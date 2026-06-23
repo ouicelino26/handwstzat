@@ -1,0 +1,207 @@
+@implements IDisposable
+@inject GlobalSearchService SearchService
+@inject NavigationManager Navigation
+
+@if (IsOpen)
+{
+    <div class="command-palette-backdrop" @onclick="Close">
+        <section class="command-palette command-studio"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Recherche globale"
+                 @onclick:stopPropagation="true">
+            <header class="command-studio__head">
+                <div>
+                    <span>Universal command surface</span>
+                    <strong>Aller directement a une decision.</strong>
+                </div>
+                <kbd>Esc</kbd>
+            </header>
+
+            <div class="command-palette__search">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m16 16 5 5"></path>
+                </svg>
+                <input @ref="_searchInput"
+                       value="@Query"
+                       @oninput="OnQueryChangedAsync"
+                       @onkeydown="HandleKeyDown"
+                       placeholder="Joueuse, equipe, match ou action..."
+                       autocomplete="off" />
+                <span class="command-studio__hint">Entites + actions</span>
+            </div>
+
+            <div class="command-studio__workspace">
+            <div class="command-palette__body">
+                @if (string.IsNullOrWhiteSpace(Query))
+                {
+                    <p class="command-palette__label">Domaines</p>
+                    @foreach (var shortcut in Shortcuts)
+                    {
+                        <button type="button" class="command-result" @onclick="() => Navigate(shortcut.Href)">
+                            <span class="command-result__icon">@shortcut.Key</span>
+                            <span>
+                                <strong>@shortcut.Title</strong>
+                                <small>@shortcut.Subtitle</small>
+                            </span>
+                            <span class="command-result__arrow">↗</span>
+                        </button>
+                    }
+                }
+                else if (IsSearching)
+                {
+                    <div class="command-palette__state">
+                        <span class="command-palette__spinner"></span>
+                        Recherche dans l'espace analytique...
+                    </div>
+                }
+                else if (Results.Count == 0)
+                {
+                    <div class="command-palette__state">
+                        Aucun resultat pour <strong>@Query</strong>.
+                    </div>
+                }
+                else
+                {
+                    <p class="command-palette__label">@Results.Count resultats</p>
+                    @foreach (var result in Results)
+                    {
+                        <button type="button" class="command-result" @onclick="() => Navigate(result.Href)">
+                            <span class="command-result__kind command-result__kind--@result.Tone">@result.Kind[..1]</span>
+                            <span>
+                                <strong>@result.Title</strong>
+                                <small>@result.Subtitle</small>
+                            </span>
+                            <span class="command-result__meta">@result.Kind</span>
+                        </button>
+                    }
+                }
+            </div>
+
+            <aside class="command-studio__aside">
+                <span>Mode operatoire</span>
+                <strong>Rechercher puis agir</strong>
+                <p>Ouvrez une entite, conservez le scope actif et poursuivez l'analyse dans sa scene.</p>
+                <div>
+                    <span><kbd>↵</kbd> ouvrir</span>
+                    <span><kbd>Esc</kbd> fermer</span>
+                    <span><kbd>Ctrl K</kbd> rappeler</span>
+                </div>
+            </aside>
+            </div>
+
+            <footer class="command-palette__footer">
+                <span>HandWStat Studio index</span>
+                <span>Joueuses · Equipes · Matchs · Commandes</span>
+            </footer>
+        </section>
+    </div>
+}
+
+@code {
+    private readonly IReadOnlyList<CommandShortcut> Shortcuts =
+    [
+        new("01", "Today", "Signaux et brief du scope actif", "/dashboard"),
+        new("02", "Athletes", "Rechercher et ouvrir un workspace", "/players"),
+        new("03", "Squads", "Lire un collectif et son effectif", "/teams"),
+        new("04", "Games", "Ouvrir une Game Room", "/matches"),
+        new("05", "Lab", "Comparer ou benchmarker un role", "/compare"),
+        new("R", "Role benchmark", "Comparer a la cohorte /60", "/position-profiles")
+    ];
+
+    private ElementReference _searchInput;
+    private CancellationTokenSource? _searchCts;
+    private string Query { get; set; } = string.Empty;
+    private bool IsSearching { get; set; }
+    private IReadOnlyList<GlobalSearchResult> Results { get; set; } = [];
+
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen)
+        {
+            await _searchInput.FocusAsync();
+        }
+    }
+
+    private async Task OnQueryChangedAsync(ChangeEventArgs args)
+    {
+        Query = args.Value?.ToString() ?? string.Empty;
+        Results = [];
+
+        var current = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _searchCts, current);
+        previous?.Cancel();
+        previous?.Dispose();
+
+        if (Query.Trim().Length < 2)
+        {
+            IsSearching = false;
+            return;
+        }
+
+        IsSearching = true;
+        try
+        {
+            await Task.Delay(220, current.Token);
+            Results = await SearchService.SearchAsync(Query, current.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch
+        {
+            Results = [];
+        }
+        finally
+        {
+            if (!current.IsCancellationRequested)
+            {
+                IsSearching = false;
+            }
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await Close();
+        }
+        else if (args.Key == "Enter" && Results.Count > 0)
+        {
+            Navigate(Results[0].Href);
+        }
+    }
+
+    private void Navigate(string href)
+    {
+        Navigation.NavigateTo(href);
+        _ = Close();
+    }
+
+    private async Task Close()
+    {
+        Query = string.Empty;
+        Results = [];
+        IsSearching = false;
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    public void Dispose()
+    {
+        var current = Interlocked.Exchange(ref _searchCts, null);
+        current?.Cancel();
+        current?.Dispose();
+    }
+
+    private sealed record CommandShortcut(string Key, string Title, string Subtitle, string Href);
+}

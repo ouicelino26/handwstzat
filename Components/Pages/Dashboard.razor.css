@@ -1,1 +1,37 @@
-/* Styles moved to wwwroot/app.css */
+.today-workspace ::deep .ranking-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+}
+
+.today-workspace ::deep .ranking-toolbar-group {
+    width: 100%;
+}
+
+.today-workspace ::deep .ranking-chip-row {
+    position: static;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.today-workspace ::deep .dashboard-nested-panel {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.today-workspace ::deep .match-mosaic {
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+@media (max-width: 900px) {
+    .today-workspace ::deep .signal-matrix {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .today-workspace ::deep .signal-matrix {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

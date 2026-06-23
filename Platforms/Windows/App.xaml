@@ -4,5 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:maui="using:Microsoft.Maui"
     xmlns:local="using:HandWStat.WinUI">
-
+    <maui:MauiWinUIApplication.Resources>
+        <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush" Color="#071412" />
+    </maui:MauiWinUIApplication.Resources>
 </maui:MauiWinUIApplication>
