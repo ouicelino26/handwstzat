@@ -22,7 +22,22 @@
             <div class="game-ticket__team">
                 @if (_hasTeamPair)
                 {
-                    <span>@_homeTeam</span>
+                    <div class="game-ticket__team-lockup">
+                        <span class="game-ticket__crest">
+                            @if (!string.IsNullOrWhiteSpace(_homeLogoUrl))
+                            {
+                                <img src="@_homeLogoUrl"
+                                     alt="@($"Logo {_homeTeam}")"
+                                     loading="lazy"
+                                     onerror="@LogoFallbackScript" />
+                            }
+                            else
+                            {
+                                <span>@GetTeamInitials(_homeTeam)</span>
+                            }
+                        </span>
+                        <span class="game-ticket__team-name">@_homeTeam</span>
+                    </div>
                 }
                 <strong>@_homeScore</strong>
             </div>
@@ -32,7 +47,22 @@
             <div class="game-ticket__team game-ticket__team--away">
                 @if (_hasTeamPair)
                 {
-                    <span>@_awayTeam</span>
+                    <div class="game-ticket__team-lockup game-ticket__team-lockup--away">
+                        <span class="game-ticket__crest">
+                            @if (!string.IsNullOrWhiteSpace(_awayLogoUrl))
+                            {
+                                <img src="@_awayLogoUrl"
+                                     alt="@($"Logo {_awayTeam}")"
+                                     loading="lazy"
+                                     onerror="@LogoFallbackScript" />
+                            }
+                            else
+                            {
+                                <span>@GetTeamInitials(_awayTeam)</span>
+                            }
+                        </span>
+                        <span class="game-ticket__team-name">@_awayTeam</span>
+                    </div>
                 }
                 <strong>@_awayScore</strong>
             </div>
@@ -90,6 +120,18 @@
     public string Score { get; set; } = "-";
 
     [Parameter]
+    public IReadOnlyList<TeamDto> Teams { get; set; } = [];
+
+    [Parameter]
+    public string? Season { get; set; }
+
+    [Parameter]
+    public string? HomeTeamLogoUrl { get; set; }
+
+    [Parameter]
+    public string? AwayTeamLogoUrl { get; set; }
+
+    [Parameter]
     public string? Kicker { get; set; }
 
     [Parameter]
@@ -126,9 +168,15 @@
 
     private string? _awayScore;
 
+    private string? _homeLogoUrl;
+
+    private string? _awayLogoUrl;
+
     private bool _hasTeamPair;
 
     private bool _hasScorePair;
+
+    private const string LogoFallbackScript = "this.onerror=null;this.src=this.src.includes('/2025-2026/')?this.src.replace('/2025-2026/','/2024-2025/'):this.src.replace('/2024-2025/','/2025-2026/');";
 
     protected override void OnParametersSet()
     {
@@ -139,11 +187,15 @@
             _homeTeam = homeTeam;
             _awayTeam = awayTeam;
             _hasTeamPair = true;
+            _homeLogoUrl = HomeTeamLogoUrl ?? TeamLogoAssetResolver.ResolveByName(Teams, homeTeam, Season);
+            _awayLogoUrl = AwayTeamLogoUrl ?? TeamLogoAssetResolver.ResolveByName(Teams, awayTeam, Season);
         }
         else
         {
             _homeTeam = null;
             _awayTeam = null;
+            _homeLogoUrl = null;
+            _awayLogoUrl = null;
             _hasTeamPair = false;
         }
 
@@ -208,5 +260,17 @@
         awayScore = parts[1];
 
         return !string.IsNullOrWhiteSpace(homeScore) && !string.IsNullOrWhiteSpace(awayScore);
+    }
+
+    private static string GetTeamInitials(string? teamName)
+    {
+        var parts = (teamName ?? "HB")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(part => part.Length > 1)
+            .Take(2)
+            .Select(part => char.ToUpperInvariant(part[0]));
+
+        var initials = string.Concat(parts);
+        return string.IsNullOrWhiteSpace(initials) ? "HB" : initials;
     }
 }

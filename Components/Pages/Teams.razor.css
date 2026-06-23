@@ -1,0 +1,65 @@
+.squad-workspace ::deep .entity-identity--squad {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.squad-workspace ::deep .team-identity-logo {
+    width: clamp(4.6rem, 8vw, 6.5rem);
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    padding: 0.7rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 1.45rem;
+    background:
+        radial-gradient(circle at 25% 15%, color-mix(in srgb, var(--paper-100), transparent 82%), transparent 46%),
+        linear-gradient(145deg, color-mix(in srgb, var(--surface-raised), white 4%), var(--surface));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper-100), transparent 88%);
+}
+
+.squad-workspace ::deep .team-identity-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.squad-workspace ::deep .team-identity-logo span {
+    color: var(--signal-500);
+    font-family: var(--font-display);
+    font-size: clamp(1.2rem, 3vw, 2rem);
+    font-weight: 900;
+    letter-spacing: -0.05em;
+}
+
+.squad-workspace ::deep .team-identity-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.squad-workspace ::deep .team-code-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.35rem;
+    padding: 0.15rem 0.48rem;
+    border: 1px solid color-mix(in srgb, var(--signal-500), transparent 42%);
+    border-radius: 999px;
+    color: var(--signal-500);
+    background: var(--signal-soft);
+    font-size: 0.58rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+    .squad-workspace ::deep .entity-identity--squad {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .squad-workspace ::deep .entity-identity--squad .entity-identity__score {
+        grid-column: 1 / -1;
+    }
+}

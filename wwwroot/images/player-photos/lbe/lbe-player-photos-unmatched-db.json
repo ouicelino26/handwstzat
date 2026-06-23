@@ -1,0 +1,922 @@
+[
+  {
+    "playerId": 272,
+    "displayName": "CLERC AGATHE",
+    "teamName": "ACHENHEIM",
+    "number": "4",
+    "position": "Demi-centre",
+    "isActive": "1"
+  },
+  {
+    "playerId": 183,
+    "displayName": "ISIKHAN BUSRA",
+    "teamName": "ACHENHEIM",
+    "number": "47",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 168,
+    "displayName": "BARLET EVE",
+    "teamName": "ACHENHEIM",
+    "number": "34",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 173,
+    "displayName": "FANTON IRENE",
+    "teamName": "ACHENHEIM",
+    "number": "62",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 169,
+    "displayName": "DEMUTH JULIETTE",
+    "teamName": "ACHENHEIM",
+    "number": "20",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 174,
+    "displayName": "CVIJIC LIDIJA",
+    "teamName": "ACHENHEIM",
+    "number": "77",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 177,
+    "displayName": "PEVEDIC LOU-ANNE",
+    "teamName": "ACHENHEIM",
+    "number": "22",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 175,
+    "displayName": "MULLER SARAH",
+    "teamName": "ACHENHEIM",
+    "number": "67",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 180,
+    "displayName": "PLEE TYPHANIE",
+    "teamName": "ACHENHEIM",
+    "number": "36",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 234,
+    "displayName": "CHARDAIRE CLEMENTINE",
+    "teamName": "BESANCON",
+    "number": "77",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 219,
+    "displayName": "REYGROBELLET EMMA",
+    "teamName": "BESANCON",
+    "number": "11",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 222,
+    "displayName": "ROSELL FRIDA",
+    "teamName": "BESANCON",
+    "number": "29",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 224,
+    "displayName": "SANDBERG MALIN",
+    "teamName": "BESANCON",
+    "number": "41",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 243,
+    "displayName": "BROQUAIRE CARLA",
+    "teamName": "BREST",
+    "number": "5",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 36,
+    "displayName": "FILTER KATHARINA",
+    "teamName": "BREST",
+    "number": "1",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 27,
+    "displayName": "NOVAK KRISTINA",
+    "teamName": "BREST",
+    "number": "14",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 283,
+    "displayName": "KALAI LINDSAY",
+    "teamName": "BREST",
+    "number": "7",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 357,
+    "displayName": "NOSLEN NAYENKA",
+    "teamName": "BREST",
+    "number": "4",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 207,
+    "displayName": "SOW AMINATA",
+    "teamName": "CHAMBRAY",
+    "number": "19",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 205,
+    "displayName": "SYLLA DYENABA",
+    "teamName": "CHAMBRAY",
+    "number": "24",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 292,
+    "displayName": "NAAS ELICA",
+    "teamName": "CHAMBRAY",
+    "number": "94",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 204,
+    "displayName": "VAN DER HEIJDEN LAURA",
+    "teamName": "CHAMBRAY",
+    "number": "11",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 291,
+    "displayName": "EBARA--MANGINOT LEONIE",
+    "teamName": "CHAMBRAY",
+    "number": "89",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 270,
+    "displayName": "GUIGNARD MANON",
+    "teamName": "CHAMBRAY",
+    "number": "23",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 213,
+    "displayName": "SZIKORA MELINDA",
+    "teamName": "CHAMBRAY",
+    "number": "12",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 326,
+    "displayName": "RICHARD YLANA",
+    "teamName": "CHAMBRAY",
+    "number": "16",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 300,
+    "displayName": "DURY AMEL",
+    "teamName": "DIJON",
+    "number": "90",
+    "position": "Demi-centre",
+    "isActive": "1"
+  },
+  {
+    "playerId": 196,
+    "displayName": "CASSIN ANOUK",
+    "teamName": "DIJON",
+    "number": "11",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 200,
+    "displayName": "HENRY ENOLA",
+    "teamName": "DIJON",
+    "number": "50",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 187,
+    "displayName": "GRAVELLE MANON",
+    "teamName": "DIJON",
+    "number": "9",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 49,
+    "displayName": "LACUEY ANNA",
+    "teamName": "MERIGNAC",
+    "number": "37",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 38,
+    "displayName": "CLEMENT ANOUCK",
+    "teamName": "MERIGNAC",
+    "number": "5",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 44,
+    "displayName": "LENFANT-SCODELLARO CAMILLE",
+    "teamName": "MERIGNAC",
+    "number": "86",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 46,
+    "displayName": "BOULESQUE EMMA",
+    "teamName": "MERIGNAC",
+    "number": "10",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 263,
+    "displayName": "ABADIE JULIE",
+    "teamName": "MERIGNAC",
+    "number": "25",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 55,
+    "displayName": "BEKROU-BREGA KERAN",
+    "teamName": "MERIGNAC",
+    "number": "16",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 39,
+    "displayName": "LIGNIERES LEA",
+    "teamName": "MERIGNAC",
+    "number": "6",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 54,
+    "displayName": "LE BORGNE LENA",
+    "teamName": "MERIGNAC",
+    "number": "29",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 267,
+    "displayName": "BLOT--MERCURI LOELIE",
+    "teamName": "MERIGNAC",
+    "number": "27",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 56,
+    "displayName": "SIBON-VALERO LOU",
+    "teamName": "MERIGNAC",
+    "number": "33",
+    "position": "Demi-centre",
+    "isActive": "1"
+  },
+  {
+    "playerId": 51,
+    "displayName": "TEXIER LOUANE",
+    "teamName": "MERIGNAC",
+    "number": "72",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 48,
+    "displayName": "SAMAI LYSON",
+    "teamName": "MERIGNAC",
+    "number": "83",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 47,
+    "displayName": "MALHARIN NAHIA",
+    "teamName": "MERIGNAC",
+    "number": "11",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 53,
+    "displayName": "LELONG ROMANE",
+    "teamName": "MERIGNAC",
+    "number": "26",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 60,
+    "displayName": "PINEAU ALLISON",
+    "teamName": "METZ",
+    "number": "7",
+    "position": "Demi-centre",
+    "isActive": "1"
+  },
+  {
+    "playerId": 59,
+    "displayName": "HANSEN ANNE METTE",
+    "teamName": "METZ",
+    "number": "8",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 68,
+    "displayName": "DARLEUX CLEOPATRE",
+    "teamName": "METZ",
+    "number": "16",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 67,
+    "displayName": "CHAMBERTIN DJAZZ",
+    "teamName": "METZ",
+    "number": "31",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 64,
+    "displayName": "JACQUES EMMA",
+    "teamName": "METZ",
+    "number": "24",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 353,
+    "displayName": "CATHERINE GABRIEL",
+    "teamName": "METZ",
+    "number": "94",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 69,
+    "displayName": "FLIPPES LAURA",
+    "teamName": "METZ",
+    "number": "20",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 277,
+    "displayName": "SCHATZL NADINE",
+    "teamName": "METZ",
+    "number": "6",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 72,
+    "displayName": "SZEMEREY ZSOFI",
+    "teamName": "METZ",
+    "number": "37",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 95,
+    "displayName": "MITROVIC GORDANA",
+    "teamName": "NICE OGC",
+    "number": "33",
+    "position": "Demi-centre",
+    "isActive": "1"
+  },
+  {
+    "playerId": 284,
+    "displayName": "BIANCHI LUCIE",
+    "teamName": "NICE OGC",
+    "number": "18",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 356,
+    "displayName": "TISSOT MARIE-CLAUDE",
+    "teamName": "NICE OGC",
+    "number": "24",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 100,
+    "displayName": "WIGGINS NICOLE",
+    "teamName": "NICE OGC",
+    "number": "11",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 88,
+    "displayName": "DAPINA RAISSA",
+    "teamName": "NICE OGC",
+    "number": "44",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 90,
+    "displayName": "PETIKA TENA",
+    "teamName": "NICE OGC",
+    "number": "14",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 162,
+    "displayName": "OUATTARA ADJA",
+    "teamName": "PARIS92",
+    "number": "92",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 240,
+    "displayName": "PLACZEK ADRIANNA",
+    "teamName": "PARIS92",
+    "number": "24",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 163,
+    "displayName": "PLAZCEK ADRIANNA",
+    "teamName": "PARIS92",
+    "number": "24",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 244,
+    "displayName": "DUFEIL AMELIE",
+    "teamName": "PARIS92",
+    "number": "75",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 298,
+    "displayName": "HANSSON ANNA",
+    "teamName": "PARIS92",
+    "number": "8",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 157,
+    "displayName": "N'GOUAN ASTRIDE",
+    "teamName": "PARIS92",
+    "number": "9",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 246,
+    "displayName": "HOUZE CHLOE",
+    "teamName": "PARIS92",
+    "number": "7",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 301,
+    "displayName": "KABEYA GABRIELLE",
+    "teamName": "PARIS92",
+    "number": "95",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 247,
+    "displayName": "SCHAPELYNCK LALY",
+    "teamName": "PARIS92",
+    "number": "1",
+    "position": "",
+    "isActive": "1"
+  },
+  {
+    "playerId": 152,
+    "displayName": "PINA LAUGANE",
+    "teamName": "PARIS92",
+    "number": "99",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 159,
+    "displayName": "FOFANA NAMIZATA",
+    "teamName": "PARIS92",
+    "number": "28",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 299,
+    "displayName": "NOOITMEER SHARON",
+    "teamName": "PARIS92",
+    "number": "3",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 156,
+    "displayName": "SAGNA SOUKEINA",
+    "teamName": "PARIS92",
+    "number": "4",
+    "position": "Demi-centre",
+    "isActive": "1"
+  },
+  {
+    "playerId": 275,
+    "displayName": "ESTACHY ALICIA",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "16",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 34,
+    "displayName": "DEMBELE AUDRAY",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "75",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 106,
+    "displayName": "GAUTSCHI DAPHNE",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "10",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 103,
+    "displayName": "CHAVEZ-HERNANDEZ ELISABETH",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "14",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 115,
+    "displayName": "KABEYA JEMINA",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "16",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 108,
+    "displayName": "KORDOVSKA KAMILA",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "48",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 116,
+    "displayName": "VERNAY LALIE",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "20",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 117,
+    "displayName": "GARCIA LOUANE",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "20",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 113,
+    "displayName": "PLAIS MATHILDE",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "29",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 104,
+    "displayName": "ELISME TATIANA-EMILIE",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "89",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 258,
+    "displayName": "KABEYA TSHISOLA",
+    "teamName": "PLAN-DE-CUQUES",
+    "number": "95",
+    "position": "",
+    "isActive": "1"
+  },
+  {
+    "playerId": 76,
+    "displayName": "AOUSTIN CAMILLE",
+    "teamName": "SAMBRE",
+    "number": "13",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 74,
+    "displayName": "ABDOURAHIM DOUNIA",
+    "teamName": "SAMBRE",
+    "number": "21",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 80,
+    "displayName": "KIPRIJANOVSKA JOVANA",
+    "teamName": "SAMBRE",
+    "number": "30",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 279,
+    "displayName": "DIARRASSOUBA MACHATA",
+    "teamName": "SAMBRE",
+    "number": "10",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 87,
+    "displayName": "ILIC MARIJANA",
+    "teamName": "SAMBRE",
+    "number": "1",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 276,
+    "displayName": "MATANU-TENDA SINTHYCHE",
+    "teamName": "SAMBRE",
+    "number": "10",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 129,
+    "displayName": "VANDEPUTTE ANAELLE",
+    "teamName": "ST-AMAND",
+    "number": "59",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 130,
+    "displayName": "WILD CLARISSE",
+    "teamName": "ST-AMAND",
+    "number": "25",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 120,
+    "displayName": "BAKKER DONNA",
+    "teamName": "ST-AMAND",
+    "number": "9",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 288,
+    "displayName": "JANSSEN ELLEN",
+    "teamName": "ST-AMAND",
+    "number": "21",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 229,
+    "displayName": "CORDIER EMA",
+    "teamName": "ST-AMAND",
+    "number": "34",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 123,
+    "displayName": "PULERI EMMA",
+    "teamName": "ST-AMAND",
+    "number": "13",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 122,
+    "displayName": "CREN GWENAELLE",
+    "teamName": "ST-AMAND",
+    "number": "12",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 287,
+    "displayName": "ILIC JOVANA",
+    "teamName": "ST-AMAND",
+    "number": "44",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 131,
+    "displayName": "YUE-RODRIGUES JULIA",
+    "teamName": "ST-AMAND",
+    "number": "3",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 118,
+    "displayName": "LUNDGREEN NIKOLINE",
+    "teamName": "ST-AMAND",
+    "number": "4",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 132,
+    "displayName": "FRANK ROXANNE",
+    "teamName": "ST-AMAND",
+    "number": "1",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 286,
+    "displayName": "POURCHEZ SALOME",
+    "teamName": "ST-AMAND",
+    "number": "57",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 127,
+    "displayName": "PASCOAL STELVIA DE JESUS",
+    "teamName": "ST-AMAND",
+    "number": "26",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 139,
+    "displayName": "CLAIN MAELLE-MARIE-MYLENE",
+    "teamName": "STELLA SAINT-MAUR",
+    "number": "8",
+    "position": "Demi-centre",
+    "isActive": "1"
+  },
+  {
+    "playerId": 150,
+    "displayName": "GOUALI MELISSA",
+    "teamName": "STELLA SAINT-MAUR",
+    "number": "2",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 135,
+    "displayName": "KRULLARS NYALA",
+    "teamName": "STELLA SAINT-MAUR",
+    "number": "22",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 147,
+    "displayName": "MAZOUZ SIWAR",
+    "teamName": "STELLA SAINT-MAUR",
+    "number": "2",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 6,
+    "displayName": "CARDOSO ADRIANA",
+    "teamName": "TOULON",
+    "number": "21",
+    "position": "Ailier droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 15,
+    "displayName": "ABIVEN ANAELLE",
+    "teamName": "TOULON",
+    "number": "29",
+    "position": "Ailier gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 8,
+    "displayName": "SKINNEHAUGEN ELISE",
+    "teamName": "TOULON",
+    "number": "21",
+    "position": "Arrière droit",
+    "isActive": "1"
+  },
+  {
+    "playerId": 2,
+    "displayName": "GROLLIER ENOLA",
+    "teamName": "TOULON",
+    "number": "5",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 19,
+    "displayName": "BALLI JAELY",
+    "teamName": "TOULON",
+    "number": "18",
+    "position": "Gardien de but",
+    "isActive": "1"
+  },
+  {
+    "playerId": 16,
+    "displayName": "RAULO JUSTINE",
+    "teamName": "TOULON",
+    "number": "22",
+    "position": "Pivot",
+    "isActive": "1"
+  },
+  {
+    "playerId": 12,
+    "displayName": "SIDICINA LAURY",
+    "teamName": "TOULON",
+    "number": "44",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  },
+  {
+    "playerId": 1,
+    "displayName": "LACHAIZE MANON",
+    "teamName": "TOULON",
+    "number": "3",
+    "position": "Demi-centre",
+    "isActive": "1"
+  },
+  {
+    "playerId": 5,
+    "displayName": "DEMUNCK MARJORIE",
+    "teamName": "TOULON",
+    "number": "13",
+    "position": "Arrière gauche",
+    "isActive": "1"
+  }
+]

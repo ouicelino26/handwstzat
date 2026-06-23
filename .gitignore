@@ -13,6 +13,8 @@ obj/
 
 # Logs and temporary assets
 *.log
+*.pyc
+__pycache__/
 run.*.txt
 tmp_*.png
 tmp_*.svg

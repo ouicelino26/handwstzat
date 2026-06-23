@@ -1,5 +1,6 @@
 @page "/players"
 @using System.Globalization
+@using System.Text
 @inject ReferenceDataService ReferenceDataService
 @inject PlayersApiClient PlayersApiClient
 @inject MatchesApiClient MatchesApiClient
@@ -163,17 +164,34 @@
                         var sanctions = Sanctions!;
                         var goalkeeper = Goalkeeper!;
                         PlayerTechnicalStatsDto? technical = Technical!;
+                        var playerPhotoUrl = ResolvePlayerPhotoUrl(profile.PlayerPhoto);
+                        var playerFlagUrl = ResolveFlagAssetUrl(profile.Nationality);
 
-                        <header class="entity-identity">
+                        <header class="entity-identity entity-identity--athlete">
+                            <div class="player-identity-photo @(playerPhotoUrl is null ? "is-placeholder" : string.Empty)">
+                                @if (!string.IsNullOrWhiteSpace(playerPhotoUrl))
+                                {
+                                    <img src="@playerPhotoUrl" alt="@($"Portrait de {profile.FullName}")" loading="lazy" />
+                                }
+                                else
+                                {
+                                    <span>@GetInitials(profile.FullName)</span>
+                                }
+                            </div>
                             <div class="entity-identity__number">@(profile.Number?.ToString("00") ?? "—")</div>
                             <div class="entity-identity__copy">
-                                <span>Athlete workspace</span>
                                 <h2 data-page-title>@profile.FullName</h2>
-                                <p class="page-subtitle">
-                                    @(profile.TeamName ?? "Equipe non renseignee") · @(profile.PositionName ?? "Poste non renseigne")
+                                <p class="page-subtitle athlete-meta-line">
+                                    <span>@(profile.TeamName ?? "Equipe non renseignee") · @(profile.PositionName ?? "Poste non renseigne")</span>
                                     @if (!string.IsNullOrWhiteSpace(profile.Nationality))
                                     {
-                                        <span> · @profile.Nationality</span>
+                                        <span class="nationality-chip">
+                                            @if (!string.IsNullOrWhiteSpace(playerFlagUrl))
+                                            {
+                                                <img src="@playerFlagUrl" alt="" loading="lazy" />
+                                            }
+                                            <span>@profile.Nationality</span>
+                                        </span>
                                     }
                                 </p>
                             </div>
@@ -205,20 +223,103 @@
 
                         @if (ActiveSection == "overview")
                         {
-                            <div class="stats-grid">
-                                <div class="mini-card"><span>Matchs</span><strong>@Profile.MatchesPlayed</strong></div>
-                                <div class="mini-card"><span>Buts</span><strong>@Global.TotalGoals</strong></div>
-                                <div class="mini-card"><span>Passes</span><strong>@Global.AssistCount</strong></div>
-                                <div class="mini-card"><span>Interceptions</span><strong>@Global.InterceptionCount</strong></div>
-                                <div class="mini-card"><span>Arrets</span><strong>@Global.SaveCount</strong></div>
-                                <div class="mini-card"><span>Pertes</span><strong>@Global.TurnoverCount</strong></div>
-                                <div class="mini-card"><span>Tir</span><strong>@FormatRate(Global.ShotSuccessRate)%</strong></div>
-                                <div class="mini-card"><span>Penalty</span><strong>@FormatRate(Global.PenaltySuccessRate)%</strong></div>
+                            <div class="player-stat-board">
+                                <section class="player-stat-block player-stat-block--global">
+                                    <header class="player-stat-block__head">
+                                        <div>
+                                            <p class="section-kicker">Stat global</p>
+                                            <h4>Lecture synthese</h4>
+                                        </div>
+                                        <span class="stat-block-pill">@profile.MatchesPlayed matchs</span>
+                                    </header>
+
+                                    <div class="stats-grid player-stat-grid">
+                                        <div class="mini-card"><span>Matchs</span><strong>@profile.MatchesPlayed</strong></div>
+                                        <div class="mini-card"><span>Temps / match</span><strong>@FormatRate(profile.AveragePlayingTimePerMatchMinutes) min</strong></div>
+                                        <div class="mini-card"><span>Actions directes</span><strong>@DirectActionsCount()</strong></div>
+                                        <div class="mini-card"><span>Indice global</span><strong>@FormatRate(PlayerTechnicalBalanceScore)%</strong></div>
+                                    </div>
+
+                                    <BarGaugeKpiGrid Items="@PlayerGaugeKpis" CssClass="player-gauge-strip" />
+                                </section>
+
+                                <section class="player-stat-block player-stat-block--offense">
+                                    <header class="player-stat-block__head">
+                                        <div>
+                                            <p class="section-kicker">Stat offensif</p>
+                                            <h4>Production et creation</h4>
+                                        </div>
+                                    </header>
+
+                                    <div class="stats-grid player-stat-grid">
+                                        <div class="mini-card"><span>Buts total</span><strong>@offense.TotalButs</strong></div>
+                                        <div class="mini-card"><span>Buts jeu</span><strong>@offense.Buts</strong></div>
+                                        <div class="mini-card"><span>7m marques</span><strong>@offense.Buts7m</strong></div>
+                                        <div class="mini-card"><span>Passes decisives</span><strong>@passing.PasseDecisive</strong></div>
+                                        <div class="mini-card"><span>Penalty rates</span><strong>@offense.PenaltyRate</strong></div>
+                                        <div class="mini-card"><span>Tirs rates</span><strong>@offense.TirsRates</strong></div>
+                                        <div class="mini-card"><span>Tirs contres</span><strong>@offense.TirContre</strong></div>
+                                        <div class="mini-card"><span>Taux tir</span><strong>@FormatRate(offense.TauxReussiteTir)%</strong></div>
+                                    </div>
+                                </section>
+
+                                <section class="player-stat-block player-stat-block--defense">
+                                    <header class="player-stat-block__head">
+                                        <div>
+                                            <p class="section-kicker">Stat defensif</p>
+                                            <h4>Recuperation et protection</h4>
+                                        </div>
+                                    </header>
+
+                                    <div class="stats-grid player-stat-grid">
+                                        <div class="mini-card"><span>Interceptions</span><strong>@defense.Interceptions</strong></div>
+                                        <div class="mini-card"><span>Contres / Blc</span><strong>@defense.Contres</strong></div>
+                                        <div class="mini-card"><span>Neutralisations</span><strong>@defense.Neutralisations</strong></div>
+                                        <div class="mini-card"><span>PF provoque</span><strong>@defense.PassageForce</strong></div>
+                                        <div class="mini-card"><span>Impact def.</span><strong>@technical.DefensiveImpact</strong></div>
+                                        <div class="mini-card"><span>Sanctions</span><strong>@(sanctions.Exclusions + sanctions.Avertissements + sanctions.DeuxMinutes)</strong></div>
+                                    </div>
+                                </section>
+
+                                <section class="player-stat-block player-stat-block--control">
+                                    <header class="player-stat-block__head">
+                                        <div>
+                                            <p class="section-kicker">Maitrise technique</p>
+                                            <h4>Pertes, dechets et discipline</h4>
+                                        </div>
+                                    </header>
+
+                                    <div class="stats-grid player-stat-grid">
+                                        <div class="mini-card"><span>Pert / PdB</span><strong>@passing.TotalPertes</strong></div>
+                                        <div class="mini-card"><span>Mauvaises passes</span><strong>@passing.MauvaisePasse</strong></div>
+                                        <div class="mini-card"><span>Fautes techniques</span><strong>@passing.FauteTechnique</strong></div>
+                                        <div class="mini-card"><span>Passages en force</span><strong>@passing.PassageEnForce</strong></div>
+                                        <div class="mini-card"><span>Pen. concede</span><strong>@sanctions.PenaltyConcede</strong></div>
+                                        <div class="mini-card"><span>Ballons valorises</span><strong>@FormatRate(PlayerBallValueRate)%</strong></div>
+                                    </div>
+                                </section>
+
+                                @if (profile.IsGoalkeeper)
+                                {
+                                    <section class="player-stat-block player-stat-block--goalkeeper">
+                                        <header class="player-stat-block__head">
+                                            <div>
+                                                <p class="section-kicker">Stat gardienne</p>
+                                                <h4>Arrets et tirs subis</h4>
+                                            </div>
+                                        </header>
+
+                                        <div class="stats-grid player-stat-grid">
+                                            <div class="mini-card"><span>Arrets jeu</span><strong>@goalkeeper.Arrets</strong></div>
+                                            <div class="mini-card"><span>7m arretes</span><strong>@goalkeeper.ArretsPenalty</strong></div>
+                                            <div class="mini-card"><span>Arrets totaux</span><strong>@(goalkeeper.Arrets + goalkeeper.ArretsPenalty)</strong></div>
+                                            <div class="mini-card"><span>Buts encaisses</span><strong>@technical.GoalkeeperConcededGoals</strong></div>
+                                            <div class="mini-card"><span>Tirs subis</span><strong>@goalkeeper.TirsSubis</strong></div>
+                                            <div class="mini-card"><span>Taux d'arret</span><strong>@FormatRate(goalkeeper.TauxArret)%</strong></div>
+                                        </div>
+                                    </section>
+                                }
                             </div>
-
-                            <BarGaugeKpiGrid Items="@PlayerGaugeKpis" />
-
-                            <KpiTileGrid Items="@PlayerKpis" />
                         }
                         else if (ActiveSection == "analysis")
                         {
@@ -256,16 +357,19 @@
                                         <div class="mini-card"><span>Penaltys</span><strong>@Sanctions.PenaltyConcede</strong></div>
                                     </div>
                                 </section>
-                                <section class="page-panel">
-                                    <p class="section-kicker">Bloc gardienne</p>
-                                    <h4>@(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty) arrets</h4>
-                                    <div class="badge-row">
-                                        <div class="mini-card"><span>Buts pris</span><strong>@Goalkeeper.ButsPris</strong></div>
-                                        <div class="mini-card"><span>Tirs subis</span><strong>@Goalkeeper.TirsSubis</strong></div>
-                                        <div class="mini-card"><span>Taux d'arret</span><strong>@FormatRate(Goalkeeper.TauxArret)%</strong></div>
-                                        <div class="mini-card"><span>Passes</span><strong>@Goalkeeper.PasseDecisives</strong></div>
-                                    </div>
-                                </section>
+                                @if (profile.IsGoalkeeper)
+                                {
+                                    <section class="page-panel">
+                                        <p class="section-kicker">Bloc gardienne</p>
+                                        <h4>@(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty) arrets</h4>
+                                        <div class="badge-row">
+                                            <div class="mini-card"><span>Buts pris</span><strong>@Goalkeeper.ButsPris</strong></div>
+                                            <div class="mini-card"><span>Tirs subis</span><strong>@Goalkeeper.TirsSubis</strong></div>
+                                            <div class="mini-card"><span>Taux d'arret</span><strong>@FormatRate(Goalkeeper.TauxArret)%</strong></div>
+                                            <div class="mini-card"><span>Passes</span><strong>@Goalkeeper.PasseDecisives</strong></div>
+                                        </div>
+                                    </section>
+                                }
                                 <section class="page-panel">
                                     <p class="section-kicker">Technique</p>
                                     <h4>@(profile.IsGoalkeeper ? $"{technical.TirsSubis} tirs subis" : $"{technical.ShotAttempts} tirs engages")</h4>
@@ -591,6 +695,10 @@
                                         <MatchCard @key="match.MatchId"
                                                    Title="@($"{match.Team1Name ?? "Equipe A"} vs {match.Team2Name ?? "Equipe B"}")"
                                                    Score="@($"{match.Team1Score ?? 0} - {match.Team2Score ?? 0}")"
+                                                   Teams="@ReferenceData.Teams"
+                                                   Season="@Season"
+                                                   HomeTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team1Name, Season)"
+                                                   AwayTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team2Name, Season)"
                                                    Meta="@(match.CompetitionName ?? "Competition")"
                                                    SecondaryMeta="@MatchFilterCatalog.FormatSeasonDay(match)"
                                                    DetailsHref="@($"/matches?matchId={match.MatchId}")"
@@ -637,6 +745,63 @@
     private string? ErrorMessage { get; set; }
     private CancellationTokenSource? _searchDebounceCts;
     private static readonly TimeSpan SearchDebounceDelay = TimeSpan.FromMilliseconds(300);
+    private static readonly IReadOnlyDictionary<string, string> FlagFileByKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["france"] = "France.png",
+        ["francaise"] = "France.png",
+        ["francais"] = "France.png",
+        ["pays bas"] = "Pays-Bas.png",
+        ["neerlandaise"] = "Pays-Bas.png",
+        ["neerlandais"] = "Pays-Bas.png",
+        ["danemark"] = "Danemark.png",
+        ["danoise"] = "Danemark.png",
+        ["danois"] = "Danemark.png",
+        ["norvege"] = "Norvège.png",
+        ["norvegienne"] = "Norvège.png",
+        ["norvegien"] = "Norvège.png",
+        ["bresil"] = "Brésil.png",
+        ["bresilienne"] = "Brésil.png",
+        ["bresilien"] = "Brésil.png",
+        ["espagne"] = "Espagne.png",
+        ["espagnole"] = "Espagne.png",
+        ["espagnol"] = "Espagne.png",
+        ["hongrie"] = "Hongrie.png",
+        ["hongroise"] = "Hongrie.png",
+        ["hongrois"] = "Hongrie.png",
+        ["serbie"] = "Serbie.png",
+        ["serbe"] = "Serbie.png",
+        ["croatie"] = "Croatie.png",
+        ["croate"] = "Croatie.png",
+        ["slovenie"] = "Slovénie.png",
+        ["slovene"] = "Slovénie.png",
+        ["slovenienne"] = "Slovénie.png",
+        ["roumanie"] = "Roumanie.png",
+        ["roumaine"] = "Roumanie.png",
+        ["roumain"] = "Roumanie.png",
+        ["allemagne"] = "Allemagne.png",
+        ["allemande"] = "Allemagne.png",
+        ["allemand"] = "Allemagne.png",
+        ["portugal"] = "Portugal.png",
+        ["portugaise"] = "Portugal.png",
+        ["portugais"] = "Portugal.png",
+        ["suisse"] = "Suisse.png",
+        ["senegal"] = "Sénégal.png",
+        ["senegalaise"] = "Sénégal.png",
+        ["senegalais"] = "Sénégal.png",
+        ["egypte"] = "Égypte.png",
+        ["egyptienne"] = "Égypte.png",
+        ["egyptien"] = "Égypte.png",
+        ["congo"] = "Congo.png",
+        ["congolaise"] = "Congo.png",
+        ["congolais"] = "Congo.png",
+        ["macedoine du nord"] = "Macédoine du Nord.png",
+        ["macedonienne"] = "Macédoine du Nord.png",
+        ["tchequie"] = "Tchéquie.png",
+        ["tcheque"] = "Tchéquie.png",
+        ["republique tcheque"] = "Tchéquie.png",
+        ["coree du sud"] = "Corée du Sud.png",
+        ["coreenne"] = "Corée du Sud.png",
+    };
     private string Search { get; set; } = string.Empty;
     private int? CompetitionId { get; set; }
     private int? TeamId { get; set; }
@@ -733,6 +898,12 @@
         && string.IsNullOrWhiteSpace(Search);
     private bool UseScrollableDirectory => IsCompetitionOnlyDirectoryFilter && PlayerDirectory.Count > 10;
     private bool ShowPlayerScatterChart => PlayerScatterSeries.Count > 0;
+    private double PlayerTechnicalBalanceScore => Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null
+        ? 0
+        : HandballKpiHelper.TechnicalBalanceScore(Global, Offense, Defense, Passing, Sanctions, Goalkeeper);
+    private double PlayerBallValueRate => Passing is null
+        ? 0
+        : HandballKpiHelper.SuccessVsWasteShare(Passing.PasseDecisive, Passing.TotalPertes);
 
     protected override async Task OnInitializedAsync()
     {
@@ -1294,6 +1465,102 @@
             zone.Attempts,
             zone.SuccessCount,
             zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList());
+    }
+
+    private static string? ResolvePlayerPhotoUrl(string? photo)
+    {
+        return ResolveImageAssetUrl(photo, "/images/player-photos/lbe");
+    }
+
+    private static string? ResolveFlagAssetUrl(string? nationality)
+    {
+        if (string.IsNullOrWhiteSpace(nationality))
+        {
+            return null;
+        }
+
+        var key = NormalizeAssetKey(nationality);
+        var fileName = FlagFileByKey.TryGetValue(key, out var mappedFile)
+            ? mappedFile
+            : $"{nationality.Trim()}.png";
+
+        return $"/images/flags/{EscapePathSegment(fileName)}";
+    }
+
+    private static string? ResolveImageAssetUrl(string? value, string localFolder)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var cleanValue = value.Trim().Replace('\\', '/');
+        if (cleanValue.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || cleanValue.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return cleanValue;
+        }
+
+        if (cleanValue.StartsWith("/", StringComparison.Ordinal))
+        {
+            return EscapeAssetPath(cleanValue);
+        }
+
+        if (cleanValue.StartsWith("images/", StringComparison.OrdinalIgnoreCase))
+        {
+            return EscapeAssetPath("/" + cleanValue);
+        }
+
+        var fileName = cleanValue.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? cleanValue;
+        return $"{localFolder}/{EscapePathSegment(fileName)}";
+    }
+
+    private static string EscapeAssetPath(string path)
+    {
+        var prefix = path.StartsWith("/", StringComparison.Ordinal) ? "/" : string.Empty;
+        var segments = path.TrimStart('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return prefix + string.Join("/", segments.Select(EscapePathSegment));
+    }
+
+    private static string EscapePathSegment(string segment)
+    {
+        return Uri.EscapeDataString(segment);
+    }
+
+    private static string NormalizeAssetKey(string value)
+    {
+        var decomposed = value.Trim().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(decomposed.Length);
+        var previousWasSpace = false;
+
+        foreach (var character in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
+            {
+                continue;
+            }
+
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(char.ToLowerInvariant(character));
+                previousWasSpace = false;
+                continue;
+            }
+
+            if (!previousWasSpace)
+            {
+                builder.Append(' ');
+                previousWasSpace = true;
+            }
+        }
+
+        return builder.ToString().Trim();
+    }
+
+    private static string GetInitials(string? fullName)
+    {
+        var parts = (fullName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])));
     }
 
     private IReadOnlyList<KpiTile> BuildPlayerKpis()

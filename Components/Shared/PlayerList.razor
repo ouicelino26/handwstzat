@@ -32,11 +32,22 @@
         {
             @foreach (var player in Players)
             {
+                var photoUrl = ResolvePlayerPhotoUrl(player.PlayerPhoto);
+
                 <button type="button"
                         class="entity-index__item @(SelectedPlayerId == player.PlayerId ? "is-selected" : string.Empty)"
                         aria-pressed="@(SelectedPlayerId == player.PlayerId)"
                         @onclick="() => SelectPlayerAsync(player.PlayerId)">
-                    <span class="entity-index__avatar">@GetInitials(player.FullName)</span>
+                    <span class="entity-index__avatar @(photoUrl is null ? "is-placeholder" : string.Empty)">
+                        @if (!string.IsNullOrWhiteSpace(photoUrl))
+                        {
+                            <img src="@photoUrl" alt="@($"Portrait de {player.FullName}")" loading="lazy" />
+                        }
+                        else
+                        {
+                            @GetInitials(player.FullName)
+                        }
+                    </span>
                     <span class="entity-index__identity">
                         <strong>@player.FullName</strong>
                         <small>@(player.TeamName ?? "Equipe inconnue")</small>
@@ -88,5 +99,29 @@
     {
         var parts = (fullName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return string.Concat(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])));
+    }
+
+    private static string? ResolvePlayerPhotoUrl(string? photo)
+    {
+        if (string.IsNullOrWhiteSpace(photo))
+        {
+            return null;
+        }
+
+        var cleanValue = photo.Trim().Replace('\\', '/');
+        if (cleanValue.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || cleanValue.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            || cleanValue.StartsWith("/", StringComparison.Ordinal))
+        {
+            return cleanValue;
+        }
+
+        if (cleanValue.StartsWith("images/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "/" + cleanValue;
+        }
+
+        var fileName = cleanValue.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? cleanValue;
+        return $"/images/player-photos/lbe/{Uri.EscapeDataString(fileName)}";
     }
 }

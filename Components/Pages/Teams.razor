@@ -139,12 +139,34 @@
             }
 
             <section class="entity-stage">
+                @{
+                    var teamLogoUrl = SelectedTeamLogoUrl;
+                }
+
                 <header class="entity-identity entity-identity--squad">
-                    <div class="entity-identity__number">@(TeamStats.TeamCode ?? "HWS")</div>
+                    <div class="team-identity-logo @(teamLogoUrl is null ? "is-placeholder" : string.Empty)">
+                        @if (!string.IsNullOrWhiteSpace(teamLogoUrl))
+                        {
+                            <img src="@teamLogoUrl"
+                                 alt="@($"Logo {TeamStats.TeamName}")"
+                                 loading="lazy"
+                                 onerror="this.onerror=null;this.src=this.src.includes('/2025-2026/')?this.src.replace('/2025-2026/','/2024-2025/'):this.src.replace('/2024-2025/','/2025-2026/');" />
+                        }
+                        else
+                        {
+                            <span>@(TeamStats.TeamCode ?? "HWS")</span>
+                        }
+                    </div>
                     <div class="entity-identity__copy">
                         <span>Squad workspace</span>
                         <h2 data-page-title>@TeamStats.TeamName</h2>
-                        <p>@TeamStats.MatchesPlayed matchs · @TeamPlayers.Count joueuses dans le scope</p>
+                        <p class="team-identity-meta">
+                            @if (!string.IsNullOrWhiteSpace(TeamStats.TeamCode))
+                            {
+                                <span class="team-code-pill">@TeamStats.TeamCode</span>
+                            }
+                            <span>@TeamStats.MatchesPlayed matchs · @TeamPlayers.Count joueuses dans le scope</span>
+                        </p>
                     </div>
                     <div class="entity-identity__score">
                         <span>Bilan</span>
@@ -353,6 +375,10 @@
                                         <MatchCard @key="match.MatchId"
                                                    Title="@($"{match.Team1Name ?? "Equipe A"} vs {match.Team2Name ?? "Equipe B"}")"
                                                    Score="@($"{match.Team1Score ?? 0} - {match.Team2Score ?? 0}")"
+                                                   Teams="@ReferenceData.Teams"
+                                                   Season="@Season"
+                                                   HomeTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team1Name, Season)"
+                                                   AwayTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team2Name, Season)"
                                                    Meta="@(match.CompetitionName ?? "Competition")"
                                                    SecondaryMeta="@MatchFilterCatalog.FormatSeasonDay(match)"
                                                    DetailsHref="@($"/matches?matchId={match.MatchId}")"
@@ -410,6 +436,11 @@
         ReferenceData,
         MatchFilterCatalog.ApplySeasonAndDay(TeamOptionMatches, Season, Day),
         CompetitionId.HasValue || !string.IsNullOrWhiteSpace(Season) || !string.IsNullOrWhiteSpace(Day));
+    private string? SelectedTeamLogoUrl => TeamLogoAssetResolver.ResolveByTeam(
+        TeamStats is null
+            ? null
+            : ReferenceData.Teams.FirstOrDefault(team => team.TeamId == TeamStats.TeamId),
+        Season);
     private IReadOnlyList<LookupItemDto> AvailablePositions => SmartFilterCatalog.GetPositions(ReferenceData.Positions, RosterPlayers, PositionId.HasValue || TeamPlayers.Count > 0);
     private IReadOnlyList<ScopeSummaryItem> TeamScopeItems =>
     [
