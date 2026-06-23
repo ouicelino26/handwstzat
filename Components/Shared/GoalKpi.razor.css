@@ -68,6 +68,40 @@
     border-bottom: 1px solid var(--line);
 }
 
+/* ── Heat legend ────────────────────────────────────── */
+.heat-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.heat-legend::before {
+    content: "";
+    display: block;
+    width: 5rem;
+    height: 0.45rem;
+    border-radius: 99px;
+    background: linear-gradient(
+        to right,
+        #b9635a,
+        #df9069,
+        #f0ca91,
+        #d5e2a7,
+        #48a36c
+    );
+    flex-shrink: 0;
+    order: 1;
+}
+
+.heat-legend > span:first-child  { order: 0; }
+.heat-legend > span:nth-child(2) { order: 2; }
+.heat-legend > span:last-child   { order: 3; }
+
+/* ── Maps ───────────────────────────────────────────── */
 .goal-map-wrap,
 .pitch-map-wrap {
     padding: 0.65rem;
@@ -79,26 +113,61 @@
     min-height: 22rem;
 }
 
+/* goal-bg reçoit sa couleur via le rect SVG dans le markup — */
+/* ici on peut cibler le fond global du SVG si besoin        */
+
+/* ── Zones ──────────────────────────────────────────── */
 .zone-shape {
     cursor: pointer;
     transition: opacity 140ms ease, filter 140ms ease, stroke-width 140ms ease;
 }
 
 .zone-shape:hover,
-.zone-shape:focus,
-.zone-active {
-    filter: brightness(1.15) saturate(1.1);
+.zone-shape:focus {
+    filter: brightness(1.2) saturate(1.15);
+    opacity: 0.92;
 }
 
+.zone-active {
+    filter: brightness(1.25) saturate(1.2);
+}
+
+/* ── Zone labels ────────────────────────────────────── */
 .zone-label {
     display: grid;
     place-items: center;
-    color: #071412;
+    color: var(--text);
     font-family: var(--font-display);
     font-size: 0.7rem;
     font-weight: 750;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
+/* ── Notes ──────────────────────────────────────────── */
+.tiny-note {
+    margin: 0;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.spatial-focus-note {
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-xs);
+    background: var(--court-soft);
+    border: 1px solid rgba(143, 225, 178, 0.18);
+}
+
+.spatial-loading-note {
+    opacity: 0.7;
+}
+
+/* ── Loading state ──────────────────────────────────── */
+.court-studio.is-loading .court-stage {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* ── Responsive ─────────────────────────────────────── */
 @media (max-width: 640px) {
     .court-studio__head {
         align-items: stretch;

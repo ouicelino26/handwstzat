@@ -58,7 +58,7 @@
 
             <div class="goal-map-wrap">
                 <svg class="goal-map" viewBox="0 0 804 440" role="img" aria-label="Carte de precision du but">
-                    <rect x="0" y="0" width="804" height="440" rx="24" class="goal-bg" />
+                    <rect x="0" y="0" width="804" height="440" rx="24" class="goal-bg" fill="#0f2520" />
 
                     @foreach (var zone in GoalGeometries)
                     {
@@ -217,7 +217,7 @@
         new("BG4", SvgShape.Path, "M93 290H7C3.68629 290 1 292.729 1 296.096V436.304C1 439.671 3.68629 442.4 7 442.4H93C96.3137 442.4 99 439.671 99 436.304V296.096C99 292.729 96.3137 290 93 290Z", 0, 0, 0, 0, 47, 373),
         new("BG3", SvgShape.Path, "M145 290H105C101.686 290 99 292.729 99 296.096V436.304C99 439.671 101.686 442.4 105 442.4H145C148.314 442.4 151 439.671 151 436.304V296.096C151 292.729 148.314 290 145 290Z", 0, 0, 0, 0, 123, 373),
         new("BG2", SvgShape.Path, "M272 340H159C155.686 340 153 342.729 153 346.096V435.504C153 438.871 155.686 441.6 159 441.6H272C275.314 441.6 278 438.871 278 435.504V346.096C278 342.729 275.314 340 272 340Z", 0, 0, 0, 0, 216, 395),
-        new("BG1", SvgShape.Path, "M399 340H286C282.686 340 280 342.729 280 346.096V435.504C280 438.871 282.686 441.6 286 441.6H399C402.314 441.6 405 438.871 405 435.504V346.096C405 342.729 402.314 340 399 340Z", 0, 0, 0, 0, 342, 395),
+        new ZoneGeometry("BG1", SvgShape.Path, "M399 340H286C282.686 340 280 342.729 280 346.096V435.504C280 438.871 282.686 441.6 286 441.6H399C402.314 441.6 405 438.871 405 435.504V346.096C405 342.729 402.314 340 399 340Z", 0, 0, 0, 0, 342, 395),
         new("BD1", SvgShape.Path, "M525 340H413C409.686 340 407 342.729 407 346.096V435.504C407 438.871 409.686 441.6 413 441.6H525C528.314 441.6 531 438.871 531 435.504V346.096C531 342.729 528.314 340 525 340Z", 0, 0, 0, 0, 469, 395),
         new("BD2", SvgShape.Path, "M651 340H539C535.686 340 533 342.729 533 346.096V435.504C533 438.871 535.686 441.6 539 441.6H651C654.314 441.6 657 438.871 657 435.504V346.096C657 342.729 654.314 340 651 340Z", 0, 0, 0, 0, 595, 395),
         new("BD3", SvgShape.Path, "M703 289.4H663C659.686 289.4 657 292.14 657 295.52V436.28C657 439.66 659.686 442.4 663 442.4H703C706.314 442.4 709 439.66 709 436.28V295.52C709 292.14 706.314 289.4 703 289.4Z", 0, 0, 0, 0, 683, 373),
@@ -373,20 +373,20 @@
     {
         if (SpatialZoneVisuals.IsTriggerZoneKey(key))
         {
-            return IsActive(key) ? ChartPalette.GoalStrokeActive : "transparent";
+            return IsActive(key) ? ChartPalette.GoalStrokeActive : ChartPalette.TriggerStrokeInactive;
         }
 
-        return IsActive(key) ? ChartPalette.GoalStrokeInactive : ChartPalette.TriggerStrokeInactive;
+        return IsActive(key) ? ChartPalette.GoalStrokeActive : ChartPalette.GoalStrokeInactive;
     }
 
     private string GetStrokeWidth(string key)
     {
         if (SpatialZoneVisuals.IsTriggerZoneKey(key))
         {
-            return IsActive(key) ? "3.5" : "0";
+            return IsActive(key) ? "3" : "1";
         }
 
-        return IsActive(key) ? "4" : "2";
+        return IsActive(key) ? "4" : "1.5";
     }
 
     private bool ShouldRenderZone(string key, ZoneStat stat)

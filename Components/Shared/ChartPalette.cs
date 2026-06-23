@@ -76,10 +76,10 @@ internal static class ChartPalette
         "#48a36c"
     ];
 
-    public const string GoalZoneNeutralFill = "#dce2de";
-    public const string GoalStrokeActive = "#17332a";
-    public const string GoalStrokeInactive = "#10251f";
-    public const string TriggerStrokeInactive = "#152b24";
+    public const string GoalZoneNeutralFill = "#1d3b35";
+    public const string GoalStrokeActive = "#8fe1b2";
+    public const string GoalStrokeInactive = "rgba(143,225,178,0.28)";
+    public const string TriggerStrokeInactive = "rgba(143,225,178,0.22)";
 
     public static string SeriesColor(int index)
     {

@@ -65,15 +65,20 @@
                 else
                 {
                     <p class="command-palette__label">@Results.Count resultats</p>
-                    @foreach (var result in Results)
+                    @for (var i = 0; i < Results.Count; i++)
                     {
-                        <button type="button" class="command-result" @onclick="() => Navigate(result.Href)">
+                        var result = Results[i];
+                        var index = i;
+                        <button type="button"
+                                class="command-result @(FocusedIndex == index ? "is-focused" : string.Empty)"
+                                @onclick="() => Navigate(result.Href)"
+                                @onmouseenter="() => FocusedIndex = index">
                             <span class="command-result__kind command-result__kind--@result.Tone">@result.Kind[..1]</span>
-                            <span>
+                            <span class="command-result__copy">
                                 <strong>@result.Title</strong>
                                 <small>@result.Subtitle</small>
                             </span>
-                            <span class="command-result__meta">@result.Kind</span>
+                            <span class="command-result__badge">@result.Kind</span>
                         </button>
                     }
                 }
@@ -84,6 +89,7 @@
                 <strong>Rechercher puis agir</strong>
                 <p>Ouvrez une entite, conservez le scope actif et poursuivez l'analyse dans sa scene.</p>
                 <div>
+                    <span><kbd>↑ ↓</kbd> naviguer</span>
                     <span><kbd>↵</kbd> ouvrir</span>
                     <span><kbd>Esc</kbd> fermer</span>
                     <span><kbd>Ctrl K</kbd> rappeler</span>
@@ -115,6 +121,7 @@
     private string Query { get; set; } = string.Empty;
     private bool IsSearching { get; set; }
     private IReadOnlyList<GlobalSearchResult> Results { get; set; } = [];
+    private int FocusedIndex { get; set; } = 0;
 
     [Parameter]
     public bool IsOpen { get; set; }
@@ -134,6 +141,7 @@
     {
         Query = args.Value?.ToString() ?? string.Empty;
         Results = [];
+        FocusedIndex = 0;
 
         var current = new CancellationTokenSource();
         var previous = Interlocked.Exchange(ref _searchCts, current);
@@ -151,6 +159,7 @@
         {
             await Task.Delay(220, current.Token);
             Results = await SearchService.SearchAsync(Query, current.Token);
+            FocusedIndex = 0;
         }
         catch (OperationCanceledException)
         {
@@ -175,9 +184,17 @@
         {
             await Close();
         }
+        else if (args.Key == "ArrowDown" && Results.Count > 0)
+        {
+            FocusedIndex = Math.Min(FocusedIndex + 1, Results.Count - 1);
+        }
+        else if (args.Key == "ArrowUp" && Results.Count > 0)
+        {
+            FocusedIndex = Math.Max(FocusedIndex - 1, 0);
+        }
         else if (args.Key == "Enter" && Results.Count > 0)
         {
-            Navigate(Results[0].Href);
+            Navigate(Results[FocusedIndex].Href);
         }
     }
 
