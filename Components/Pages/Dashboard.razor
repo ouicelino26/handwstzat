@@ -162,6 +162,10 @@ else if (Snapshot is not null)
                     Pulse
                     <small>Signaux collectifs</small>
                 </button>
+                <button type="button" class="section-chip @(ActiveDashboardSection == "team-of-day" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("team-of-day")' disabled="@IsBusy">
+                    Team day
+                    <small>Equipe type</small>
+                </button>
                 <button type="button" class="section-chip @(ActiveDashboardSection == "spotlight" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("spotlight")' disabled="@IsBusy">
                     Athlete signal
                     <small>Profil et court</small>
@@ -254,6 +258,258 @@ else if (Snapshot is not null)
                         </ApexChart>
                     </section>
                 }
+            }
+            else if (ActiveDashboardSection == "team-of-day")
+            {
+                var teamOfTheDay = Snapshot.TeamOfTheDay;
+                var lineup = TeamOfTheDayLineup.ToArray();
+                var candidateRows = TeamOfTheDayCandidateRows.ToArray();
+
+                <section class="team-day-shell">
+                    <div class="page-panel team-day-hero">
+                        <div class="panel-head panel-head-wrap">
+                            <div>
+                                <p class="section-kicker">Equipe type de la journee</p>
+                                <h3>@teamOfTheDay.ScopeLabel</h3>
+                                <p class="page-subtitle">
+                                    Meilleure joueuse par poste selon @TeamOfTheDayMetricLabel(TeamOfTheDayMetric). Les egalites sont departagees par PIE, temps de jeu, actions puis pertes.
+                                </p>
+                            </div>
+
+                            <div class="team-day-mode-switch" role="tablist" aria-label="Critere equipe type">
+                                <span class="team-day-filter-title">Critere principal</span>
+                                <div class="team-day-chip-row">
+                                    @foreach (var metric in TeamOfTheDayMetrics)
+                                    {
+                                        <button type="button"
+                                                class="section-chip ranking-chip @(TeamOfTheDayMetric == metric ? "is-active" : string.Empty)"
+                                                @onclick="() => SetTeamOfTheDayMetric(metric)"
+                                                disabled="@IsBusy">
+                                            @TeamOfTheDayMetricLabel(metric)
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="team-day-filter-strip">
+                            <div class="team-day-filter-group">
+                                <span class="team-day-filter-title">PIE minimum</span>
+                                <div class="team-day-chip-row">
+                                    @foreach (var threshold in TeamOfTheDayPieThresholds)
+                                    {
+                                        <button type="button"
+                                                class="section-chip ranking-chip @(IsTeamOfTheDayPieThresholdActive(threshold) ? "is-active" : string.Empty)"
+                                                @onclick="() => SetTeamOfTheDayMinimumPie(threshold)"
+                                                disabled="@IsBusy">
+                                            @TeamOfTheDayPieThresholdLabel(threshold)
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="team-day-filter-group">
+                                <span class="team-day-filter-title">Total actions minimum</span>
+                                <div class="team-day-chip-row">
+                                    @foreach (var threshold in TeamOfTheDayActionThresholds)
+                                    {
+                                        <button type="button"
+                                                class="section-chip ranking-chip @(IsTeamOfTheDayActionThresholdActive(threshold) ? "is-active" : string.Empty)"
+                                                @onclick="() => SetTeamOfTheDayMinimumActions(threshold)"
+                                                disabled="@IsBusy">
+                                            @TeamOfTheDayActionThresholdLabel(threshold)
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+
+                            <button type="button" class="ghost-button filter-ghost" @onclick="ResetTeamOfTheDayFilters" disabled="@IsBusy">
+                                Nettoyer filtres
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(teamOfTheDay.WarningMessage))
+                        {
+                            <section class="warning-banner team-day-warning">
+                                <strong>Information</strong>
+                                <span>@teamOfTheDay.WarningMessage</span>
+                            </section>
+                        }
+
+                        <div class="signal-matrix team-day-metrics">
+                            <div class="mini-card"><span>Postes couverts</span><strong>@lineup.Length/7</strong></div>
+                            <div class="mini-card"><span>Candidates</span><strong>@teamOfTheDay.CandidateCount</strong></div>
+                            <div class="mini-card"><span>Matchs journee</span><strong>@teamOfTheDay.MatchCount</strong></div>
+                            <div class="mini-card"><span>Lecture</span><strong>@TeamOfTheDayMetricShortLabel(TeamOfTheDayMetric)</strong></div>
+                            <div class="mini-card"><span>Filtrees</span><strong>@candidateRows.Length</strong></div>
+                        </div>
+
+                        @if (lineup.Length == 0)
+                        {
+                            <StateCard Kicker="Equipe type"
+                                       Title="Aucune equipe type calculable"
+                                       Message="Selectionnez une saison et une journee contenant des statistiques joueuses valides."
+                                       Tone="empty"
+                                       CssClass="empty-card-inline" />
+                        }
+                        else
+                        {
+                            <div class="team-day-stage">
+                                <div class="team-day-field" aria-label="Formation equipe type">
+                                    @foreach (var player in lineup)
+                                    {
+                                        var group = teamOfTheDay.Groups.FirstOrDefault(item => item.SlotKey == player.SlotKey);
+                                        var tieCount = group?.TieCount(TeamOfTheDayMetric, TeamOfTheDayMinimumPie, TeamOfTheDayMinimumActions) ?? 0;
+
+                                        <article @key="player.PlayerId" class="team-day-player-card @player.FormationArea">
+                                            <div class="team-day-player-card__halo">@player.Initials</div>
+                                            <div>
+                                                <span class="team-day-position">@player.PositionLabel</span>
+                                                <h4>@player.FullName</h4>
+                                                <p>@player.TeamName</p>
+                                            </div>
+
+                                            <div class="team-day-score">
+                                                <span>@TeamOfTheDayMetricShortLabel(TeamOfTheDayMetric)</span>
+                                                <strong>@FormatTeamOfTheDayScore(player.ScoreFor(TeamOfTheDayMetric))</strong>
+                                            </div>
+
+                                            <div class="team-day-card-meta">
+                                                <span>@(string.IsNullOrWhiteSpace(player.OpponentName) ? "Adversaire non renseigne" : $"vs {player.OpponentName}")</span>
+                                                <span>@(string.IsNullOrWhiteSpace(player.MatchScore) ? "Score N/A" : player.MatchScore)</span>
+                                            </div>
+
+                                            <div class="team-day-card-stats">
+                                                @if (player.IsGoalkeeper)
+                                                {
+                                                    <span>@player.StatLine.GoalkeeperStops arr.</span>
+                                                    <span>@FormatRate(player.StatLine.GoalkeeperSaveRate)%</span>
+                                                    <span>@player.StatLine.GoalsConceded buts pris</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>@player.StatLine.Goals buts</span>
+                                                    <span>@player.StatLine.Assists passes</span>
+                                                    <span>@player.StatLine.DefensiveImpact def.</span>
+                                                }
+                                                <span>@player.StatLine.TotalActions actions</span>
+                                            </div>
+
+                                            @if (tieCount > 1)
+                                            {
+                                                <span class="team-day-tie">Egalite x@tieCount</span>
+                                            }
+
+                                            @if (player.MatchId.HasValue)
+                                            {
+                                                <a class="team-day-match-link" href="@($"/matches?matchId={player.MatchId.Value}")">Voir match</a>
+                                            }
+                                        </article>
+                                    }
+                                </div>
+
+                                <aside class="team-day-side">
+                                    <p class="section-kicker">Lecture du score</p>
+                                    <h4>@TeamOfTheDayMetricLabel(TeamOfTheDayMetric)</h4>
+                                    <p>@TeamOfTheDayMetricDescription</p>
+                                    <div class="compact-list">
+                                        @foreach (var player in lineup.OrderByDescending(item => item.ScoreFor(TeamOfTheDayMetric)).Take(4))
+                                        {
+                                            <div class="outcome-row">
+                                                <span>@player.FullName</span>
+                                                <strong>@FormatTeamOfTheDayScore(player.ScoreFor(TeamOfTheDayMetric))</strong>
+                                            </div>
+                                        }
+                                    </div>
+                                </aside>
+                            </div>
+                        }
+                    </div>
+
+                    @if (candidateRows.Length > 0)
+                    {
+                        <section class="page-panel team-day-board">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="section-kicker">Candidates par poste</p>
+                                    <h3>Classement detaille et departage</h3>
+                                </div>
+                                <span class="panel-pill">@candidateRows.Length lignes</span>
+                            </div>
+
+                            <div class="list-stack">
+                                @foreach (var group in teamOfTheDay.Groups)
+                                {
+                                    var best = group.GetBestCandidate(TeamOfTheDayMetric, TeamOfTheDayMinimumPie, TeamOfTheDayMinimumActions);
+                                    var rows = group.Candidates
+                                        .Where(candidate => candidate.MatchesFilters(TeamOfTheDayMetric, TeamOfTheDayMinimumPie, TeamOfTheDayMinimumActions))
+                                        .OrderByDescending(candidate => candidate.ScoreFor(TeamOfTheDayMetric))
+                                        .ThenByDescending(candidate => candidate.PieForFilter(TeamOfTheDayMetric))
+                                        .ThenByDescending(candidate => candidate.PlayingTimeMinutes)
+                                        .ThenByDescending(candidate => candidate.StatLine.TotalActions)
+                                        .ThenBy(candidate => candidate.FullName)
+                                        .ToArray();
+
+                                    <details class="dashboard-board-drawer team-day-position-drawer" open>
+                                        <summary>
+                                            <div>
+                                                <p class="section-kicker">@group.PositionLabel</p>
+                                                <strong>@(best?.FullName ?? "Aucune candidate")</strong>
+                                            </div>
+                                            <span class="panel-pill">@rows.Length candidates</span>
+                                        </summary>
+
+                                        <section class="page-panel dashboard-nested-panel">
+                                            <div class="table-wrap">
+                                                <table class="stat-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Rang</th>
+                                                            <th>Joueuse</th>
+                                                            <th>Equipe</th>
+                                                            <th>Adversaire</th>
+                                                            <th>@TeamOfTheDayMetricShortLabel(TeamOfTheDayMetric)</th>
+                                                            <th>Actions</th>
+                                                            <th>PIE global</th>
+                                                            <th>PIE Off</th>
+                                                            <th>PIE Def</th>
+                                                            <th>Buts</th>
+                                                            <th>Passes</th>
+                                                            <th>Impact def.</th>
+                                                            <th>Arrets</th>
+                                                            <th>Pertes</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var row in rows.Select((candidate, index) => (candidate, index)))
+                                                        {
+                                                            <tr class="@(row.index == 0 ? "is-selected-row" : string.Empty)">
+                                                                <td>@(row.index + 1)</td>
+                                                                <td>@row.candidate.FullName</td>
+                                                                <td>@row.candidate.TeamName</td>
+                                                                <td>@(row.candidate.OpponentName ?? "-")</td>
+                                                                <td><strong>@FormatTeamOfTheDayScore(row.candidate.ScoreFor(TeamOfTheDayMetric))</strong></td>
+                                                                <td>@row.candidate.StatLine.TotalActions</td>
+                                                                <td>@FormatPie(row.candidate.PieGlobal)</td>
+                                                                <td>@FormatPie(row.candidate.PieOffense)</td>
+                                                                <td>@FormatPie(row.candidate.PieDefense)</td>
+                                                                <td>@row.candidate.StatLine.Goals</td>
+                                                                <td>@row.candidate.StatLine.Assists</td>
+                                                                <td>@row.candidate.StatLine.DefensiveImpact</td>
+                                                                <td>@row.candidate.StatLine.GoalkeeperStops</td>
+                                                                <td>@row.candidate.StatLine.Turnovers</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </section>
+                                    </details>
+                                }
+                            </div>
+                        </section>
+                    }
+                </section>
             }
             else if (ActiveDashboardSection == "spotlight")
             {
@@ -639,6 +895,23 @@ else if (Snapshot is not null)
     private string ActiveLens { get; set; } = AudienceLens.Club;
     private string ActiveDashboardSection { get; set; } = "league";
     private static readonly int[] RankingTopOptions = [5, 8, 10, 12];
+    private static readonly TeamOfTheDayRankingMetric[] TeamOfTheDayMetrics =
+    [
+        TeamOfTheDayRankingMetric.PieGlobal,
+        TeamOfTheDayRankingMetric.PieOffense,
+        TeamOfTheDayRankingMetric.PieDefense,
+        TeamOfTheDayRankingMetric.TotalActions,
+        TeamOfTheDayRankingMetric.Goals,
+        TeamOfTheDayRankingMetric.Assists,
+        TeamOfTheDayRankingMetric.DefensiveImpact,
+        TeamOfTheDayRankingMetric.GoalkeeperStops
+    ];
+    private static readonly double?[] TeamOfTheDayPieThresholds = [null, 1d, 10d, 20d, 30d];
+    private static readonly int?[] TeamOfTheDayActionThresholds = [null, 1, 5, 10, 20, 30];
+
+    private TeamOfTheDayRankingMetric TeamOfTheDayMetric { get; set; } = TeamOfTheDayRankingMetric.PieGlobal;
+    private double? TeamOfTheDayMinimumPie { get; set; }
+    private int? TeamOfTheDayMinimumActions { get; set; }
     private int? GlobalRankingPositionId { get; set; }
     private TableSortState FieldBoardSort { get; set; } = new("field-goals", SortDirection.Desc);
     private TableSortState GoalkeeperBoardSort { get; set; } = new("keeper-saves", SortDirection.Desc);
@@ -669,6 +942,31 @@ else if (Snapshot is not null)
 
     private IReadOnlyList<GlobalGoalkeeperRankingRow> SortedGlobalGoalkeeperRows => GetSortedGlobalGoalkeeperRows();
 
+    private IReadOnlyList<TeamOfTheDayCandidateDto> TeamOfTheDayLineup =>
+        Snapshot?.TeamOfTheDay.GetLineup(TeamOfTheDayMetric, TeamOfTheDayMinimumPie, TeamOfTheDayMinimumActions) ?? [];
+
+    private IReadOnlyList<TeamOfTheDayCandidateDto> TeamOfTheDayCandidateRows =>
+        Snapshot?.TeamOfTheDay.Groups
+            .SelectMany(group => group.Candidates)
+            .Where(candidate => candidate.MatchesFilters(TeamOfTheDayMetric, TeamOfTheDayMinimumPie, TeamOfTheDayMinimumActions))
+            .OrderBy(candidate => candidate.PositionLabel)
+            .ThenByDescending(candidate => candidate.ScoreFor(TeamOfTheDayMetric))
+            .ThenByDescending(candidate => candidate.PieForFilter(TeamOfTheDayMetric))
+            .ThenByDescending(candidate => candidate.StatLine.TotalActions)
+            .ToList() ?? [];
+
+    private string TeamOfTheDayMetricDescription => TeamOfTheDayMetric switch
+    {
+        TeamOfTheDayRankingMetric.PieOffense => "Priorite a la production directe : buts, passes, efficacite au tir et maitrise du dechet.",
+        TeamOfTheDayRankingMetric.PieDefense => "Priorite a l'impact sans ballon : interceptions, contres, neutralisations, arrets et discipline.",
+        TeamOfTheDayRankingMetric.TotalActions => "Classement au volume d'actions positives : buts, passes, impact defensif et arrets.",
+        TeamOfTheDayRankingMetric.Goals => "Classement sur la production but, utile pour sortir la meilleure menace offensive pure.",
+        TeamOfTheDayRankingMetric.Assists => "Classement sur la creation directe et la qualite de connexion avec le collectif.",
+        TeamOfTheDayRankingMetric.DefensiveImpact => "Classement sur interceptions, contres, neutralisations et passages forces.",
+        TeamOfTheDayRankingMetric.GoalkeeperStops => "Classement sur arrets et arrets 7m, surtout utile pour isoler les gardiennes.",
+        _ => "Lecture combinee attaque-defense, ajustee par la balance entre actions positives et pertes."
+    };
+
     private Task SetDashboardSection(string section)
     {
         ActiveDashboardSection = section;
@@ -684,6 +982,103 @@ else if (Snapshot is not null)
         }
 
         return InvokeAsync(StateHasChanged);
+    }
+
+    private Task SetTeamOfTheDayMetric(TeamOfTheDayRankingMetric metric)
+    {
+        TeamOfTheDayMetric = metric;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task SetTeamOfTheDayMinimumPie(double? threshold)
+    {
+        TeamOfTheDayMinimumPie = threshold;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task SetTeamOfTheDayMinimumActions(int? threshold)
+    {
+        TeamOfTheDayMinimumActions = threshold;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task ResetTeamOfTheDayFilters()
+    {
+        TeamOfTheDayMinimumPie = null;
+        TeamOfTheDayMinimumActions = null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsTeamOfTheDayPieThresholdActive(double? threshold)
+    {
+        if (!threshold.HasValue)
+        {
+            return !TeamOfTheDayMinimumPie.HasValue;
+        }
+
+        return TeamOfTheDayMinimumPie.HasValue && Math.Abs(TeamOfTheDayMinimumPie.Value - threshold.Value) < 0.01d;
+    }
+
+    private bool IsTeamOfTheDayActionThresholdActive(int? threshold)
+    {
+        return threshold == TeamOfTheDayMinimumActions;
+    }
+
+    private static string TeamOfTheDayPieThresholdLabel(double? threshold)
+    {
+        return threshold.HasValue ? $"{threshold.Value:0.#} min" : "Tous";
+    }
+
+    private static string TeamOfTheDayActionThresholdLabel(int? threshold)
+    {
+        if (!threshold.HasValue)
+        {
+            return "Toutes";
+        }
+
+        return threshold.Value <= 1 ? "1 action" : $"{threshold.Value} actions";
+    }
+
+    private static string TeamOfTheDayMetricLabel(TeamOfTheDayRankingMetric metric)
+    {
+        return metric switch
+        {
+            TeamOfTheDayRankingMetric.PieOffense => "PIE offensif",
+            TeamOfTheDayRankingMetric.PieDefense => "PIE defensif",
+            TeamOfTheDayRankingMetric.TotalActions => "Nb actions",
+            TeamOfTheDayRankingMetric.Goals => "Nb buts",
+            TeamOfTheDayRankingMetric.Assists => "Nb passes",
+            TeamOfTheDayRankingMetric.DefensiveImpact => "Nb impact def.",
+            TeamOfTheDayRankingMetric.GoalkeeperStops => "Nb arrets",
+            _ => "PIE global"
+        };
+    }
+
+    private static string TeamOfTheDayMetricShortLabel(TeamOfTheDayRankingMetric metric)
+    {
+        return metric switch
+        {
+            TeamOfTheDayRankingMetric.PieOffense => "Off",
+            TeamOfTheDayRankingMetric.PieDefense => "Def",
+            TeamOfTheDayRankingMetric.TotalActions => "Nb actions",
+            TeamOfTheDayRankingMetric.Goals => "Nb buts",
+            TeamOfTheDayRankingMetric.Assists => "Nb passes",
+            TeamOfTheDayRankingMetric.DefensiveImpact => "Nb def",
+            TeamOfTheDayRankingMetric.GoalkeeperStops => "Nb arrets",
+            _ => "Global"
+        };
+    }
+
+    private string FormatTeamOfTheDayScore(double value)
+    {
+        return TeamOfTheDayMetric is TeamOfTheDayRankingMetric.PieGlobal or TeamOfTheDayRankingMetric.PieOffense or TeamOfTheDayRankingMetric.PieDefense
+            ? FormatPie(value)
+            : value.ToString("0");
+    }
+
+    private static string FormatPie(double value)
+    {
+        return value.ToString("0.0");
     }
 
     private bool IsRankingMetricActive(string metric)

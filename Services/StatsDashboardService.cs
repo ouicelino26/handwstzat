@@ -9,17 +9,20 @@ public sealed class StatsDashboardService
     private readonly StatsApiClient _statsApiClient;
     private readonly PlayersApiClient _playersApiClient;
     private readonly MatchesApiClient _matchesApiClient;
+    private readonly TeamOfTheDayService _teamOfTheDayService;
     private readonly IApiAuthService _authService;
 
     public StatsDashboardService(
         StatsApiClient statsApiClient,
         PlayersApiClient playersApiClient,
         MatchesApiClient matchesApiClient,
+        TeamOfTheDayService teamOfTheDayService,
         IApiAuthService authService)
     {
         _statsApiClient = statsApiClient;
         _playersApiClient = playersApiClient;
         _matchesApiClient = matchesApiClient;
+        _teamOfTheDayService = teamOfTheDayService;
         _authService = authService;
     }
 
@@ -84,6 +87,7 @@ public sealed class StatsDashboardService
 
             var selectedPlayerId = ResolveSelectedPlayerId(filters.SpotlightPlayerId, playerStats, topScorersTask.Result, requestedTask.Result);
             var globalBoardsTask = LoadGlobalBoardsAsync(queryOptions, playerStats, cancellationToken);
+            var teamOfTheDayTask = LoadTeamOfTheDaySafeAsync(filters, cancellationToken);
 
             if (!selectedPlayerId.HasValue)
             {
@@ -102,6 +106,7 @@ public sealed class StatsDashboardService
                         overview.SanctionCount),
                     Players = players,
                     GlobalBoards = await globalBoardsTask,
+                    TeamOfTheDay = await teamOfTheDayTask,
                     TopScorers = MapRanking(topScorersTask.Result),
                     EfficiencyRanking = MapRanking(efficiencyTask.Result),
                     RequestedRanking = MapRanking(requestedTask.Result),
@@ -139,7 +144,8 @@ public sealed class StatsDashboardService
                 goalkeeperTask,
                 spatialTask,
                 playerMatchesTask,
-                globalBoardsTask);
+                globalBoardsTask,
+                teamOfTheDayTask);
 
             var selectedDirectory = playerStats.FirstOrDefault(player => player.PlayerId == selectedPlayerId.Value);
             var profile = profileTask.Result ?? CreateProfileFallback(selectedDirectory, selectedPlayerId.Value);
@@ -168,6 +174,7 @@ public sealed class StatsDashboardService
                     overview.SanctionCount),
                 Players = players,
                 GlobalBoards = globalBoardsTask.Result,
+                TeamOfTheDay = teamOfTheDayTask.Result,
                 TopScorers = MapRanking(topScorersTask.Result),
                 EfficiencyRanking = MapRanking(efficiencyTask.Result),
                 RequestedRanking = MapRanking(requestedTask.Result),
@@ -217,6 +224,20 @@ public sealed class StatsDashboardService
         var requestedRanking = await requestedTask;
 
         return (MapRanking(requestedRanking), GetRankingLabel(rankingMetric));
+    }
+
+    private async Task<TeamOfTheDaySnapshotDto> LoadTeamOfTheDaySafeAsync(
+        DashboardFilterState filters,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _teamOfTheDayService.LoadAsync(filters, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            return TeamOfTheDaySnapshotDto.Empty($"Equipe type indisponible : {ex.Message}");
+        }
     }
 
     private async Task<DashboardGlobalBoards> LoadGlobalBoardsAsync(

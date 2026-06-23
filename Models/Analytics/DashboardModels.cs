@@ -10,6 +10,8 @@ public sealed record DashboardSnapshot
 
     public DashboardGlobalBoards GlobalBoards { get; init; } = DashboardGlobalBoards.Empty;
 
+    public required TeamOfTheDaySnapshotDto TeamOfTheDay { get; init; }
+
     public required IReadOnlyList<PlayerRankingItem> TopScorers { get; init; }
 
     public required IReadOnlyList<PlayerRankingItem> EfficiencyRanking { get; init; }

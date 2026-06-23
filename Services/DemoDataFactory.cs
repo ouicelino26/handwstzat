@@ -57,6 +57,7 @@ public static class DemoDataFactory
                 TurnoverCount: 277,
                 SanctionCount: 123),
             Players = players,
+            TeamOfTheDay = CreateTeamOfTheDay(),
             TopScorers =
             [
                 new("Nadege Legrand", "Metz HB", 94, "94 buts", 12, "goals"),
@@ -99,6 +100,176 @@ public static class DemoDataFactory
             DataOrigin = "Apercu",
             WarningMessage = warningMessage ?? "Mode apercu actif. Connectez-vous pour afficher les dernieres donnees.",
             IsDemo = true
+        };
+    }
+
+    private static TeamOfTheDaySnapshotDto CreateTeamOfTheDay()
+    {
+        var candidates = new[]
+        {
+            CreateTeamOfTheDayCandidate(1, "Zoe Bernard", "Nantes", "Gardienne", "goalkeeper", "goalkeeper", true, 301, "Metz HB vs Nantes", "31 - 24", "Metz HB", new TeamOfTheDayStatLineDto
+            {
+                Saves = 14,
+                PenaltySaves = 2,
+                GoalsConceded = 24,
+                ShotsFaced = 40,
+                Assists = 1,
+                GoalkeeperSaveRate = 40.0
+            }),
+            CreateTeamOfTheDayCandidate(7, "Lea Martin", "Brest Bretagne", "Ailiere gauche", "left-wing", "left-wing", false, 302, "Brest Bretagne vs Paris 92", "28 - 28", "Paris 92", new TeamOfTheDayStatLineDto
+            {
+                Goals = 7,
+                Assists = 2,
+                ShotAttempts = 9,
+                ShotWaste = 2,
+                ShotSuccessRate = 77.8,
+                OverallShotSuccessRate = 77.8,
+                Interceptions = 1,
+                Turnovers = 1
+            }),
+            CreateTeamOfTheDayCandidate(12, "Nadege Legrand", "Metz HB", "Arriere droite", "right-back", "right-back", false, 301, "Metz HB vs Nantes", "31 - 24", "Nantes", new TeamOfTheDayStatLineDto
+            {
+                Goals = 9,
+                PenaltyGoals = 2,
+                Assists = 4,
+                ShotAttempts = 13,
+                ShotWaste = 4,
+                ShotSuccessRate = 72.7,
+                OverallShotSuccessRate = 69.2,
+                Interceptions = 2,
+                Blocks = 1,
+                Turnovers = 2
+            }),
+            CreateTeamOfTheDayCandidate(23, "Camille Durand", "Paris 92", "Arriere gauche", "left-back", "left-back", false, 302, "Brest Bretagne vs Paris 92", "28 - 28", "Brest Bretagne", new TeamOfTheDayStatLineDto
+            {
+                Goals = 8,
+                Assists = 3,
+                ShotAttempts = 12,
+                ShotWaste = 3,
+                ShotSuccessRate = 75.0,
+                OverallShotSuccessRate = 66.7,
+                Blocks = 2,
+                Turnovers = 1
+            }),
+            CreateTeamOfTheDayCandidate(31, "Sarah Petit", "Dijon", "Demi-centre", "center-back", "center-back", false, 303, "Dijon vs Nice", "26 - 22", "Nice", new TeamOfTheDayStatLineDto
+            {
+                Goals = 5,
+                Assists = 8,
+                ShotAttempts = 8,
+                ShotWaste = 2,
+                ShotSuccessRate = 62.5,
+                OverallShotSuccessRate = 62.5,
+                Interceptions = 2,
+                Neutralisations = 1,
+                Turnovers = 2
+            }),
+            CreateTeamOfTheDayCandidate(44, "Amina Kebe", "Nantes", "Pivot", "pivot", "pivot", false, 301, "Metz HB vs Nantes", "31 - 24", "Metz HB", new TeamOfTheDayStatLineDto
+            {
+                Goals = 6,
+                Assists = 1,
+                ShotAttempts = 7,
+                ShotWaste = 1,
+                ShotSuccessRate = 85.7,
+                OverallShotSuccessRate = 85.7,
+                Neutralisations = 3,
+                ForcedOffensiveFouls = 1,
+                Sanctions = 1
+            }),
+            CreateTeamOfTheDayCandidate(52, "Claire Mendy", "Chambray", "Ailiere droite", "right-wing", "right-wing", false, 304, "Nantes vs Toulon", "34 - 27", "Toulon", new TeamOfTheDayStatLineDto
+            {
+                Goals = 6,
+                Assists = 3,
+                ShotAttempts = 8,
+                ShotWaste = 1,
+                ShotSuccessRate = 75.0,
+                OverallShotSuccessRate = 75.0,
+                Interceptions = 3,
+                Turnovers = 1
+            }),
+            CreateTeamOfTheDayCandidate(61, "Ines Moreau", "Nice", "Demi-centre", "center-back", "center-back", false, 303, "Dijon vs Nice", "26 - 22", "Dijon", new TeamOfTheDayStatLineDto
+            {
+                Goals = 4,
+                Assists = 7,
+                ShotAttempts = 7,
+                ShotWaste = 2,
+                ShotSuccessRate = 57.1,
+                OverallShotSuccessRate = 57.1,
+                Interceptions = 1,
+                Turnovers = 1
+            })
+        };
+
+        var groups = candidates
+            .GroupBy(candidate => candidate.SlotKey)
+            .Select(group => new TeamOfTheDayPositionGroupDto
+            {
+                SlotKey = group.Key,
+                PositionLabel = group.First().PositionLabel,
+                FormationArea = group.First().FormationArea,
+                SortOrder = group.Key switch
+                {
+                    "goalkeeper" => 1,
+                    "left-wing" => 2,
+                    "left-back" => 3,
+                    "center-back" => 4,
+                    "pivot" => 5,
+                    "right-back" => 6,
+                    "right-wing" => 7,
+                    _ => 99
+                },
+                Candidates = group
+                    .OrderByDescending(candidate => candidate.PieGlobal)
+                    .ThenBy(candidate => candidate.FullName)
+                    .ToList()
+            })
+            .OrderBy(group => group.SortOrder)
+            .ToList();
+
+        return new TeamOfTheDaySnapshotDto
+        {
+            EffectiveSeason = "2025-2026",
+            EffectiveDay = "J18",
+            MatchCount = 4,
+            CandidateCount = candidates.Length,
+            Groups = groups
+        };
+    }
+
+    private static TeamOfTheDayCandidateDto CreateTeamOfTheDayCandidate(
+        int playerId,
+        string fullName,
+        string teamName,
+        string positionLabel,
+        string slotKey,
+        string formationArea,
+        bool isGoalkeeper,
+        int matchId,
+        string matchLabel,
+        string matchScore,
+        string opponentName,
+        TeamOfTheDayStatLineDto statLine)
+    {
+        var scores = TeamOfTheDayPieScoring.Calculate(statLine, isGoalkeeper);
+
+        return new TeamOfTheDayCandidateDto
+        {
+            PlayerId = playerId,
+            FullName = fullName,
+            TeamName = teamName,
+            PositionLabel = positionLabel,
+            SlotKey = slotKey,
+            FormationArea = formationArea,
+            IsGoalkeeper = isGoalkeeper,
+            MatchesPlayed = 1,
+            MatchId = matchId,
+            MatchLabel = matchLabel,
+            MatchScore = matchScore,
+            OpponentName = opponentName,
+            PlayingTimeMinutes = 45,
+            PieGlobal = scores.Global,
+            PieOffense = scores.Offense,
+            PieDefense = scores.Defense,
+            StatLine = statLine
         };
     }
 
