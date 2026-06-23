@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Machine-local overrides. This file is checked into source control with no values set.
+    Each developer can override HandballManagerCorePath here without modifying HandWStat.csproj.
+
+    Example (uncomment and adjust):
+    <PropertyGroup>
+      <HandballManagerCorePath>C:\your\path\to\HandballManagerCore</HandballManagerCorePath>
+    </PropertyGroup>
+  -->
+</Project>

@@ -67,6 +67,7 @@
     <PropertyGroup>
       <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('D:\repos\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj')">D:\repos\HandballManagerCore</HandballManagerCorePath>
       <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('..\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj')">..\HandballManagerCore</HandballManagerCorePath>
+      <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('..\HandballManagerMaui\HandballManagerCore\HandballManagerCore.csproj')">..\HandballManagerMaui</HandballManagerCorePath>
     </PropertyGroup>
 
     <ItemGroup>
