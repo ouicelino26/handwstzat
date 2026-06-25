@@ -205,14 +205,6 @@
                             </div>
                         </header>
 
-                        <PlayerTeamHistoryPanel Profile="@profile" />
-
-                        <ScopeSummaryBar Kicker="Lecture fiche"
-                                         Title="Toutes les vues utilisent le meme cadre d'analyse"
-                                         Subtitle="Synthese, graphes, zones et matchs restent cales sur la meme selection."
-                                         Items="@SelectedPlayerScopeItems"
-                                         Message="Le detail conserve le filtre courant pour eviter les comparaisons faussees." />
-
                         <div class="scene-switcher" role="tablist" aria-label="Scenes de la joueuse">
                             <button type="button" class="tab-button @(ActiveSection == "overview" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("overview")'>Brief</button>
                             <button type="button" class="tab-button @(ActiveSection == "analysis" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("analysis")'>Performance</button>
