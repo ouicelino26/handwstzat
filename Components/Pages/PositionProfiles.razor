@@ -97,7 +97,7 @@
                         var selected = profile.SelectedPlayer!;
                         var insights = PositionProfileInsights;
 
-                        <header class="entity-identity">
+                        <header class="entity-identity entity-identity--role">
                             <div class="entity-identity__number">@profile.CohortPlayerCount</div>
                             <div class="entity-identity__copy">
                                 <span>Role benchmark / cohorte</span>
@@ -158,7 +158,7 @@
                                                       AlertAxisKeys="@insights.AlertAxisKeys"
                                                       SelectedSeriesLabel="@selected.FullName"
                                                       MedianSeriesLabel="Mediane du poste"
-                                                      Height="420" />
+                                                      Height="440" />
 
                             <PositionRadarChart @key="PositionProfileRadarKey"
                                                 Kicker="Radar normalise"
@@ -172,8 +172,8 @@
                                                 SelectedSeriesLabel="@selected.FullName"
                                                 MedianSeriesLabel="Mediane du poste"
                                                 AxisCount="@PositionProfileChartRows.Count"
-                                                Width="660"
-                                                Height="520" />
+                                                Width="720"
+                                                Height="560" />
                         </div>
 
                         <section class="export-station @(IsPositionProfileBusy ? "is-loading" : string.Empty)">

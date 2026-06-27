@@ -248,7 +248,7 @@ else if (Snapshot is not null)
                             </div>
                         </div>
 
-                        <ApexChart @key="RankingChartKey" TItem="PlayerRankingItem" Title="@Snapshot.RequestedRankingLabel" Height="300" Options="@GetRankingChartOptions()">
+                        <ApexChart @key="RankingChartKey" TItem="PlayerRankingItem" Height="300" Options="@GetRankingChartOptions()">
                             <ApexPointSeries TItem="PlayerRankingItem"
                                              Items="@Snapshot.RequestedRanking"
                                              Name="@Snapshot.RequestedRankingLabel"
@@ -360,9 +360,19 @@ else if (Snapshot is not null)
                                     {
                                         var group = teamOfTheDay.Groups.FirstOrDefault(item => item.SlotKey == player.SlotKey);
                                         var tieCount = group?.TieCount(TeamOfTheDayMetric, TeamOfTheDayMinimumPie, TeamOfTheDayMinimumActions) ?? 0;
+                                        var playerPhotoUrl = PlayerPhotoAssetResolver.Resolve(player.PlayerPhoto, player.PlayerId, player.FullName, player.TeamName);
 
                                         <article @key="player.PlayerId" class="team-day-player-card @player.FormationArea">
-                                            <div class="team-day-player-card__halo">@player.Initials</div>
+                                            <div class="team-day-player-card__halo @(playerPhotoUrl is null ? "is-placeholder" : "has-photo")">
+                                                @if (!string.IsNullOrWhiteSpace(playerPhotoUrl))
+                                                {
+                                                    <img src="@playerPhotoUrl" alt="@($"Portrait de {player.FullName}")" loading="lazy" />
+                                                }
+                                                else
+                                                {
+                                                    <span>@player.Initials</span>
+                                                }
+                                            </div>
                                             <div>
                                                 <span class="team-day-position">@player.PositionLabel</span>
                                                 <h4>@player.FullName</h4>
@@ -553,7 +563,7 @@ else if (Snapshot is not null)
                             <section class="page-panel dashboard-nested-panel">
                                 <p class="section-kicker">Profil d'activite</p>
                                 <h4>Repartition des actions</h4>
-                                <ApexChart TItem="SliceValue" Title="Volume d'actions" Height="280" Options="@GetDistributionChartOptions()">
+                                <ApexChart TItem="SliceValue" Height="280" Options="@GetDistributionChartOptions()">
                                     <ApexPointSeries TItem="SliceValue"
                                                      Items="@Snapshot.Spotlight.Distribution"
                                                      Name="Actions"
@@ -1103,12 +1113,24 @@ else if (Snapshot is not null)
         {
             Chart = new Chart
             {
-                Type = ChartType.Bar
+                Type = ChartType.Bar,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = ChartPalette.SemanticSeriesColors,
             DataLabels = new DataLabels
             {
                 Enabled = false
+            },
+            Legend = new Legend
+            {
+                Show = false
+            },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.16)"
             },
             PlotOptions = new PlotOptions
             {
@@ -1128,7 +1150,11 @@ else if (Snapshot is not null)
         {
             Chart = new Chart
             {
-                Type = ChartType.Donut
+                Type = ChartType.Donut,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = ChartPalette.SemanticSeriesColors,
             DataLabels = new DataLabels

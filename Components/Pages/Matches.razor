@@ -16,11 +16,14 @@
     }
     else
     {
-        <AudienceLensSelector Kicker="Lecture du match"
+        @if (ShowMatchDetailView)
+        {
+            <AudienceLensSelector Kicker="Lecture du match"
                               Title="Un même match, trois niveaux d'analyse"
                               Subtitle="Le mode choisi ajuste les indicateurs, les scénarios et la densité des panneaux de détail."
                               Value="@ActiveLens"
                               ValueChanged="SetActiveLens" />
+        }
 
         <section class="directory-command @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
@@ -270,7 +273,7 @@
                                         <span class="hero-badge">Score final @((SelectedMatch.Team1Score ?? 0) + " - " + (SelectedMatch.Team2Score ?? 0))</span>
                                     </div>
 
-                                        <ApexChart @key="SelectedMatchLoadToken" TItem="ScoreTimelinePoint" Title="Evolution du score" Height="320" Options="@GetScoreTimelineChartOptions()">
+                                        <ApexChart @key="SelectedMatchLoadToken" TItem="ScoreTimelinePoint" Height="320" Options="@GetScoreTimelineChartOptions()">
                                             @if (ShowTeam1TimelineSeries)
                                             {
                                                 <ApexPointSeries TItem="ScoreTimelinePoint"
@@ -373,7 +376,7 @@
                                         </article>
                                     </div>
 
-                                    <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Title="Comparaison d'equipe" Height="340" Options="@GetMatchComparisonChartOptions()">
+                                    <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="340" Options="@GetMatchComparisonChartOptions()">
                                         <ApexPointSeries TItem="MetricPlotPoint"
                                                          Items="@MatchTeam1ComparisonSeries"
                                                          Name="@(SelectedMatch?.Team1Name ?? "Equipe 1")"
@@ -396,7 +399,7 @@
                                     <section class="page-panel">
                                         <p class="section-kicker">Profil du match</p>
                                         <h4>Volume des actions majeures</h4>
-                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Title="Profil du match" Height="300" Options="@GetMatchProfileChartOptions()">
+                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="300" Options="@GetMatchProfileChartOptions()">
                                             <ApexPointSeries TItem="MetricPlotPoint"
                                                              Items="@MatchProfileSeries"
                                                              Name="Volume"
@@ -409,7 +412,7 @@
                                     <section class="page-panel">
                                         <p class="section-kicker">Joueuses decisives</p>
                                         <h4>Actions directes sur la rencontre</h4>
-                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Title="Implication decisive" Height="300" Options="@GetMatchImpactChartOptions()">
+                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="300" Options="@GetMatchImpactChartOptions()">
                                             <ApexPointSeries TItem="MetricPlotPoint"
                                                              Items="@MatchPlayerImpactSeries"
                                                              Name="Buts + passes"
@@ -1392,7 +1395,11 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Bar
+                Type = ChartType.Bar,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = ChartPalette.TeamComparisonColors,
             DataLabels = new DataLabels
@@ -1402,6 +1409,10 @@
             Legend = new Legend
             {
                 Position = LegendPosition.Bottom
+            },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.16)"
             },
             PlotOptions = new PlotOptions
             {
@@ -1421,7 +1432,11 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Line
+                Type = ChartType.Line,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = ChartPalette.TeamComparisonColors,
             DataLabels = new DataLabels
@@ -1431,6 +1446,10 @@
             Legend = new Legend
             {
                 Position = LegendPosition.Bottom
+            },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.16)"
             },
             Stroke = new Stroke
             {
@@ -1445,7 +1464,11 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Bar
+                Type = ChartType.Bar,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = [ChartPalette.Secondary],
             DataLabels = new DataLabels
@@ -1454,7 +1477,11 @@
             },
             Legend = new Legend
             {
-                Position = LegendPosition.Bottom
+                Show = false
+            },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.16)"
             },
             PlotOptions = new PlotOptions
             {
@@ -1473,7 +1500,11 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Bar
+                Type = ChartType.Bar,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = [ChartPalette.Player],
             DataLabels = new DataLabels
@@ -1482,7 +1513,11 @@
             },
             Legend = new Legend
             {
-                Position = LegendPosition.Bottom
+                Show = false
+            },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.16)"
             },
             PlotOptions = new PlotOptions
             {

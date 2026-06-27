@@ -237,6 +237,7 @@ public sealed class TeamOfTheDayService
             {
                 PlayerId = enrichedPlayer.PlayerId,
                 FullName = Clean(enrichedPlayer.FullName, $"Joueuse {enrichedPlayer.PlayerId}"),
+                PlayerPhoto = ResolvePlayerPhoto(enrichedPlayer),
                 TeamId = enrichedPlayer.TeamId,
                 TeamName = Clean(enrichedPlayer.TeamName, "Equipe non renseignee"),
                 PositionLabel = slot.Label,
@@ -351,6 +352,11 @@ public sealed class TeamOfTheDayService
         player.TeamId ??= fallbackPlayer.TeamId;
         player.TeamCode ??= fallbackPlayer.TeamCode;
         player.TeamName ??= fallbackPlayer.TeamName;
+        if (string.IsNullOrWhiteSpace(player.PlayerPhoto))
+        {
+            player.PlayerPhoto = fallbackPlayer.PlayerPhoto;
+        }
+
         player.PositionId ??= fallbackPlayer.PositionId;
         player.PositionCode ??= fallbackPlayer.PositionCode;
         player.PositionName ??= fallbackPlayer.PositionName;
@@ -372,6 +378,23 @@ public sealed class TeamOfTheDayService
         }
 
         return player;
+    }
+
+    private static string? ResolvePlayerPhoto(PlayerGlobalStatsDto player)
+    {
+        if (!string.IsNullOrWhiteSpace(player.PlayerPhoto))
+        {
+            return player.PlayerPhoto;
+        }
+
+        if (PlayerPhotoCatalog.TryGetPath(player.PlayerId, out var catalogPath))
+        {
+            return catalogPath;
+        }
+
+        return PlayerPhotoCatalog.TryGetPath(player.FullName, player.TeamName, out var identityPath)
+            ? identityPath
+            : null;
     }
 
     private static bool HasValidParticipation(PlayerGlobalStatsDto player, bool cohortHasPlayingTime)

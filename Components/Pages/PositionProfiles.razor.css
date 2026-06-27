@@ -3,8 +3,150 @@
     top: 1rem;
 }
 
+.role-workspace ::deep .role-stage {
+    gap: clamp(0.9rem, 1.8vw, 1.35rem);
+}
+
+.role-workspace ::deep .role-stage__analysis {
+    gap: clamp(1rem, 1.8vw, 1.35rem);
+}
+
+.role-workspace ::deep .entity-identity--role {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 0;
+}
+
+.role-workspace ::deep .entity-identity--role .entity-identity__number {
+    min-width: clamp(4.5rem, 8vw, 6.5rem);
+    font-size: clamp(3.4rem, 6vw, 6rem);
+}
+
+.role-workspace ::deep .entity-identity--role .entity-identity__copy h2 {
+    font-size: clamp(2rem, 3.6vw, 3.8rem);
+}
+
+.role-workspace ::deep .position-profile-summary-stack {
+    display: grid;
+    gap: 0.85rem;
+}
+
 .role-workspace ::deep .position-profile-radar-grid {
     align-items: stretch;
+    grid-template-columns: minmax(25rem, 0.96fr) minmax(28rem, 1.04fr);
+    gap: clamp(0.9rem, 1.8vw, 1.2rem);
+}
+
+.role-workspace ::deep .position-profile-radar-grid > * {
+    min-width: 0;
+}
+
+.role-workspace ::deep .chart-stage {
+    gap: clamp(0.85rem, 1.6vw, 1.1rem);
+    padding: clamp(1rem, 1.8vw, 1.35rem);
+    border-radius: var(--radius-md);
+    background:
+        linear-gradient(145deg, color-mix(in srgb, var(--surface-raised), transparent 5%), transparent 72%),
+        var(--surface);
+}
+
+.role-workspace ::deep .chart-stage__head {
+    align-items: flex-start;
+    padding-bottom: 0.85rem;
+}
+
+.role-workspace ::deep .chart-stage__head h3 {
+    max-width: 28rem;
+    font-size: clamp(1.25rem, 2vw, 1.75rem);
+    line-height: 1.02;
+}
+
+.role-workspace ::deep .chart-stage__head p {
+    max-width: 34rem;
+    font-size: 0.68rem;
+    line-height: 1.45;
+}
+
+.role-workspace ::deep .chart-stage__head > strong {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    padding-top: 0.15rem;
+    font-size: clamp(1.7rem, 3.2vw, 3rem);
+}
+
+.role-workspace ::deep .chart-stage__legend {
+    align-items: center;
+    gap: 0.65rem 1rem;
+    padding: 0.45rem 0 0.1rem;
+}
+
+.role-workspace ::deep .radar-legend-item {
+    min-width: 0;
+    color: color-mix(in srgb, var(--text), transparent 18%);
+    font-size: 0.72rem;
+}
+
+.role-workspace ::deep .radar-legend-item strong {
+    overflow: hidden;
+    max-width: min(18rem, 46vw);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.role-workspace ::deep .radar-legend-swatch {
+    flex: 0 0 auto;
+    width: 2.35rem;
+    height: 0.24rem;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper-100), transparent 86%);
+}
+
+.role-workspace ::deep .chart-stage--radar .radar-chart-shell {
+    display: grid;
+    place-items: center;
+    min-height: clamp(26rem, 45vw, 34rem);
+    padding: clamp(0.65rem, 1.4vw, 1rem);
+    border-radius: var(--radius-md);
+    background:
+        radial-gradient(circle at 50% 44%, color-mix(in srgb, var(--court-400), transparent 89%), transparent 52%),
+        linear-gradient(145deg, color-mix(in srgb, var(--ink-900), transparent 3%), var(--surface));
+}
+
+.role-workspace ::deep .chart-stage--radar .radar-svg {
+    display: block;
+    width: min(100%, 45rem);
+    min-height: 0;
+    max-height: 34rem;
+}
+
+.role-workspace ::deep .chart-stage--histogram .apexcharts-canvas,
+.role-workspace ::deep .chart-stage--histogram .apexcharts-svg {
+    width: 100% !important;
+}
+
+.role-workspace ::deep .chart-stage--histogram .apexcharts-text,
+.role-workspace ::deep .chart-stage--histogram .apexcharts-xaxis-label,
+.role-workspace ::deep .chart-stage--histogram .apexcharts-yaxis-label,
+.role-workspace ::deep .chart-stage--histogram .apexcharts-title-text {
+    fill: color-mix(in srgb, var(--text), transparent 24%) !important;
+    color: color-mix(in srgb, var(--text), transparent 24%) !important;
+    font-weight: 750 !important;
+}
+
+.role-workspace ::deep .chart-stage--histogram .apexcharts-xaxis-title-text,
+.role-workspace ::deep .chart-stage--histogram .apexcharts-yaxis-title-text {
+    fill: var(--text-muted) !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.04em;
+}
+
+.role-workspace ::deep .chart-stage--histogram .apexcharts-gridline {
+    stroke: color-mix(in srgb, var(--text-muted), transparent 80%) !important;
+}
+
+.role-workspace ::deep .chart-stage--histogram .apexcharts-bar-area {
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.22));
 }
 
 .role-workspace ::deep .position-profile-quick-insight {
@@ -30,5 +172,47 @@
 
     .role-workspace ::deep .position-profile-directory-band {
         position: static;
+    }
+
+    .role-workspace ::deep .entity-identity--role {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .role-workspace ::deep .entity-identity--role .entity-identity__score {
+        grid-column: 1 / -1;
+        justify-items: start;
+    }
+
+    .role-workspace ::deep .position-profile-radar-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .role-workspace ::deep .chart-stage__head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .role-workspace ::deep .chart-stage--radar .radar-chart-shell {
+        min-height: 24rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .role-workspace ::deep .chart-stage {
+        padding: 0.85rem;
+    }
+
+    .role-workspace ::deep .chart-stage--radar .radar-chart-shell {
+        margin-inline: -0.25rem;
+        padding: 0.4rem;
+        min-height: 20rem;
+    }
+
+    .role-workspace ::deep .chart-stage--radar .radar-svg {
+        max-height: 25rem;
+    }
+
+    .role-workspace ::deep .radar-legend-item strong {
+        max-width: 12rem;
     }
 }

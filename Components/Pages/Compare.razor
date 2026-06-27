@@ -23,11 +23,14 @@
             <a href="/position-profiles">Ouvrir Role benchmark <span aria-hidden="true">↗</span></a>
         </header>
 
-        <AudienceLensSelector Kicker="Mode de comparaison"
+        @if (Response is not null)
+        {
+            <AudienceLensSelector Kicker="Mode de comparaison"
                               Title="Choisissez la profondeur de lecture"
                               Subtitle="Passez d'une synthèse staff à une analyse complète ou à une restitution claire pour les joueuses."
                               Value="@ActiveLens"
                               ValueChanged="SetActiveLens" />
+        }
 
         <section class="lab-setup @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
@@ -278,7 +281,7 @@
                     var response = Response!;
                     @if (ShowComparisonRadarChart)
                     {
-                        <section class="page-panel">
+                        <section class="page-panel comparison-chart-panel comparison-chart-panel--radar">
                             <div class="panel-head">
                                 <div>
                                     <p class="section-kicker">Radar</p>
@@ -287,7 +290,7 @@
                                 </div>
                             </div>
 
-                            <ApexChart @key="response.Players.Count" TItem="MetricPlotPoint" Title="Radar compare" Height="340" Options="@GetComparisonRadarChartOptions(response.Players.Count)">
+                            <ApexChart @key="response.Players.Count" TItem="MetricPlotPoint" Height="360" Options="@GetComparisonRadarChartOptions(response.Players.Count)">
                                 @foreach (var player in response.Players)
                                 {
                                     <ApexPointSeries TItem="MetricPlotPoint"
@@ -301,10 +304,10 @@
                         </section>
                     }
 
-                    <section class="dual-grid">
+                    <section class="dual-grid comparison-chart-grid">
                         @if (ShowComparisonVolumeChart)
                         {
-                            <article class="page-panel">
+                            <article class="page-panel comparison-chart-panel">
                                 <div class="panel-head">
                                     <div>
                                         <p class="section-kicker">Volumes cles</p>
@@ -312,7 +315,7 @@
                                 </div>
                             </div>
 
-                                <ApexChart TItem="MetricPlotPoint" Title="Volumes cles" Height="320" Options="@GetComparisonBarChartOptions(response.Players.Count)">
+                                <ApexChart TItem="MetricPlotPoint" Height="330" Options="@GetComparisonBarChartOptions(response.Players.Count)">
                                     @foreach (var player in response.Players)
                                     {
                                         <ApexPointSeries TItem="MetricPlotPoint"
@@ -328,7 +331,7 @@
 
                         @if (ShowComparisonEfficiencyChart)
                         {
-                            <article class="page-panel">
+                            <article class="page-panel comparison-chart-panel">
                                 <div class="panel-head">
                                     <div>
                                         <p class="section-kicker">Efficacite</p>
@@ -336,7 +339,7 @@
                                 </div>
                             </div>
 
-                            <ApexChart TItem="MetricPlotPoint" Title="Efficacite" Height="320" Options="@GetComparisonLineChartOptions(response.Players.Count)">
+                            <ApexChart TItem="MetricPlotPoint" Height="330" Options="@GetComparisonLineChartOptions(response.Players.Count)">
                                     @foreach (var player in response.Players)
                                     {
                                         <ApexPointSeries TItem="MetricPlotPoint"
@@ -353,7 +356,7 @@
 
                     @if (ShowComparisonTechnicalChart)
                     {
-                        <section class="page-panel">
+                        <section class="page-panel comparison-chart-panel">
                             <div class="panel-head">
                                 <div>
                                     <p class="section-kicker">Technique</p>
@@ -361,7 +364,7 @@
                                 </div>
                             </div>
 
-                            <ApexChart TItem="MetricPlotPoint" Title="Technique" Height="320" Options="@GetComparisonBarChartOptions(response.Players.Count)">
+                            <ApexChart TItem="MetricPlotPoint" Height="330" Options="@GetComparisonBarChartOptions(response.Players.Count)">
                                 @foreach (var player in response.Players)
                                 {
                                     <ApexPointSeries TItem="MetricPlotPoint"
@@ -377,7 +380,7 @@
 
                     @if (ShowComparisonPerMatchChart)
                     {
-                        <section class="page-panel">
+                        <section class="page-panel comparison-chart-panel">
                             <div class="panel-head">
                                 <div>
                                     <p class="section-kicker">Production par match</p>
@@ -385,7 +388,7 @@
                                 </div>
                             </div>
 
-                            <ApexChart TItem="MetricPlotPoint" Title="Volumes normalises" Height="320" Options="@GetComparisonBarChartOptions(response.Players.Count)">
+                            <ApexChart TItem="MetricPlotPoint" Height="330" Options="@GetComparisonBarChartOptions(response.Players.Count)">
                                 @foreach (var player in response.Players)
                                 {
                                     <ApexPointSeries TItem="MetricPlotPoint"
@@ -402,7 +405,7 @@
             }
             else if (ShowComparisonTable)
             {
-                <section class="page-panel">
+                <section class="page-panel comparison-evidence-panel">
                     @{
                         var comparedPlayers = Response.Players.ToArray();
                     }
@@ -1138,7 +1141,11 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Radar
+                Type = ChartType.Radar,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = ChartPalette.SeriesColors(seriesCount),
             DataLabels = new DataLabels
@@ -1148,6 +1155,18 @@
             Legend = new Legend
             {
                 Position = LegendPosition.Bottom
+            },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.18)"
+            },
+            Stroke = new Stroke
+            {
+                Width = 2.6
+            },
+            Markers = new Markers
+            {
+                Size = 3.5
             }
         };
     }
@@ -1158,7 +1177,11 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Bar
+                Type = ChartType.Bar,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = ChartPalette.SeriesColors(seriesCount),
             DataLabels = new DataLabels
@@ -1169,11 +1192,16 @@
             {
                 Position = LegendPosition.Bottom
             },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.16)"
+            },
             PlotOptions = new PlotOptions
             {
                 Bar = new PlotOptionsBar
                 {
                     BorderRadius = 10,
+                    ColumnWidth = "62%",
                     Horizontal = false
                 }
             }
@@ -1186,7 +1214,11 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Line
+                Type = ChartType.Line,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = ChartPalette.SeriesColors(seriesCount),
             DataLabels = new DataLabels
@@ -1197,13 +1229,17 @@
             {
                 Position = LegendPosition.Bottom
             },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.16)"
+            },
             Markers = new Markers
             {
-                Size = 4
+                Size = 5
             },
             Stroke = new Stroke
             {
-                Width = 3
+                Width = 3.2
             }
         };
     }

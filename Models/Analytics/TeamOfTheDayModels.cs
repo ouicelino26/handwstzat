@@ -165,6 +165,8 @@ public sealed record TeamOfTheDayCandidateDto
 
     public required string FullName { get; init; }
 
+    public string? PlayerPhoto { get; init; }
+
     public required string TeamName { get; init; }
 
     public int? TeamId { get; init; }

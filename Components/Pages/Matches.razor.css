@@ -1,0 +1,38 @@
+.games-workspace ::deep .page-panel:has(.apexcharts-canvas) {
+    overflow: hidden;
+    display: grid;
+    gap: clamp(0.8rem, 1.5vw, 1rem);
+    background:
+        radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--signal-500), transparent 93%), transparent 40%),
+        linear-gradient(145deg, color-mix(in srgb, var(--surface-raised), transparent 7%), transparent 72%),
+        var(--surface);
+}
+
+.games-workspace ::deep .page-panel:has(.apexcharts-canvas) .panel-head {
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.games-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-text,
+.games-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-legend-text,
+.games-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-xaxis-label,
+.games-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-yaxis-label {
+    fill: color-mix(in srgb, var(--text), transparent 24%) !important;
+    color: color-mix(in srgb, var(--text), transparent 24%) !important;
+    font-weight: 740 !important;
+}
+
+.games-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-gridline {
+    stroke: color-mix(in srgb, var(--text-muted), transparent 80%) !important;
+}
+
+.games-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-bar-area {
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.22));
+}
+
+@media (max-width: 900px) {
+    .games-workspace ::deep .page-panel:has(.apexcharts-canvas) .panel-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

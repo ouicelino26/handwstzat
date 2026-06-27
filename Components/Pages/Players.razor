@@ -164,7 +164,7 @@
                         var sanctions = Sanctions!;
                         var goalkeeper = Goalkeeper!;
                         PlayerTechnicalStatsDto? technical = Technical!;
-                        var playerPhotoUrl = ResolvePlayerPhotoUrl(profile.PlayerPhoto);
+                        var playerPhotoUrl = ResolvePlayerPhotoUrl(profile.PlayerPhoto, profile.PlayerId, profile.FullName, profile.TeamName);
                         var playerFlagUrl = ResolveFlagAssetUrl(profile.Nationality);
 
                         <header class="entity-identity entity-identity--athlete">
@@ -392,7 +392,7 @@
                                 <section class="page-panel">
                                     <p class="section-kicker">Profil technique</p>
                                     <h4>Volumes qui structurent le role</h4>
-                                    <ApexChart TItem="MetricPlotPoint" Title="Profil d'impact" Height="310" Options="@GetPlayerProfileChartOptions()">
+                                    <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetPlayerProfileChartOptions()">
                                         <ApexPointSeries TItem="MetricPlotPoint"
                                                          Items="@PlayerActionProfile"
                                                          Name="@Profile.FullName"
@@ -405,7 +405,7 @@
                                 <section class="page-panel">
                                     <p class="section-kicker">Rendement</p>
                                     <h4>Pourcentages et ratios clefs</h4>
-                                    <ApexChart TItem="MetricPlotPoint" Title="Rendement" Height="310" Options="@GetPlayerRateChartOptions()">
+                                    <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetPlayerRateChartOptions()">
                                         <ApexPointSeries TItem="MetricPlotPoint"
                                                          Items="@PlayerRateProfile"
                                                          Name="Niveau"
@@ -427,7 +427,7 @@
                                     }
                                     else
                                     {
-                                        <ApexChart @key="SelectedPlayerId" TItem="MatchTrendPoint" Title="Evolution recente" Height="320" Options="@GetPlayerTrendChartOptions()">
+                                        <ApexChart @key="SelectedPlayerId" TItem="MatchTrendPoint" Height="320" Options="@GetPlayerTrendChartOptions()">
                                             <ApexPointSeries TItem="MatchTrendPoint"
                                                              Items="@PlayerTrendSeries"
                                                              Name="Actions directes"
@@ -470,7 +470,7 @@
                                     }
                                     else
                                     {
-                                        <ApexChart @key="SelectedPlayerId" TItem="MatchTrendPoint" Title="Pertes vs impact" Height="320" Options="@GetPlayerScatterChartOptions()">
+                                        <ApexChart @key="SelectedPlayerId" TItem="MatchTrendPoint" Height="320" Options="@GetPlayerScatterChartOptions()">
                                             <ApexPointTooltip>
                                                 @{
                                                     var datapoint = context.DataPoint as IDataPoint<MatchTrendPoint>;
@@ -1459,9 +1459,9 @@
             zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList());
     }
 
-    private static string? ResolvePlayerPhotoUrl(string? photo)
+    private static string? ResolvePlayerPhotoUrl(string? photo, int playerId, string? fullName, string? teamName)
     {
-        return ResolveImageAssetUrl(photo, "/images/player-photos/lbe");
+        return PlayerPhotoAssetResolver.Resolve(photo, playerId, fullName, teamName);
     }
 
     private static string? ResolveFlagAssetUrl(string? nationality)

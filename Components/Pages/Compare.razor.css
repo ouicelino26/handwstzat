@@ -1,0 +1,139 @@
+.lab-workspace ::deep .lab-setup {
+    display: grid;
+    gap: clamp(0.9rem, 1.8vw, 1.25rem);
+}
+
+.lab-workspace ::deep .comparison-tray {
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: clamp(0.75rem, 1.4vw, 1rem);
+}
+
+.lab-workspace ::deep .comparison-slot {
+    display: grid;
+    gap: 0.8rem;
+    padding: clamp(0.9rem, 1.5vw, 1.15rem);
+    border-radius: var(--radius-md);
+    background:
+        linear-gradient(145deg, color-mix(in srgb, var(--surface-raised), transparent 8%), transparent 72%),
+        var(--surface);
+}
+
+.lab-workspace ::deep .comparison-slot .panel-head {
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.lab-workspace ::deep .comparison-selected-card {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.8rem;
+    border-left: 0.2rem solid var(--court-400);
+}
+
+.lab-workspace ::deep .comparison-picker-list {
+    max-height: 13rem;
+    padding-right: 0.15rem;
+}
+
+.lab-workspace ::deep .comparison-picker-list .list-item > button {
+    padding: 0.65rem 0.7rem;
+}
+
+.lab-workspace ::deep .badge-row {
+    gap: 0.75rem;
+}
+
+.lab-workspace ::deep .comparison-card {
+    padding: 0.9rem;
+    border-radius: var(--radius-sm);
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--surface-raised), transparent 4%), transparent 70%),
+        var(--surface);
+}
+
+.lab-workspace ::deep .comparison-chart-grid {
+    gap: clamp(0.9rem, 1.8vw, 1.15rem);
+}
+
+.lab-workspace ::deep .comparison-chart-panel {
+    min-width: 0;
+    overflow: hidden;
+    display: grid;
+    gap: clamp(0.8rem, 1.4vw, 1rem);
+    padding: clamp(1rem, 1.8vw, 1.35rem);
+    background:
+        radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--signal-500), transparent 92%), transparent 38%),
+        linear-gradient(145deg, color-mix(in srgb, var(--surface-raised), transparent 7%), transparent 72%),
+        var(--surface);
+}
+
+.lab-workspace ::deep .comparison-chart-panel .panel-head {
+    align-items: flex-start;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.lab-workspace ::deep .comparison-chart-panel h3 {
+    max-width: 40rem;
+    font-size: clamp(1.2rem, 2vw, 1.7rem);
+    line-height: 1.05;
+}
+
+.lab-workspace ::deep .comparison-chart-panel .page-subtitle {
+    max-width: 45rem;
+    line-height: 1.45;
+}
+
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-canvas,
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-svg {
+    width: 100% !important;
+}
+
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-text,
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-legend-text,
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-xaxis-label,
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-yaxis-label {
+    fill: color-mix(in srgb, var(--text), transparent 24%) !important;
+    color: color-mix(in srgb, var(--text), transparent 24%) !important;
+    font-weight: 740 !important;
+}
+
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-legend {
+    padding-top: 0.4rem !important;
+}
+
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-gridline,
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-radar-series polygon {
+    stroke: color-mix(in srgb, var(--text-muted), transparent 78%) !important;
+}
+
+.lab-workspace ::deep .comparison-chart-panel .apexcharts-bar-area {
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.22));
+}
+
+.lab-workspace ::deep .comparison-chart-panel--radar {
+    background:
+        radial-gradient(circle at 50% 44%, color-mix(in srgb, var(--court-400), transparent 90%), transparent 55%),
+        linear-gradient(145deg, color-mix(in srgb, var(--ink-900), transparent 8%), var(--surface));
+}
+
+.lab-workspace ::deep .comparison-evidence-panel {
+    display: grid;
+    gap: 1rem;
+}
+
+.lab-workspace ::deep .comparison-evidence-panel .table-wrap {
+    border-radius: var(--radius-md);
+}
+
+@media (max-width: 900px) {
+    .lab-workspace ::deep .comparison-tray,
+    .lab-workspace ::deep .comparison-chart-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lab-workspace ::deep .comparison-chart-panel .panel-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

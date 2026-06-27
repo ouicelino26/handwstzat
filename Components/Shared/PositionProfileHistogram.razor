@@ -40,7 +40,6 @@
 
         <ApexChart @key="RenderedChartKey"
                    TItem="PositionProfileAxisViewModel"
-                   Title="@Title"
                    Height="@Height"
                    Options="@_options">
             <ApexPointTooltip>
@@ -196,7 +195,7 @@
             },
             Legend = new Legend
             {
-                Position = LegendPosition.Bottom
+                Show = false
             },
             Grid = new Grid
             {

@@ -16,11 +16,14 @@
     }
     else
     {
-        <AudienceLensSelector Kicker="Lecture de l'équipe"
+        @if (TeamStats is not null)
+        {
+            <AudienceLensSelector Kicker="Lecture de l'équipe"
                               Title="Adaptez le bilan à votre usage"
                               Subtitle="Le mode Club privilégie le pilotage, le mode Analyste approfondit les données et le mode Joueuse simplifie la restitution."
                               Value="@ActiveLens"
                               ValueChanged="SetActiveLens" />
+        }
 
         <section class="directory-command @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
@@ -204,7 +207,7 @@
                             <article class="page-panel">
                                 <p class="section-kicker">Repartition collective</p>
                                 <h4>Contribution directe par joueuse</h4>
-                                <ApexChart @key="TeamId" TItem="SliceValue" Title="Contribution directe" Height="310" Options="@GetTeamContributionChartOptions()">
+                                <ApexChart @key="TeamId" TItem="SliceValue" Height="310" Options="@GetTeamContributionChartOptions()">
                                     <ApexPointSeries TItem="SliceValue"
                                                      Items="@TeamContributionDistribution"
                                                      Name="Contribution"
@@ -266,7 +269,7 @@
                             <article class="page-panel">
                                 <p class="section-kicker">Profil collectif</p>
                                 <h4>Volumes moyens par match</h4>
-                                <ApexChart TItem="MetricPlotPoint" Title="Profil collectif" Height="310" Options="@GetTeamProfileChartOptions()">
+                                <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetTeamProfileChartOptions()">
                                     <ApexPointSeries TItem="MetricPlotPoint"
                                                      Items="@TeamProfileSeries"
                                                      Name="@TeamStats.TeamName"
@@ -279,7 +282,7 @@
                             <article class="page-panel">
                                 <p class="section-kicker">Joueuses decisives</p>
                                 <h4>Actions directes dans la selection</h4>
-                                <ApexChart TItem="MetricPlotPoint" Title="Implication offensive" Height="310" Options="@GetTeamImpactChartOptions()">
+                                <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetTeamImpactChartOptions()">
                                     <ApexPointSeries TItem="MetricPlotPoint"
                                                      Items="@TeamPlayerImpactSeries"
                                                      Name="Actions directes"
@@ -878,7 +881,11 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Donut
+                Type = ChartType.Donut,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = ChartPalette.SemanticSeriesColors,
             DataLabels = new DataLabels
@@ -908,12 +915,24 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Bar
+                Type = ChartType.Bar,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = [ChartPalette.Primary],
             DataLabels = new DataLabels
             {
                 Enabled = false
+            },
+            Legend = new Legend
+            {
+                Show = false
+            },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.16)"
             },
             PlotOptions = new PlotOptions
             {
@@ -932,12 +951,24 @@
         {
             Chart = new Chart
             {
-                Type = ChartType.Bar
+                Type = ChartType.Bar,
+                Toolbar = new Toolbar
+                {
+                    Show = false
+                }
             },
             Colors = [ChartPalette.Player],
             DataLabels = new DataLabels
             {
                 Enabled = false
+            },
+            Legend = new Legend
+            {
+                Show = false
+            },
+            Grid = new Grid
+            {
+                BorderColor = "rgba(148, 163, 184, 0.16)"
             },
             PlotOptions = new PlotOptions
             {

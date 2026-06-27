@@ -54,6 +54,33 @@
     text-transform: uppercase;
 }
 
+.squad-workspace ::deep .page-panel:has(.apexcharts-canvas) {
+    overflow: hidden;
+    display: grid;
+    gap: 0.8rem;
+    background:
+        radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--court-400), transparent 92%), transparent 38%),
+        linear-gradient(145deg, color-mix(in srgb, var(--surface-raised), transparent 7%), transparent 72%),
+        var(--surface);
+}
+
+.squad-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-text,
+.squad-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-legend-text,
+.squad-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-xaxis-label,
+.squad-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-yaxis-label {
+    fill: color-mix(in srgb, var(--text), transparent 24%) !important;
+    color: color-mix(in srgb, var(--text), transparent 24%) !important;
+    font-weight: 740 !important;
+}
+
+.squad-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-gridline {
+    stroke: color-mix(in srgb, var(--text-muted), transparent 80%) !important;
+}
+
+.squad-workspace ::deep .page-panel:has(.apexcharts-canvas) .apexcharts-bar-area {
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.22));
+}
+
 @media (max-width: 760px) {
     .squad-workspace ::deep .entity-identity--squad {
         grid-template-columns: auto minmax(0, 1fr);

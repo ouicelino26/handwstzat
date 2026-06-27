@@ -171,16 +171,50 @@
 }
 
 .team-day-player-card__halo {
+    position: relative;
     display: grid;
     place-items: center;
-    width: 3.2rem;
-    height: 3.2rem;
+    width: 4.15rem;
+    height: 4.15rem;
+    overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.34);
-    border-radius: 1rem;
+    border-radius: 1.25rem;
     color: #071412;
     font-weight: 900;
     letter-spacing: 0.06em;
-    background: linear-gradient(135deg, #f6c66f, #61d896);
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.38), transparent 42%),
+        linear-gradient(135deg, #f6c66f, #61d896);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+        0 16px 34px rgba(0, 0, 0, 0.26);
+}
+
+.team-day-player-card__halo.has-photo {
+    border-color: rgba(255, 255, 255, 0.42);
+    background:
+        radial-gradient(circle at 30% 15%, rgba(255, 255, 255, 0.18), transparent 45%),
+        rgba(5, 15, 19, 0.82);
+}
+
+.team-day-player-card__halo.has-photo::after {
+    position: absolute;
+    inset: auto 0 0;
+    height: 32%;
+    content: "";
+    background: linear-gradient(180deg, transparent, rgba(5, 15, 19, 0.55));
+}
+
+.team-day-player-card__halo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+}
+
+.team-day-player-card__halo span {
+    position: relative;
+    z-index: 1;
 }
 
 .team-day-position,
