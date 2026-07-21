@@ -213,37 +213,37 @@ public class HomeBase : ComponentBase, IDisposable
             new KpiTile(
                 "Buts / match",
                 HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(goals, matches)),
-                "Repere de production offensive sur la selection.",
+                "Moyenne global de but par rencontre.",
                 "positive",
                 HandballKpiHelper.FormatPerMatchContext(goals, matches, "buts")),
             new KpiTile(
                 "Buts prepares",
                 HandballKpiHelper.FormatPercent(HandballKpiHelper.Share(snapshot.Overview.AssistCount, Math.Max(goals, 1))),
-                "Part des buts amenes par une passe decisive.",
+                "Pourcentage de but suivie d'une passe decisive.",
                 HandballKpiHelper.FieldSuccessRateTone(HandballKpiHelper.Share(snapshot.Overview.AssistCount, Math.Max(goals, 1))),
                 HandballKpiHelper.FormatBase(snapshot.Overview.AssistCount, Math.Max(goals, 1), "buts")),
             new KpiTile(
                 "Interceptions / match",
                 HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(snapshot.Overview.InterceptionCount, matches)),
-                "Capacite a couper les circuits adverses.",
+                "Nombre d'interceptions moyenne par rencontre.",
                 "neutral",
                 HandballKpiHelper.FormatPerMatchContext(snapshot.Overview.InterceptionCount, matches, "interceptions")),
             new KpiTile(
                 "Arrets / match",
                 HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(snapshot.Overview.SaveCount, matches)),
-                "Impact gardienne moyen dans la selection.",
+                "Nombre d'arrêt moyen par match.",
                 HandballKpiHelper.GoalkeeperStopsPerMatchTone(HandballKpiHelper.PerMatch(snapshot.Overview.SaveCount, matches)),
                 HandballKpiHelper.FormatPerMatchContext(snapshot.Overview.SaveCount, matches, "arrets")),
             new KpiTile(
                 "Pertes / match",
                 HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(snapshot.Overview.TurnoverCount, matches)),
-                "Charge de dechet technique a surveiller.",
+                "Moyenne de pertes de balle par rencontre.",
                 "warning",
                 HandballKpiHelper.FormatPerMatchContext(snapshot.Overview.TurnoverCount, matches, "pertes")),
             new KpiTile(
                 "Sanctions / match",
                 HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(snapshot.Overview.SanctionCount, matches)),
-                "Niveau de discipline sur l'ensemble des rencontres.",
+                "Nombre moyen de sanctions par rencontre.",
                 "warning",
                 HandballKpiHelper.FormatPerMatchContext(snapshot.Overview.SanctionCount, matches, "sanctions"))
         ];

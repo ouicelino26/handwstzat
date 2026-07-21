@@ -214,6 +214,10 @@ else if (Snapshot is not null)
                                 <h3>@Snapshot.RequestedRankingLabel</h3>
                             </div>
                             <span class="panel-pill">Top @Filters.Top</span>
+                            @if (!string.IsNullOrWhiteSpace(ActiveRankingSampleRule))
+                            {
+                                <span class="panel-pill ranking-sample-rule">@ActiveRankingSampleRule</span>
+                            }
                         </div>
 
                         <div class="ranking-toolbar">
@@ -248,14 +252,42 @@ else if (Snapshot is not null)
                             </div>
                         </div>
 
-                        <ApexChart @key="RankingChartKey" TItem="PlayerRankingItem" Height="300" Options="@GetRankingChartOptions()">
-                            <ApexPointSeries TItem="PlayerRankingItem"
-                                             Items="@Snapshot.RequestedRanking"
-                                             Name="@Snapshot.RequestedRankingLabel"
-                                             SeriesType="SeriesType.Bar"
-                                             XValue="item => item.PlayerName"
-                                             YValue="item => (decimal?)item.Value" />
-                        </ApexChart>
+                        @if (Snapshot.RequestedRanking.Count == 0)
+                        {
+                            <StateCard Kicker="Volume insuffisant"
+                                       Title="Aucune joueuse ne valide le seuil de fiabilite"
+                                       Message="@GetRankingEmptyMessage()"
+                                       Tone="empty"
+                                       CssClass="empty-card-inline" />
+                        }
+                        else
+                        {
+                            <ApexChart @key="RankingChartKey" TItem="PlayerRankingItem" Height="300" Options="@GetRankingChartOptions()">
+                                <ApexPointSeries TItem="PlayerRankingItem"
+                                                 Items="@Snapshot.RequestedRanking"
+                                                 Name="@Snapshot.RequestedRankingLabel"
+                                                 SeriesType="SeriesType.Bar"
+                                                 XValue="item => item.PlayerName"
+                                                 YValue="item => (decimal?)item.Value" />
+                            </ApexChart>
+
+                            @if (HasRankingSampleDetails)
+                            {
+                                <div class="ranking-quality-strip" aria-label="Volumes retenus dans le classement">
+                                    @foreach (var item in Snapshot.RequestedRanking)
+                                    {
+                                        <article>
+                                            <strong>@item.PlayerName</strong>
+                                            <span>@item.ValueLabel</span>
+                                            @if (!string.IsNullOrWhiteSpace(item.SampleLabel))
+                                            {
+                                                <small>@item.SampleLabel</small>
+                                            }
+                                        </article>
+                                    }
+                                </div>
+                            }
+                        }
                     </section>
                 }
             }
@@ -764,7 +796,10 @@ else if (Snapshot is not null)
                                                         <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Neutralisations, player)">@player.Neutralisations</td>
                                                         <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Turnovers, player, higherIsBetter: false)">@player.Turnovers</td>
                                                         <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltiesConceded, player, higherIsBetter: false)">@player.PenaltiesConceded</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.ShotSuccessRate, player)">@FormatRate(player.ShotSuccessRate)%</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.ShotSuccessRate, player)">
+                                                            @FormatRate(player.ShotSuccessRate)%
+                                                            <small class="rate-sample">@player.OpenShotAttempts tirs</small>
+                                                        </td>
                                                     </tr>
                                                 }
                                             </tbody>
@@ -823,11 +858,17 @@ else if (Snapshot is not null)
                                                         <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Assists, goalkeeper)">@goalkeeper.Assists</td>
                                                         <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Saves, goalkeeper)">@goalkeeper.Saves</td>
                                                         <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.PenaltySaves, goalkeeper)">@goalkeeper.PenaltySaves</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.SaveRate, goalkeeper)">@FormatRate(goalkeeper.SaveRate)%</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.SaveRate, goalkeeper)">
+                                                            @FormatRate(goalkeeper.SaveRate)%
+                                                            <small class="rate-sample">@goalkeeper.ShotsFaced subis</small>
+                                                        </td>
                                                         <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.GoalsConceded, goalkeeper, higherIsBetter: false)">@goalkeeper.GoalsConceded</td>
                                                         <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotsFaced, goalkeeper, higherIsBetter: false)">@goalkeeper.ShotsFaced</td>
                                                         <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Turnovers, goalkeeper, higherIsBetter: false)">@goalkeeper.Turnovers</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotSuccessRate, goalkeeper)">@FormatRate(goalkeeper.ShotSuccessRate)%</td>
+                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotSuccessRate, goalkeeper)">
+                                                            @FormatRate(goalkeeper.ShotSuccessRate)%
+                                                            <small class="rate-sample">@goalkeeper.OpenShotAttempts tirs</small>
+                                                        </td>
                                                     </tr>
                                                 }
                                             </tbody>
@@ -933,6 +974,10 @@ else if (Snapshot is not null)
     private bool ShowLeagueKpis => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
 
     private bool ShowRankingPanel => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
+
+    private string? ActiveRankingSampleRule => GetRankingSampleRule(Filters.RankingMetric);
+
+    private bool HasRankingSampleDetails => Snapshot?.RequestedRanking.Any(item => !string.IsNullOrWhiteSpace(item.SampleLabel)) == true;
 
     private bool ShowSpotlightDeepDive => ActiveLens is AudienceLens.Analyst or AudienceLens.Player;
 
@@ -1105,6 +1150,25 @@ else if (Snapshot is not null)
         return Filters.Top == top;
     }
 
+    private static string? GetRankingSampleRule(string? metric)
+    {
+        return metric switch
+        {
+            "shotsuccess" => "Min. 4 tirs ouverts",
+            "penaltysuccess" => "Min. 2 jets 7m",
+            "saverate" => "Min. 10 tirs subis",
+            _ => null
+        };
+    }
+
+    private string GetRankingEmptyMessage()
+    {
+        var rule = ActiveRankingSampleRule;
+        return string.IsNullOrWhiteSpace(rule)
+            ? "Essayez d'elargir la selection ou de choisir un autre indicateur."
+            : $"{rule}. Elargissez la selection ou choisissez un classement au volume si vous voulez voir toutes les joueuses.";
+    }
+
     private string RankingChartKey => $"{Filters.RankingMetric}:{Filters.Top}:{Snapshot?.RequestedRankingLabel ?? string.Empty}";
 
     private ApexChartOptions<PlayerRankingItem> GetRankingChartOptions()
@@ -1255,7 +1319,7 @@ else if (Snapshot is not null)
             "field-neutralisations" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Neutralisations) : filtered.OrderBy(item => item.Neutralisations),
             "field-turnovers" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Turnovers) : filtered.OrderBy(item => item.Turnovers),
             "field-penalties-conceded" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.PenaltiesConceded) : filtered.OrderBy(item => item.PenaltiesConceded),
-            "field-shot-rate" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.ShotSuccessRate) : filtered.OrderBy(item => item.ShotSuccessRate),
+            "field-shot-rate" => SortFieldShotRate(filtered, FieldBoardSort.IsDescending),
             _ => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Goals) : filtered.OrderBy(item => item.Goals)
         };
 
@@ -1279,15 +1343,75 @@ else if (Snapshot is not null)
             "keeper-goals" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.Goals) : sorted.OrderBy(item => item.Goals),
             "keeper-assists" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.Assists) : sorted.OrderBy(item => item.Assists),
             "keeper-penalty-saves" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.PenaltySaves) : sorted.OrderBy(item => item.PenaltySaves),
-            "keeper-save-rate" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.SaveRate) : sorted.OrderBy(item => item.SaveRate),
+            "keeper-save-rate" => SortGoalkeeperSaveRate(sorted, GoalkeeperBoardSort.IsDescending),
             "keeper-goals-conceded" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.GoalsConceded) : sorted.OrderBy(item => item.GoalsConceded),
             "keeper-shots-faced" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.ShotsFaced) : sorted.OrderBy(item => item.ShotsFaced),
             "keeper-turnovers" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.Turnovers) : sorted.OrderBy(item => item.Turnovers),
-            "keeper-shot-rate" => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.ShotSuccessRate) : sorted.OrderBy(item => item.ShotSuccessRate),
+            "keeper-shot-rate" => SortGoalkeeperShotRate(sorted, GoalkeeperBoardSort.IsDescending),
             _ => GoalkeeperBoardSort.IsDescending ? sorted.OrderByDescending(item => item.Saves) : sorted.OrderBy(item => item.Saves)
         };
 
         return sorted.ToList();
+    }
+
+    private static IOrderedEnumerable<GlobalFieldRankingRow> SortFieldShotRate(
+        IEnumerable<GlobalFieldRankingRow> rows,
+        bool isDescending)
+    {
+        return isDescending
+            ? rows.OrderByDescending(IsReliableFieldShotRate)
+                .ThenByDescending(item => item.ShotSuccessRate)
+                .ThenByDescending(item => item.OpenShotAttempts)
+                .ThenBy(item => item.FullName)
+            : rows.OrderByDescending(IsReliableFieldShotRate)
+                .ThenBy(item => item.ShotSuccessRate)
+                .ThenByDescending(item => item.OpenShotAttempts)
+                .ThenBy(item => item.FullName);
+    }
+
+    private static IOrderedEnumerable<GlobalGoalkeeperRankingRow> SortGoalkeeperSaveRate(
+        IEnumerable<GlobalGoalkeeperRankingRow> rows,
+        bool isDescending)
+    {
+        return isDescending
+            ? rows.OrderByDescending(IsReliableGoalkeeperSaveRate)
+                .ThenByDescending(item => item.SaveRate)
+                .ThenByDescending(item => item.ShotsFaced)
+                .ThenBy(item => item.FullName)
+            : rows.OrderByDescending(IsReliableGoalkeeperSaveRate)
+                .ThenBy(item => item.SaveRate)
+                .ThenByDescending(item => item.ShotsFaced)
+                .ThenBy(item => item.FullName);
+    }
+
+    private static IOrderedEnumerable<GlobalGoalkeeperRankingRow> SortGoalkeeperShotRate(
+        IEnumerable<GlobalGoalkeeperRankingRow> rows,
+        bool isDescending)
+    {
+        return isDescending
+            ? rows.OrderByDescending(IsReliableGoalkeeperShotRate)
+                .ThenByDescending(item => item.ShotSuccessRate)
+                .ThenByDescending(item => item.OpenShotAttempts)
+                .ThenBy(item => item.FullName)
+            : rows.OrderByDescending(IsReliableGoalkeeperShotRate)
+                .ThenBy(item => item.ShotSuccessRate)
+                .ThenByDescending(item => item.OpenShotAttempts)
+                .ThenBy(item => item.FullName);
+    }
+
+    private static bool IsReliableFieldShotRate(GlobalFieldRankingRow player)
+    {
+        return player.OpenShotAttempts >= 4;
+    }
+
+    private static bool IsReliableGoalkeeperSaveRate(GlobalGoalkeeperRankingRow player)
+    {
+        return player.ShotsFaced >= 10;
+    }
+
+    private static bool IsReliableGoalkeeperShotRate(GlobalGoalkeeperRankingRow player)
+    {
+        return player.OpenShotAttempts >= 4;
     }
 
     private void SetFieldBoardSort(string column)

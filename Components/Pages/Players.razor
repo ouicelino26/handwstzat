@@ -1472,11 +1472,12 @@
         }
 
         var key = NormalizeAssetKey(nationality);
-        var fileName = FlagFileByKey.TryGetValue(key, out var mappedFile)
+        var sourceFileName = FlagFileByKey.TryGetValue(key, out var mappedFile)
             ? mappedFile
             : $"{nationality.Trim()}.png";
+        var fileName = ToSafeFlagFileName(sourceFileName);
 
-        return $"/images/flags/{EscapePathSegment(fileName)}";
+        return $"/images/flags/{fileName}";
     }
 
     private static string? ResolveImageAssetUrl(string? value, string localFolder)
@@ -1517,6 +1518,44 @@
     private static string EscapePathSegment(string segment)
     {
         return Uri.EscapeDataString(segment);
+    }
+
+    private static string ToSafeFlagFileName(string value)
+    {
+        var stem = System.IO.Path.GetFileNameWithoutExtension(value);
+        if (string.IsNullOrWhiteSpace(stem))
+        {
+            stem = value;
+        }
+
+        var decomposed = stem.Trim().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(decomposed.Length);
+        var previousWasSeparator = false;
+
+        foreach (var character in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
+            {
+                continue;
+            }
+
+            var lower = char.ToLowerInvariant(character);
+            if ((lower >= 'a' && lower <= 'z') || char.IsDigit(lower))
+            {
+                builder.Append(lower);
+                previousWasSeparator = false;
+                continue;
+            }
+
+            if (!previousWasSeparator)
+            {
+                builder.Append('-');
+                previousWasSeparator = true;
+            }
+        }
+
+        var slug = builder.ToString().Trim('-');
+        return string.IsNullOrWhiteSpace(slug) ? "unknown.png" : $"{slug}.png";
     }
 
     private static string NormalizeAssetKey(string value)

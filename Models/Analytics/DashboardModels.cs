@@ -77,6 +77,9 @@ public sealed record GlobalFieldRankingRow(
     int Neutralisations,
     int Turnovers,
     int PenaltiesConceded,
+    int OpenShotAttempts,
+    int ShotAttempts,
+    int PenaltyAttempts,
     double ShotSuccessRate);
 
 public sealed record GlobalGoalkeeperRankingRow(
@@ -94,6 +97,9 @@ public sealed record GlobalGoalkeeperRankingRow(
     int GoalsConceded,
     int PenaltyGoalsConceded,
     int ShotsFaced,
+    int OpenShotAttempts,
+    int ShotAttempts,
+    int PenaltyAttempts,
     double ShotSuccessRate,
     int Turnovers);
 
@@ -189,7 +195,9 @@ public sealed record PlayerRankingItem(
     double Value,
     string ValueLabel,
     int? PlayerId = null,
-    string? Metric = null);
+    string? Metric = null,
+    double? SampleSize = null,
+    string? SampleLabel = null);
 
 public sealed record MatchRecap(
     int MatchId,

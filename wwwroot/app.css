@@ -88,7 +88,10 @@ html[data-theme="light"] {
 }
 
 html {
+    width: 100%;
+    height: 100%;
     min-height: 100%;
+    overflow: hidden;
     background: var(--surface);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -96,14 +99,24 @@ html {
 
 body {
     margin: 0;
+    width: 100%;
+    height: 100%;
     min-width: 320px;
-    min-height: 100vh;
-    overflow-x: hidden;
+    min-height: 100%;
+    overflow: hidden;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
     font-family: var(--font-body);
     color: var(--text);
     background:
         radial-gradient(circle at 75% -20%, rgba(72, 187, 123, 0.13), transparent 35rem),
         linear-gradient(145deg, var(--surface), color-mix(in srgb, var(--surface) 82%, var(--ink-950)));
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
 }
 
 body::before {
@@ -263,7 +276,11 @@ svg {
 
 /* Performance OS shell */
 .studio-shell {
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    max-height: 100vh;
+    max-height: 100dvh;
     display: grid;
     grid-template:
         "command command command" var(--command-height)
@@ -592,6 +609,7 @@ kbd {
     grid-area: workbench;
     min-width: 0;
     min-height: 0;
+    height: 100%;
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr);
     overflow: hidden;
@@ -661,8 +679,13 @@ kbd {
 
 .studio-stage {
     min-height: 0;
-    overflow: auto;
+    height: 100%;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
 }
 
 .studio-stage__content {
@@ -1047,10 +1070,13 @@ kbd {
 /* Public experience */
 .studio-public-shell {
     position: relative;
+    height: 100%;
     min-height: 100vh;
+    min-height: 100dvh;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     padding: 1.4rem clamp(1rem, 4vw, 4rem);
     background:
         radial-gradient(circle at 76% 30%, rgba(143, 225, 178, 0.13), transparent 25rem),
@@ -1303,6 +1329,7 @@ input:disabled {
 
 .filter-drawer > summary > div,
 .drawer-copy {
+    min-width: 0;
     display: grid;
     gap: 0.15rem;
 }
@@ -1849,7 +1876,10 @@ select {
 /* Tables */
 .table-wrap {
     width: 100%;
+    max-width: 100%;
     overflow: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface);
@@ -1942,7 +1972,12 @@ select {
 
 /* Charts and analytical stages */
 .apexcharts-canvas {
+    max-width: 100%;
     margin: 0 auto;
+}
+
+.apexcharts-svg {
+    max-width: 100%;
 }
 
 .apexcharts-text,
@@ -4327,6 +4362,45 @@ select {
     }
 }
 
+@media (hover: none), (pointer: coarse) {
+    html:not([data-handwstat-platform="android"]),
+    html:not([data-handwstat-platform="android"]) body,
+    html:not([data-handwstat-platform="android"]) #app {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    html:not([data-handwstat-platform="android"]) .studio-shell,
+    html:not([data-handwstat-platform="android"]) .studio-shell.context-lens-open {
+        display: grid;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        grid-template:
+            "command" var(--command-height)
+            "workbench" minmax(0, 1fr)
+            / minmax(0, 1fr);
+        overflow: hidden;
+    }
+
+    html:not([data-handwstat-platform="android"]) .studio-workbench {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        height: 100%;
+        overflow: hidden;
+    }
+
+    html:not([data-handwstat-platform="android"]) .studio-stage {
+        height: 100%;
+        max-height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 @media (max-width: 900px) {
     :root {
         --tray-height: 0px;
@@ -4380,7 +4454,23 @@ select {
             "command" var(--command-height)
             "workbench" minmax(0, 1fr)
             / minmax(0, 1fr);
-        overflow: visible;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        overflow: hidden;
+    }
+
+    .studio-workbench {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .studio-stage {
+        height: 100%;
+        max-height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 
     .studio-commandbar {
@@ -4763,6 +4853,482 @@ select {
         padding: 1.1rem;
         border-radius: 1rem;
     }
+}
+
+@media (max-width: 900px) {
+    .chart-stage__head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .chart-stage__head > strong {
+        align-self: flex-start;
+    }
+
+    .chart-stage__legend,
+    .chart-stage__annotations {
+        justify-content: flex-start;
+    }
+
+    .apexcharts-legend {
+        max-width: 100% !important;
+        white-space: normal !important;
+    }
+
+    .stat-table,
+    .position-profile-table {
+        min-width: 42rem;
+    }
+}
+
+@media (max-width: 720px) {
+    .filter-drawer > summary {
+        align-items: flex-start;
+    }
+
+    .filter-drawer > summary span {
+        line-height: 1.35;
+    }
+
+    .table-wrap {
+        margin-inline: -0.05rem;
+    }
+
+    .stat-table,
+    .position-profile-table {
+        min-width: 38rem;
+        font-size: 0.66rem;
+    }
+
+    .stat-table th,
+    .stat-table td,
+    .position-profile-table th,
+    .position-profile-table td {
+        padding: 0.58rem 0.62rem;
+    }
+
+    .stat-table th:first-child,
+    .stat-table td:first-child,
+    .position-profile-table th:first-child,
+    .position-profile-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        max-width: 12rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        background: var(--surface);
+        box-shadow: 1px 0 0 var(--line);
+    }
+
+    .stat-table thead th:first-child,
+    .position-profile-table thead th:first-child {
+        z-index: 3;
+        background: var(--surface-soft);
+    }
+
+    .match-card-titleline,
+    .match-card-meta,
+    .match-card-actions {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .match-card-scoreboard {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 0.45rem;
+    }
+
+    .match-card-side-away {
+        text-align: left;
+    }
+
+    .match-card-scorebox {
+        order: -1;
+        justify-self: start;
+        font-size: clamp(1.5rem, 8vw, 2rem);
+    }
+
+    .goal-map,
+    .pitch-map {
+        min-height: 18rem;
+    }
+
+    .position-profile-histogram,
+    .radar-chart-shell,
+    .scatter-axis-card {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 460px) {
+    .filter-drawer > summary {
+        flex-direction: column;
+    }
+
+    .page-filters,
+    .position-profile-filter-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stat-table,
+    .position-profile-table {
+        min-width: 34rem;
+    }
+
+    .scene-switcher .section-chip,
+    .scene-switcher .tab-button {
+        flex-basis: 7.6rem;
+        padding-inline: 0.6rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .studio-mobile-dock {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .studio-mobile-dock small {
+        display: none;
+    }
+
+    .studio-mobile-dock a {
+        min-height: 2.75rem;
+    }
+}
+
+html[data-handwstat-platform="android"],
+html[data-handwstat-platform="android"] body,
+html[data-handwstat-platform="android"] #app {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden !important;
+}
+
+html[data-handwstat-platform="android"] body {
+    position: fixed;
+    inset: 0;
+    touch-action: none;
+}
+
+html[data-handwstat-platform="android"] .studio-shell,
+html[data-handwstat-platform="android"] .studio-shell.context-lens-open {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden !important;
+}
+
+html[data-handwstat-platform="android"] .studio-commandbar {
+    position: fixed !important;
+    inset: 0 0 auto;
+    z-index: 100;
+    height: var(--command-height);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.7rem;
+    padding: 0 0.75rem;
+}
+
+html[data-handwstat-platform="android"] .studio-domain-trigger {
+    display: grid;
+}
+
+html[data-handwstat-platform="android"] .studio-wordmark > span:last-child,
+html[data-handwstat-platform="android"] .studio-command-search span,
+html[data-handwstat-platform="android"] .studio-command-search kbd {
+    display: none;
+}
+
+html[data-handwstat-platform="android"] .studio-command-search {
+    justify-self: stretch;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 0;
+}
+
+html[data-handwstat-platform="android"] .studio-commandbar__actions {
+    justify-content: end;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+html[data-handwstat-platform="android"] .studio-account__copy,
+html[data-handwstat-platform="android"] .studio-create-button span:last-child {
+    display: none;
+}
+
+html[data-handwstat-platform="android"] .studio-create-button {
+    width: 2.55rem;
+    justify-content: center;
+    padding: 0;
+}
+
+html[data-handwstat-platform="android"] .studio-account {
+    min-width: 2.55rem;
+    padding: 0.12rem;
+}
+
+html[data-handwstat-platform="android"] .studio-workbench {
+    position: fixed !important;
+    top: var(--command-height);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block !important;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden !important;
+    overflow-y: scroll !important;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+}
+
+html[data-handwstat-platform="android"] .studio-scene-heading {
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1rem 0.85rem 0.8rem;
+}
+
+html[data-handwstat-platform="android"] .studio-scene-heading h1 {
+    font-size: clamp(1.7rem, 6vw, 2.6rem);
+    line-height: 0.95;
+}
+
+html[data-handwstat-platform="android"] .studio-scene-heading p {
+    font-size: 0.72rem;
+}
+
+html[data-handwstat-platform="android"] .studio-context-trigger {
+    min-height: 2.25rem;
+    padding-inline: 0.7rem;
+}
+
+html[data-handwstat-platform="android"] .scope-ribbon {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 0.55rem;
+    margin: 0 0.75rem 0.85rem;
+    padding: 0.55rem;
+    border-radius: var(--radius-sm);
+}
+
+html[data-handwstat-platform="android"] .scope-ribbon__summary {
+    min-height: 2.4rem;
+    padding-inline: 0.35rem;
+}
+
+html[data-handwstat-platform="android"] .scope-ribbon__summary strong {
+    max-width: 46vw;
+    font-size: 0.64rem;
+}
+
+html[data-handwstat-platform="android"] .scope-ribbon__filters {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(8.75rem, 42vw);
+    grid-template-columns: none;
+    gap: 0.45rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.18rem;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+}
+
+html[data-handwstat-platform="android"] .scope-ribbon__filters label {
+    min-width: 0;
+    scroll-snap-align: start;
+}
+
+html[data-handwstat-platform="android"] .scope-ribbon__filters label > span {
+    top: 0.34rem;
+    left: 0.6rem;
+    font-size: 0.44rem;
+}
+
+html[data-handwstat-platform="android"] .scope-ribbon__filters select {
+    width: 100%;
+    min-height: 2.7rem;
+    padding-top: 0.85rem;
+    font-size: 0.7rem;
+}
+
+html[data-handwstat-platform="android"] .scope-ribbon__reset {
+    width: 2.7rem;
+    height: auto;
+    min-height: 2.4rem;
+    justify-content: center;
+    padding: 0;
+}
+
+html[data-handwstat-platform="android"] .scope-ribbon__reset span {
+    display: none;
+}
+
+html[data-handwstat-platform="android"] .studio-stage {
+    display: block;
+    min-height: auto;
+    overflow: visible !important;
+    overscroll-behavior: auto;
+}
+
+html[data-handwstat-platform="android"] .studio-stage__content {
+    min-height: auto;
+    padding-bottom: calc(7.25rem + env(safe-area-inset-bottom));
+}
+
+html[data-handwstat-platform="android"] .studio-activity-tray {
+    display: none !important;
+}
+
+html[data-handwstat-platform="android"] .studio-mobile-dock {
+    position: fixed;
+    right: 0.65rem;
+    bottom: calc(0.65rem + env(safe-area-inset-bottom));
+    left: 0.65rem;
+    z-index: 120;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 0.35rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--surface-raised) 90%, transparent);
+    box-shadow: var(--shadow-float);
+    backdrop-filter: blur(22px);
+}
+
+html[data-handwstat-platform="android"] .studio-mobile-dock a {
+    min-height: 3.15rem;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 0.2rem;
+    border-radius: 0.7rem;
+    color: var(--text-muted);
+}
+
+html[data-handwstat-platform="android"] .studio-mobile-dock a.active {
+    color: var(--text);
+    background: var(--signal-soft);
+}
+
+html[data-handwstat-platform="android"] .studio-mobile-dock a > span {
+    width: 1.15rem;
+}
+
+html[data-handwstat-platform="android"] .studio-mobile-dock svg {
+    width: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+}
+
+html[data-handwstat-platform="android"] .studio-mobile-dock small {
+    font-size: 0.52rem;
+}
+
+html[data-handwstat-platform="android"] .studio-domain-rail,
+html[data-handwstat-platform="android"] .studio-context-lens {
+    display: none;
+}
+
+html[data-handwstat-platform="android"] .studio-domain-rail {
+    position: fixed;
+    top: var(--command-height);
+    bottom: 0;
+    left: 0;
+    z-index: 140;
+    width: min(20rem, 88vw);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    transform: translateX(-105%);
+    transition: transform 180ms ease;
+    overflow: hidden auto;
+    box-shadow: var(--shadow-float);
+}
+
+html[data-handwstat-platform="android"] .studio-domain-nav {
+    gap: 0.4rem;
+    padding: 0.55rem 0.7rem;
+}
+
+html[data-handwstat-platform="android"] .studio-domain-nav > a,
+html[data-handwstat-platform="android"] .studio-domain-utility {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    justify-items: start;
+    gap: 0.75rem;
+    min-height: 3.55rem;
+    padding: 0.68rem;
+}
+
+html[data-handwstat-platform="android"] .studio-domain-nav__copy {
+    min-width: 0;
+    display: grid;
+    gap: 0.08rem;
+}
+
+html[data-handwstat-platform="android"] .studio-domain-nav__copy strong {
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+html[data-handwstat-platform="android"] .studio-domain-nav__copy small {
+    overflow: hidden;
+    color: #758a81;
+    font-size: 0.56rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+html[data-handwstat-platform="android"] .studio-domain-nav__index,
+html[data-handwstat-platform="android"] .studio-domain-utility span {
+    display: block;
+    color: #60766d;
+    font-size: 0.58rem;
+}
+
+html[data-handwstat-platform="android"] .studio-domain-rail__index {
+    justify-content: start;
+    min-height: 3.2rem;
+    padding: 0 1rem;
+}
+
+html[data-handwstat-platform="android"] .domain-drawer-open .studio-domain-rail {
+    display: grid;
+    transform: translateX(0);
+}
+
+html[data-handwstat-platform="android"] .studio-context-lens {
+    position: fixed;
+    top: var(--command-height);
+    right: 0;
+    bottom: 0;
+    z-index: 140;
+    width: min(var(--context-width), 92vw);
+    overflow: hidden auto;
+    box-shadow: var(--shadow-float);
+}
+
+html[data-handwstat-platform="android"] .context-lens-open .studio-context-lens {
+    display: block;
+}
+
+html[data-handwstat-platform="android"] .domain-drawer-open .studio-scrim,
+html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
+    display: block;
+    position: fixed;
+    inset: var(--command-height) 0 0;
+    z-index: 130;
+    border: 0;
+    background: rgba(0, 0, 0, 0.58);
 }
 
 @media (prefers-reduced-motion: reduce) {

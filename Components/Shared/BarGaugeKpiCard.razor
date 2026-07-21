@@ -1,12 +1,15 @@
 <article class="metric-orbit @GetToneClass(Item.Tone)">
     <div class="metric-orbit__copy">
-        <span>@Item.Label</span>
+        <span>@KpiCopy.Label(Item.Label)</span>
         <strong>@Item.Value</strong>
-        @if (!string.IsNullOrWhiteSpace(Item.Context))
-        {
-            <small>@Item.Context</small>
+        @{
+            var context = KpiCopy.Context(Item.Context);
         }
-        <p>@Item.Caption</p>
+        @if (!string.IsNullOrWhiteSpace(context))
+        {
+            <small>@context</small>
+        }
+        <p>@KpiCopy.Caption(Item.Caption)</p>
     </div>
 
     <div class="metric-orbit__visual"
@@ -42,7 +45,7 @@
         }
     }
 
-    private string GetAriaLabel() => $"{Item.Label} {Item.Value}. {Item.Caption}";
+    private string GetAriaLabel() => $"{KpiCopy.Label(Item.Label)} {Item.Value}. {KpiCopy.Caption(Item.Caption)}";
 
     private static string GetToneClass(string tone) => tone?.ToLowerInvariant() switch
     {

@@ -7,14 +7,18 @@
              BackgroundColor="{AppThemeBinding Light=#F2F0E8, Dark=#071412}"
              Shell.NavBarIsVisible="False">
 
-    <Grid BackgroundColor="{AppThemeBinding Light=#F2F0E8, Dark=#071412}">
-    <BlazorWebView x:Name="blazorWebView"
-                   HostPage="wwwroot/index.html"
-                   BackgroundColor="Transparent">
-        <BlazorWebView.RootComponents>
-            <RootComponent Selector="#app" ComponentType="{x:Type components:Routes}" />
-        </BlazorWebView.RootComponents>
-    </BlazorWebView>
+    <Grid RowDefinitions="*"
+          BackgroundColor="{AppThemeBinding Light=#F2F0E8, Dark=#071412}">
+        <BlazorWebView x:Name="blazorWebView"
+                       Grid.Row="0"
+                       HostPage="wwwroot/index.html"
+                       HorizontalOptions="Fill"
+                       VerticalOptions="Fill"
+                       BackgroundColor="Transparent">
+            <BlazorWebView.RootComponents>
+                <RootComponent Selector="#app" ComponentType="{x:Type components:Routes}" />
+            </BlazorWebView.RootComponents>
+        </BlazorWebView>
     </Grid>
 
 </ContentPage>

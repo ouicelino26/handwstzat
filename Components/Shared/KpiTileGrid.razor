@@ -6,14 +6,17 @@
             <article class="metric-tape__item @(GetToneClass(entry.item.Tone))">
                 <span class="metric-tape__index">@((entry.index + 1).ToString("00"))</span>
                 <div>
-                    <span class="metric-tape__label">@entry.item.Label</span>
+                    <span class="metric-tape__label">@KpiCopy.Label(entry.item.Label)</span>
                     <strong>@entry.item.Value</strong>
                 </div>
-                @if (!string.IsNullOrWhiteSpace(entry.item.Context))
-                {
-                    <small>@entry.item.Context</small>
+                @{
+                    var context = KpiCopy.Context(entry.item.Context);
                 }
-                <p>@entry.item.Caption</p>
+                @if (!string.IsNullOrWhiteSpace(context))
+                {
+                    <small>@context</small>
+                }
+                <p>@KpiCopy.Caption(entry.item.Caption)</p>
             </article>
         }
     </section>

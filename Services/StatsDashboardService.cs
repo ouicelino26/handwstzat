@@ -277,6 +277,7 @@ public sealed class StatsDashboardService
         var passingByPlayer = response.Passing.ToDictionary(item => item.PlayerId);
         var sanctionsByPlayer = response.Sanctions.ToDictionary(item => item.PlayerId);
         var goalkeeperByPlayer = response.Goalkeeper.ToDictionary(item => item.PlayerId);
+        var technicalByPlayer = response.Technical.ToDictionary(item => item.PlayerId);
 
         var fieldPlayers = response.Players
             .Where(player => !player.IsGoalkeeper)
@@ -286,6 +287,7 @@ public sealed class StatsDashboardService
                 defenseByPlayer.TryGetValue(player.PlayerId, out var defense);
                 passingByPlayer.TryGetValue(player.PlayerId, out var passing);
                 sanctionsByPlayer.TryGetValue(player.PlayerId, out var sanctions);
+                technicalByPlayer.TryGetValue(player.PlayerId, out var technical);
 
                 return new GlobalFieldRankingRow(
                     player.PlayerId,
@@ -303,6 +305,9 @@ public sealed class StatsDashboardService
                     defense?.Neutralisations ?? 0,
                     passing?.TotalPertes ?? player.TurnoverCount,
                     sanctions?.PenaltyConcede ?? 0,
+                    ResolveOpenShotAttempts(player, offense),
+                    ResolveShotAttempts(player, technical, offense),
+                    ResolvePenaltyAttempts(player, technical, offense),
                     offense?.TauxReussiteTir ?? player.ShotSuccessRate);
             })
             .OrderByDescending(player => player.Goals)
@@ -314,6 +319,7 @@ public sealed class StatsDashboardService
             .Select(player =>
             {
                 goalkeeperByPlayer.TryGetValue(player.PlayerId, out var goalkeeper);
+                technicalByPlayer.TryGetValue(player.PlayerId, out var technical);
 
                 return new GlobalGoalkeeperRankingRow(
                     player.PlayerId,
@@ -329,7 +335,10 @@ public sealed class StatsDashboardService
                     goalkeeper?.TauxArret ?? player.GoalkeeperSaveRate,
                     (goalkeeper?.ButsPris ?? 0) + (goalkeeper?.ButsPenalty ?? 0),
                     goalkeeper?.ButsPenalty ?? 0,
-                    goalkeeper?.TirsSubis ?? player.SaveCount,
+                    goalkeeper?.TirsSubis ?? player.ShotsFaced,
+                    player.OpenShotAttempts,
+                    ResolveShotAttempts(player, technical, null),
+                    technical?.PenaltyAttempts ?? player.PenaltyAttempts,
                     goalkeeper?.TauxReussiteTir ?? player.ShotSuccessRate,
                     (goalkeeper?.PerteDeBalle ?? 0) + (goalkeeper?.MauvaisePasse ?? 0));
             })
@@ -373,8 +382,56 @@ public sealed class StatsDashboardService
                 item.Value,
                 FormatRankingValue(item),
                 item.PlayerId,
-                item.Metric))
+                item.Metric,
+                item.SecondaryValue,
+                FormatRankingSample(item)))
             .ToList();
+    }
+
+    private static int ResolveOpenShotAttempts(PlayerGlobalStatsDto player, PlayerOffenseStatsDto? offense)
+    {
+        if (player.OpenShotAttempts > 0)
+        {
+            return player.OpenShotAttempts;
+        }
+
+        return offense is null ? 0 : offense.Buts + offense.TirsRates;
+    }
+
+    private static int ResolveShotAttempts(
+        PlayerGlobalStatsDto player,
+        PlayerTechnicalStatsDto? technical,
+        PlayerOffenseStatsDto? offense)
+    {
+        if (technical?.ShotAttempts > 0)
+        {
+            return technical.ShotAttempts;
+        }
+
+        if (player.ShotAttempts > 0)
+        {
+            return player.ShotAttempts;
+        }
+
+        return offense is null ? 0 : offense.TotalButs + offense.TirsRates + offense.PenaltyRate + offense.TirContre;
+    }
+
+    private static int ResolvePenaltyAttempts(
+        PlayerGlobalStatsDto player,
+        PlayerTechnicalStatsDto? technical,
+        PlayerOffenseStatsDto? offense)
+    {
+        if (technical?.PenaltyAttempts > 0)
+        {
+            return technical.PenaltyAttempts;
+        }
+
+        if (player.PenaltyAttempts > 0)
+        {
+            return player.PenaltyAttempts;
+        }
+
+        return offense is null ? 0 : offense.Buts7m + offense.PenaltyRate;
     }
 
     private static IReadOnlyList<MatchRecap> MapMatches(IReadOnlyList<MatchListItemDto> matches)
@@ -704,6 +761,23 @@ public sealed class StatsDashboardService
             "turnovers" => $"{item.Value:0.#} pertes",
             "sanctions" => $"{item.Value:0.#} sanctions",
             _ => $"{item.Value:0.#} buts"
+        };
+    }
+
+    private static string? FormatRankingSample(RankingItemDto item)
+    {
+        if (!item.SecondaryValue.HasValue)
+        {
+            return null;
+        }
+
+        var sample = (int)Math.Round(item.SecondaryValue.Value, MidpointRounding.AwayFromZero);
+        return item.Metric switch
+        {
+            "shotsuccess" => $"{sample} tirs ouverts",
+            "penaltysuccess" => $"{sample} jets 7m",
+            "saverate" => $"{sample} tirs subis",
+            _ => null
         };
     }
 

@@ -14,6 +14,62 @@
     background: transparent;
 }
 
+.today-workspace ::deep .ranking-sample-rule {
+    color: var(--accent-mint);
+    border-color: color-mix(in srgb, var(--accent-mint) 42%, transparent);
+    background: color-mix(in srgb, var(--accent-mint) 12%, transparent);
+}
+
+.today-workspace ::deep .ranking-quality-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.85rem;
+}
+
+.today-workspace ::deep .ranking-quality-strip article {
+    min-width: 0;
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.72rem 0.82rem;
+    border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+    border-radius: 0.95rem;
+    background: color-mix(in srgb, var(--surface-raised) 68%, transparent);
+}
+
+.today-workspace ::deep .ranking-quality-strip strong,
+.today-workspace ::deep .ranking-quality-strip span,
+.today-workspace ::deep .ranking-quality-strip small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.today-workspace ::deep .ranking-quality-strip strong {
+    color: var(--text-strong);
+    font-size: 0.78rem;
+}
+
+.today-workspace ::deep .ranking-quality-strip span {
+    color: var(--accent-orange);
+    font-size: 0.86rem;
+    font-weight: 900;
+}
+
+.today-workspace ::deep .ranking-quality-strip small,
+.today-workspace ::deep .rate-sample {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.today-workspace ::deep .rate-sample {
+    display: block;
+    margin-top: 0.18rem;
+}
+
 .today-workspace ::deep .dashboard-nested-panel {
     padding: 0;
     border: 0;
@@ -316,13 +372,39 @@
     background: color-mix(in srgb, var(--court-400) 14%, transparent);
 }
 
+@media (max-width: 1180px) {
+    .team-day-stage {
+        grid-template-columns: 1fr;
+    }
+
+    .team-day-side {
+        grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    }
+
+    .team-day-field {
+        min-height: 36rem;
+        gap: 0.75rem;
+    }
+
+    .team-day-player-card {
+        gap: 0.65rem;
+        padding: 0.8rem;
+    }
+
+    .team-day-player-card__halo {
+        width: 3.35rem;
+        height: 3.35rem;
+        border-radius: 1rem;
+    }
+
+    .team-day-score strong {
+        font-size: 1.55rem;
+    }
+}
+
 @media (max-width: 900px) {
     .today-workspace ::deep .signal-matrix {
         grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .team-day-stage {
-        grid-template-columns: 1fr;
     }
 
     .team-day-mode-switch {
@@ -333,7 +415,9 @@
         grid-template-columns: 1fr;
         align-items: stretch;
     }
+}
 
+@media (max-width: 760px) {
     .team-day-field {
         min-height: auto;
         grid-template-areas:
@@ -352,10 +436,31 @@
         width: auto;
         justify-self: stretch;
     }
+
+    .team-day-player-card {
+        align-self: stretch;
+    }
 }
 
 @media (max-width: 560px) {
     .today-workspace ::deep .signal-matrix {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .team-day-chip-row {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.15rem;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .team-day-chip-row > * {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+    }
+
+    .team-day-side {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
