@@ -1,0 +1,20 @@
+.update-required {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    color: #edf8f3;
+    background: radial-gradient(circle at 50% 10%, #153f35, #06110f 58%);
+}
+
+.update-required__card { width: min(42rem, 100%); padding: 2.5rem; border: 1px solid rgba(255, 173, 159, .35); border-radius: 1.75rem; background: rgba(7, 20, 17, .94); }
+.update-required__eyebrow { color: #ffad9f; text-transform: uppercase; letter-spacing: .14em; font-size: .75rem; }
+.update-required h1 { margin: .7rem 0 1rem; font-size: clamp(2rem, 6vw, 3.5rem); line-height: 1.05; }
+.update-required__notes { margin: 1.5rem 0; padding: 1rem; white-space: pre-wrap; border-radius: 1rem; background: rgba(255,255,255,.05); }
+.update-required__error { color: #ffad9f; }
+.update-required__actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.75rem; }
+.update-required button { padding: .85rem 1.2rem; border: 0; border-radius: 999px; cursor: pointer; }
+.update-required__download { color: #06110f; background: #7eefc2; }
+

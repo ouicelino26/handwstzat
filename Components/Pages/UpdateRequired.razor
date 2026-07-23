@@ -1,0 +1,38 @@
+@page "/update-required"
+@inject IAppUpdateService UpdateService
+
+<main class="update-required" role="alert" aria-live="assertive">
+    <section class="update-required__card">
+        <span class="update-required__eyebrow">Mise à jour obligatoire</span>
+        <h1>Une version prise en charge est nécessaire.</h1>
+        @if (UpdateService.State.Response is { } update)
+        {
+            <p>
+                Cette installation doit passer à HandWStat <strong>@update.LatestVersion</strong>
+                (build @update.LatestBuild) avant de reprendre l’accès live.
+            </p>
+            @if (!string.IsNullOrWhiteSpace(update.ReleaseNotes))
+            {
+                <div class="update-required__notes">@update.ReleaseNotes</div>
+            }
+        }
+        @if (!string.IsNullOrWhiteSpace(UpdateService.State.ErrorMessage))
+        {
+            <p class="update-required__error">@UpdateService.State.ErrorMessage</p>
+        }
+        <div class="update-required__actions">
+            <button type="button" disabled="@UpdateService.State.IsChecking" @onclick="RetryAsync">
+                @(UpdateService.State.IsChecking ? "Vérification…" : "Réessayer")
+            </button>
+            <button type="button" class="update-required__download" @onclick="DownloadAsync">
+                Télécharger la mise à jour
+            </button>
+        </div>
+    </section>
+</main>
+
+@code {
+    private Task RetryAsync() => UpdateService.CheckAsync();
+    private Task DownloadAsync() => UpdateService.OpenDownloadAsync();
+}
+

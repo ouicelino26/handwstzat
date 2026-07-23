@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject IApiAuthService AuthService
+@inject IAppVersionProvider VersionProvider
+@inject IAppUpdateService UpdateService
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
@@ -164,6 +166,12 @@
                     <strong>@AccountName</strong>
                     <small>@AccountRole</small>
                 </div>
+            </div>
+
+            <div class="studio-session-version">
+                <strong>HandWStat @VersionProvider.Current.Version</strong>
+                <small>Build @VersionProvider.Current.Build</small>
+                <small>API @(UpdateService.State.Response?.ApiVersion ?? "indisponible")</small>
             </div>
 
             @if (AuthService.Session.IsAuthenticated)

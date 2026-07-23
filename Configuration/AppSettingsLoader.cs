@@ -20,9 +20,7 @@ public static class AppSettingsLoader
 
             return new ApiSettings
             {
-                BaseUrl = ReadString(apiSection, nameof(ApiSettings.BaseUrl), ApiSettings.DefaultBaseUrl),
-                ClientId = ReadString(apiSection, nameof(ApiSettings.ClientId), string.Empty),
-                ClientSecret = ReadString(apiSection, nameof(ApiSettings.ClientSecret), string.Empty)
+                BaseUrl = ReadString(apiSection, nameof(ApiSettings.BaseUrl), ApiSettings.DefaultBaseUrl)
             };
         }
         catch

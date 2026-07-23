@@ -1,0 +1,40 @@
+@inject IAppUpdateService UpdateService
+
+@if (UpdateService.State.HasOptionalUpdate && UpdateService.State.Response is { } update)
+{
+    <div class="update-dialog-backdrop" role="presentation">
+        <section class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="update-dialog-title">
+            <span class="update-dialog__eyebrow">Mise à jour disponible</span>
+            <h2 id="update-dialog-title">HandWStat @update.LatestVersion</h2>
+            <p>Build @update.LatestBuild · @FormatSize(update.FileSizeBytes)</p>
+            @if (!string.IsNullOrWhiteSpace(update.ReleaseNotes))
+            {
+                <div class="update-dialog__notes">@update.ReleaseNotes</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(UpdateService.State.ErrorMessage))
+            {
+                <p class="update-dialog__error">@UpdateService.State.ErrorMessage</p>
+            }
+            <div class="update-dialog__actions">
+                <button type="button" class="button-secondary" @onclick="UpdateService.DismissOptionalUpdate">
+                    Plus tard
+                </button>
+                <button type="button" class="button-primary" @onclick="DownloadAsync">
+                    Télécharger
+                </button>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private Task DownloadAsync() => UpdateService.OpenDownloadAsync();
+
+    private static string FormatSize(long? bytes)
+    {
+        if (bytes is null or <= 0) return "taille inconnue";
+        var megabytes = bytes.Value / 1024d / 1024d;
+        return $"{megabytes:0.#} Mo";
+    }
+}
+

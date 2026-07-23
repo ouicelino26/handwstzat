@@ -1,3 +1,12 @@
+@implements IDisposable
+@inject IAppUpdateService UpdateService
+
+@if (UpdateService.State.IsMandatory)
+{
+    <UpdateRequired />
+}
+else
+{
 <Router AppAssembly="@typeof(MauiProgram).Assembly"
         OnNavigateAsync="HandleNavigateAsync">
     <Found Context="routeData">
@@ -10,6 +19,9 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+<UpdateAvailableDialog />
+}
 
 @if (_showTransition)
 {
@@ -30,6 +42,12 @@
     private bool _initialNavigationCompleted;
     private DateTimeOffset _startedAt;
     private static readonly TimeSpan MinimumDuration = TimeSpan.FromMilliseconds(170);
+
+    protected override void OnInitialized()
+    {
+        UpdateService.StateChanged += HandleUpdateStateChanged;
+        _ = UpdateService.CheckAsync();
+    }
 
     private Task HandleNavigateAsync(NavigationContext args)
     {
@@ -61,5 +79,12 @@
 
         _showTransition = false;
         await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleUpdateStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        UpdateService.StateChanged -= HandleUpdateStateChanged;
     }
 }
