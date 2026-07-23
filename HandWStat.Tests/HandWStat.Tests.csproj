@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+  <PropertyGroup>
+    <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('D:\repos\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj')">D:\repos\HandballManagerCore</HandballManagerCorePath>
+    <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('..\..\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj')">..\..\HandballManagerCore</HandballManagerCorePath>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(HandballManagerCorePath)\HandballManagerCore\HandballManagerCore.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Configuration\ApiSettings.cs" Link="Configuration\ApiSettings.cs" />
+    <Compile Include="..\Models\Updates\*.cs" Link="Models\Updates\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\Updates\AppUpdateService.cs" Link="Services\Updates\AppUpdateService.cs" />
+    <Compile Include="..\Services\Updates\AppVersionProvider.cs" Link="Services\Updates\AppVersionProvider.cs" />
+    <Compile Include="..\Services\Updates\HandWStatVersionHandler.cs" Link="Services\Updates\HandWStatVersionHandler.cs" />
+    <Compile Include="..\Services\Updates\IAppUpdateService.cs" Link="Services\Updates\IAppUpdateService.cs" />
+    <Compile Include="..\Services\Updates\IAppVersionProvider.cs" Link="Services\Updates\IAppVersionProvider.cs" />
+    <Compile Include="..\Services\Updates\IDeviceIdentifierProvider.cs" Link="Services\Updates\IDeviceIdentifierProvider.cs" />
+    <Compile Include="..\Services\Updates\IExternalLauncher.cs" Link="Services\Updates\IExternalLauncher.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

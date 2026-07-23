@@ -1,4 +1,11 @@
 <Project>
+  <PropertyGroup>
+    <!-- VERSION_NAME / BUILD_NUMBER. Command-line MSBuild properties override these defaults. -->
+    <ApplicationDisplayVersion Condition="'$(ApplicationDisplayVersion)' == ''">1.0.0</ApplicationDisplayVersion>
+    <ApplicationVersion Condition="'$(ApplicationVersion)' == ''">1</ApplicationVersion>
+    <Version>$(ApplicationDisplayVersion)</Version>
+  </PropertyGroup>
+
   <!--
     Machine-local overrides. This file is checked into source control with no values set.
     Each developer can override HandballManagerCorePath here without modifying HandWStat.csproj.

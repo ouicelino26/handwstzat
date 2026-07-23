@@ -21,6 +21,10 @@ tmp_*.svg
 publish-*/
 audit_reports/
 *_backup_*.json
+.ai-context/
+
+# Local release/deployment secrets
+deployment/release-settings.json
 
 # OS files
 .DS_Store

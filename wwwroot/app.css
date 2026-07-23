@@ -803,6 +803,18 @@ kbd {
     gap: 0.7rem;
 }
 
+.studio-session-version {
+    display: grid;
+    gap: 0.2rem;
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
+}
+
+.studio-session-version small {
+    color: var(--text-muted);
+}
+
 .studio-logout-button {
     width: 100%;
     min-height: 2.5rem;

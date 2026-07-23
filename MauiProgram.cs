@@ -2,6 +2,7 @@ using ApexCharts;
 using HandWStat.Configuration;
 using HandWStat.Services;
 using HandWStat.Services.Api;
+using HandWStat.Services.Updates;
 using Microsoft.Extensions.Logging;
 
 namespace HandWStat;
@@ -23,10 +24,17 @@ public static class MauiProgram
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddApexChartsMaui();
         builder.Services.AddSingleton(apiSettings);
-        builder.Services.AddSingleton(new HttpClient
+        builder.Services.AddSingleton<IAppVersionProvider, MauiAppVersionProvider>();
+        builder.Services.AddSingleton<IDeviceIdentifierProvider, DeviceIdentifierProvider>();
+        builder.Services.AddSingleton<IExternalLauncher, MauiExternalLauncher>();
+        builder.Services.AddSingleton<HandWStatVersionHandler>();
+        builder.Services.AddSingleton(serviceProvider => new HttpClient(
+            serviceProvider.GetRequiredService<HandWStatVersionHandler>(),
+            disposeHandler: false)
         {
             Timeout = TimeSpan.FromSeconds(30)
         });
+        builder.Services.AddSingleton<IAppUpdateService, AppUpdateService>();
         builder.Services.AddSingleton<IApiAuthService, ApiAuthService>();
         builder.Services.AddSingleton<CompetitionsApiClient>();
         builder.Services.AddSingleton<TeamsApiClient>();
