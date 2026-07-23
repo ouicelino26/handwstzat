@@ -2,7 +2,7 @@
 
 ## Phase terminée
 
-Groupe 3 — CI/CD, releases, runbook et risques.
+Groupe 4 — synthèse, validations ciblées et rapport final.
 
 ## Documents créés
 
@@ -15,6 +15,9 @@ Groupe 3 — CI/CD, releases, runbook et risques.
 - `06-CI-CD-AND-RELEASES.md`
 - `07-OPERATIONS-RUNBOOK.md`
 - `08-RISKS-AND-ROADMAP.md`
+- `09-CONFIGURATION-REFERENCE.md`
+- `../../ARCHITECTURE.md`
+- `../../DOCUMENTATION_REPORT.md`
 - `diagrams/ecosystem-current.mmd`
 - `diagrams/data-domains.mmd`
 - `diagrams/deployment-current.mmd`
@@ -34,6 +37,8 @@ Groupe 3 — CI/CD, releases, runbook et risques.
 - authentification, hachage de mots de passe et politiques d’autorisation.
 - registre de releases, versioning, scripts de migration et projets de tests ;
 - mécanismes de mise à jour et procédures d’incident.
+- classes Options, configurations et propriétés MSBuild.
+- résultats des builds/tests ciblés et statistiques RTK.
 
 ## Éléments confirmés
 
@@ -49,6 +54,10 @@ Groupe 3 — CI/CD, releases, runbook et risques.
 - absence de CI/CD, smoke tests et rollback automatisé ;
 - cycle de release actuel partiellement manuel ;
 - quinze actions prioritaires de remédiation.
+- inventaire des paramètres et secrets attendus sans valeur.
+- build Release API/Web/Core et HandWStat Windows réussi ;
+- 49 tests API et 12 tests HandWStat réussis ;
+- documentation consolidée terminée.
 
 ## Éléments à confirmer
 
@@ -62,14 +71,16 @@ Groupe 3 — CI/CD, releases, runbook et risques.
 - services exacts Web/MySQL et contacts d’escalade ;
 - RPO/RTO, politique de sauvegarde et procédure N-1 ;
 - protections et environnements configurés côté GitHub.
+- priorité effective des sources de configuration Integration.
+- rendu visuel Mermaid non exécuté, CLI absent ;
+- infrastructure physique et procédures externes listées dans le rapport.
 
 ## Prochaine action
 
-Créer la référence de configuration, le portail, valider de façon ciblée et
-produire le rapport final.
+Effectuer le contrôle final, créer le quatrième commit, puis remettre la
+documentation à l’utilisateur. Aucun push automatique.
 
 ## Budget de contexte économisé
 
-Les analyses existantes ont été réutilisées. Aucun pipeline n’a été lancé et
-aucune application historique n’a été réanalysée. Le runbook utilise uniquement
-les services et chemins confirmés, avec des placeholders pour l’inconnu.
+Deux builds et deux suites de tests seulement ont été exécutés. Aucun build
+mobile, accès distant, pipeline, migration ou déploiement n’a été lancé.
