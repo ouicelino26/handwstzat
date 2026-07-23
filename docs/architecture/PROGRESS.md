@@ -2,7 +2,7 @@
 
 ## Phase terminée
 
-Groupe 2 — données, serveur et sécurité.
+Groupe 3 — CI/CD, releases, runbook et risques.
 
 ## Documents créés
 
@@ -12,10 +12,14 @@ Groupe 2 — données, serveur et sécurité.
 - `03-DATA-AND-MYSQL.md`
 - `04-SERVER-AND-NETWORK.md`
 - `05-SECURITY.md`
+- `06-CI-CD-AND-RELEASES.md`
+- `07-OPERATIONS-RUNBOOK.md`
+- `08-RISKS-AND-ROADMAP.md`
 - `diagrams/ecosystem-current.mmd`
 - `diagrams/data-domains.mmd`
 - `diagrams/deployment-current.mmd`
 - `diagrams/authentication.mmd`
+- `diagrams/release-target.mmd`
 
 ## Sources utilisées
 
@@ -28,6 +32,8 @@ Groupe 2 — données, serveur et sécurité.
 - `HBdbcontext`, migrations EF et scripts SQL ;
 - programmes et profils d’hébergement API/Web ;
 - authentification, hachage de mots de passe et politiques d’autorisation.
+- registre de releases, versioning, scripts de migration et projets de tests ;
+- mécanismes de mise à jour et procédures d’incident.
 
 ## Éléments confirmés
 
@@ -40,6 +46,9 @@ Groupe 2 — données, serveur et sécurité.
 - Kestrel `5000`, service `handapi` probable et stockages sous `/home/opc` ;
 - deux catégories de secrets versionnés, sans reproduction de valeur ;
 - incompatibilité entre les scripts Oracle du registre et la cible MySQL.
+- absence de CI/CD, smoke tests et rollback automatisé ;
+- cycle de release actuel partiellement manuel ;
+- quinze actions prioritaires de remédiation.
 
 ## Éléments à confirmer
 
@@ -50,14 +59,17 @@ Groupe 2 — données, serveur et sécurité.
 - topologie MySQL, sauvegardes, RPO/RTO et droits SQL ;
 - unité systemd, reverse proxy, firewall, certificat et supervision ;
 - cible réelle des scripts SQL Oracle.
+- services exacts Web/MySQL et contacts d’escalade ;
+- RPO/RTO, politique de sauvegarde et procédure N-1 ;
+- protections et environnements configurés côté GitHub.
 
 ## Prochaine action
 
-Documenter CI/CD, releases, runbook et risques, puis créer le troisième commit.
+Créer la référence de configuration, le portail, valider de façon ciblée et
+produire le rapport final.
 
 ## Budget de contexte économisé
 
-Les packs sûrs et les lectures déjà réalisées ont été réutilisés. Deux packs
-temporaires capturant un identifiant sensible ont été supprimés sans
-régénération. Les prototypes historiques et les gros fichiers non nécessaires
-n’ont pas été réanalysés.
+Les analyses existantes ont été réutilisées. Aucun pipeline n’a été lancé et
+aucune application historique n’a été réanalysée. Le runbook utilise uniquement
+les services et chemins confirmés, avec des placeholders pour l’inconnu.
