@@ -1,0 +1,57 @@
+name: Automatic update validation
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  handwstat-update:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout HandWStat
+        uses: actions/checkout@v4
+        with:
+          path: HandWStat
+
+      - name: Checkout shared Core contracts
+        uses: actions/checkout@v4
+        with:
+          repository: ouicelino26/HandballManagerMaui
+          ref: feature/release-versioning-v1
+          path: HandballManagerCore
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore MAUI workloads
+        working-directory: HandWStat
+        run: dotnet workload restore HandWStat.csproj
+
+      - name: Restore
+        working-directory: HandWStat
+        run: dotnet restore HandWStat.slnx
+
+      - name: Build Windows application
+        working-directory: HandWStat
+        run: dotnet build HandWStat.csproj -c Release -f net10.0-windows10.0.19041.0 --no-restore
+
+      - name: Build Android application
+        working-directory: HandWStat
+        run: dotnet build HandWStat.csproj -c Release -f net10.0-android --no-restore
+
+      - name: Test automatic update workflow
+        working-directory: HandWStat
+        run: dotnet test HandWStat.Tests/HandWStat.Tests.csproj -c Release --no-restore
+
+      - name: Targeted secret scan
+        shell: pwsh
+        working-directory: HandWStat
+        run: |
+          $matches = git grep -n -I -E 'AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{30,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
+          if ($LASTEXITCODE -eq 0) { $matches; exit 1 }
+          exit 0
