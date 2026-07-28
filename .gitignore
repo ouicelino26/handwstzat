@@ -25,6 +25,22 @@ audit_reports/
 
 # Local release/deployment secrets
 deployment/release-settings.json
+.artifacts/
+*.apk
+*.aab
+*.msix
+*.msixbundle
+*.exe
+*.pfx
+*.p12
+*.pem
+*.key
+*.keystore
+*.jks
+.env
+appsettings.Production.json
+backups/
+release-manifest.local.json
 
 # OS files
 .DS_Store

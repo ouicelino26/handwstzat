@@ -23,7 +23,7 @@
         <ApplicationTitle>HandWStat Studio</ApplicationTitle>
 
         <!-- App Identifier -->
-        <ApplicationId>com.companyname.handwstat</ApplicationId>
+        <ApplicationId>fr.handwstat.app</ApplicationId>
 
         <!-- Versions -->
 

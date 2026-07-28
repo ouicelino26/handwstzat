@@ -1,5 +1,6 @@
 @implements IDisposable
 @inject IAppUpdateService UpdateService
+@inject IUpdateCheckCoordinator UpdateCoordinator
 
 @if (UpdateService.State.IsMandatory)
 {
@@ -46,7 +47,7 @@ else
     protected override void OnInitialized()
     {
         UpdateService.StateChanged += HandleUpdateStateChanged;
-        _ = UpdateService.CheckAsync();
+        _ = UpdateCoordinator.CheckOnStartupAsync();
     }
 
     private Task HandleNavigateAsync(NavigationContext args)

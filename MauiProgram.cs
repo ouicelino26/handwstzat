@@ -12,6 +12,7 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var apiSettings = AppSettingsLoader.LoadApiSettings();
+        var updateSettings = AppSettingsLoader.LoadUpdateSettings();
 
         var builder = MauiApp.CreateBuilder();
         builder
@@ -24,9 +25,12 @@ public static class MauiProgram
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddApexChartsMaui();
         builder.Services.AddSingleton(apiSettings);
+        builder.Services.AddSingleton(updateSettings);
+        builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<IAppVersionProvider, MauiAppVersionProvider>();
         builder.Services.AddSingleton<IDeviceIdentifierProvider, DeviceIdentifierProvider>();
         builder.Services.AddSingleton<IExternalLauncher, MauiExternalLauncher>();
+        builder.Services.AddSingleton<IUpdatePreferenceStore, MauiUpdatePreferenceStore>();
         builder.Services.AddSingleton<HandWStatVersionHandler>();
         builder.Services.AddSingleton(serviceProvider => new HttpClient(
             serviceProvider.GetRequiredService<HandWStatVersionHandler>(),
@@ -35,6 +39,11 @@ public static class MauiProgram
             Timeout = TimeSpan.FromSeconds(30)
         });
         builder.Services.AddSingleton<IAppUpdateService, AppUpdateService>();
+        builder.Services.AddSingleton<IUpdateCheckCoordinator, UpdateCheckCoordinator>();
+        builder.Services.AddSingleton<IUpdateArtifactDownloader>(serviceProvider =>
+            new UpdateArtifactDownloader(
+                serviceProvider.GetRequiredService<HttpClient>(),
+                Path.Combine(FileSystem.CacheDirectory, "HandWStat", "Updates")));
         builder.Services.AddSingleton<IApiAuthService, ApiAuthService>();
         builder.Services.AddSingleton<CompetitionsApiClient>();
         builder.Services.AddSingleton<TeamsApiClient>();
