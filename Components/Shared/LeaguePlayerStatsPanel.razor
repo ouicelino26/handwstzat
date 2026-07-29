@@ -1,0 +1,128 @@
+@using HandWStat.Models.Analytics
+@namespace HandWStat.Components.Shared
+
+<section class="league-player-stats" aria-labelledby="league-player-stats-title">
+    <header class="league-player-stats__head">
+        <div>
+            <p>Statistiques officielles Ligue</p>
+            <h3 id="league-player-stats-title">Attaque, défense et preuves de taux</h3>
+        </div>
+        <div class="league-player-stats__badges">
+            <AnalyticsSourceBadge Source="@Result.Source" />
+            @if (Result.Analytics is not null)
+            {
+                <DataQualityBadge Level="DataQualityLevel.Unknown"
+                                  Text="@(Result.Source == AnalyticsSourceStatus.V2Complete ? "Qualité fournie par taux" : "Qualité non fournie par l'API v1")" />
+            }
+        </div>
+    </header>
+
+    @if (!Result.IsSuccess)
+    {
+        <div class="league-player-stats__error" role="alert">
+            <strong>@(Result.Source == AnalyticsSourceStatus.ContractError ? "Erreur de contrat v2" : "Statistiques Ligue indisponibles")</strong>
+            <span>@(Result.Error?.UserMessage ?? "Le service n'a pas retourné de résultat exploitable.")</span>
+            <dl>
+                <div><dt>Code technique</dt><dd>@(Result.Error?.TechnicalCode ?? "LEAGUE_UNAVAILABLE")</dd></div>
+                <div><dt>CorrelationId</dt><dd>@(Result.Error?.CorrelationId ?? "Non fourni")</dd></div>
+                <div><dt>Réessai possible</dt><dd>@(Result.Error?.Retryable == true ? "Oui" : "Non")</dd></div>
+                <div><dt>Provenance</dt><dd>@Result.Source.Code()</dd></div>
+            </dl>
+        </div>
+    }
+    else
+    {
+        var analytics = Result.Analytics!;
+
+        <AnalysisScopeSummary Scope="@analytics.Scope" />
+
+        <div class="league-player-stats__meta">
+            <span>MetricVersion : @(analytics.MetricVersion ?? "Non fournie par l'API v1")</span>
+            <span>Provenance : @analytics.Source.Code()</span>
+        </div>
+
+        <details class="league-player-stats__section" open>
+            <summary>
+                <span>Statistiques offensives</span>
+                <small>@analytics.Offense.Count métriques</small>
+            </summary>
+            <div class="league-player-stats__grid">
+                @foreach (var metric in analytics.Offense)
+                {
+                    @Metric(metric)
+                }
+            </div>
+        </details>
+
+        <details class="league-player-stats__section">
+            <summary>
+                <span>Statistiques défensives</span>
+                <small>@analytics.Defense.Count métriques</small>
+            </summary>
+            <div class="league-player-stats__grid">
+                @foreach (var metric in analytics.Defense)
+                {
+                    @Metric(metric)
+                }
+            </div>
+        </details>
+
+        @if (analytics.IsGoalkeeper)
+        {
+            <details class="league-player-stats__section" data-goalkeeper-section="true">
+                <summary>
+                    <span>Statistiques gardienne</span>
+                    <small>@analytics.Goalkeeper.Count métriques</small>
+                </summary>
+                <div class="league-player-stats__grid">
+                    @foreach (var metric in analytics.Goalkeeper)
+                    {
+                        @Metric(metric)
+                    }
+                </div>
+            </details>
+        }
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public LeaguePlayerAnalyticsLoadResult Result { get; set; } = default!;
+
+    private RenderFragment Metric(LeagueMetricDisplayModel metric) => builder =>
+    {
+        if (metric.Kind == LeagueMetricDisplayKind.Rate && metric.Rate is not null)
+        {
+            builder.OpenComponent<RateMetricCard>(0);
+            builder.AddAttribute(1, nameof(RateMetricCard.Model), metric.Rate);
+            builder.AddAttribute(2, nameof(RateMetricCard.Source), metric.Source);
+            builder.CloseComponent();
+            return;
+        }
+
+        if (metric.IsUnavailable)
+        {
+            builder.OpenComponent<UnavailableMetricState>(3);
+            builder.AddAttribute(4, nameof(UnavailableMetricState.Label), metric.Label);
+            builder.AddAttribute(
+                5,
+                nameof(UnavailableMetricState.Message),
+                metric.UnavailableMessage ?? "Donnée non disponible");
+            builder.AddAttribute(6, nameof(UnavailableMetricState.HelpText), metric.HelpText);
+            builder.CloseComponent();
+            return;
+        }
+
+        if (metric.Breakdown.Count > 0)
+        {
+            builder.OpenComponent<MetricBreakdownCard>(7);
+            builder.AddAttribute(8, nameof(MetricBreakdownCard.Model), metric);
+            builder.CloseComponent();
+            return;
+        }
+
+        builder.OpenComponent<MetricValueCard>(9);
+        builder.AddAttribute(10, nameof(MetricValueCard.Model), metric);
+        builder.CloseComponent();
+    };
+}

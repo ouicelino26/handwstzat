@@ -1,0 +1,22 @@
+.analytics-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: fit-content;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid color-mix(in srgb, var(--text-muted) 45%, transparent);
+    border-radius: 999px;
+    color: var(--text-body);
+    background: color-mix(in srgb, var(--surface-raised) 90%, transparent);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.analytics-source-badge.is-v2_complete {
+    color: #8be8b0;
+}
+
+.analytics-source-badge.is-v1_partial,
+.analytics-source-badge.is-contract_error {
+    color: #f6c66f;
+}

@@ -5,6 +5,7 @@
 @inject PlayersApiClient PlayersApiClient
 @inject MatchesApiClient MatchesApiClient
 @inject StatsApiClient StatsApiClient
+@inject LeaguePlayerAnalyticsService LeagueAnalyticsService
 @inject IApiAuthService AuthService
 @inject IJSRuntime JS
 @inject AnalysisScopeService ScopeService
@@ -312,6 +313,11 @@
                                     </section>
                                 }
                             </div>
+
+                            @if (LeagueAnalytics is not null)
+                            {
+                                <LeaguePlayerStatsPanel Result="@LeagueAnalytics" />
+                            }
                         }
                         else if (ActiveSection == "analysis")
                         {
@@ -729,6 +735,7 @@
     private PlayerSanctionStatsDto? Sanctions { get; set; }
     private PlayerGoalkeeperStatsDto? Goalkeeper { get; set; }
     private PlayerTechnicalStatsDto? Technical { get; set; }
+    private LeaguePlayerAnalyticsLoadResult? LeagueAnalytics { get; set; }
     private PlayerSpatialStatsDto? Spatial { get; set; }
     private bool IsBusy { get; set; }
     private bool IsSpatialLoading { get; set; }
@@ -1328,6 +1335,7 @@
             Sanctions = null;
             Goalkeeper = null;
             Technical = null;
+            LeagueAnalytics = null;
             Spatial = null;
             ActiveZoneKey = null;
             SpatialFocusKey = null;
@@ -1356,10 +1364,11 @@
             var sanctionsTask = StatsApiClient.GetPlayerSanctionsAsync(SelectedPlayerId.Value, options);
             var goalkeeperTask = StatsApiClient.GetPlayerGoalkeeperAsync(SelectedPlayerId.Value, options);
             var technicalTask = StatsApiClient.GetPlayerTechnicalAsync(SelectedPlayerId.Value, options);
+            var leagueV2Task = LeagueAnalyticsService.LoadV2Async(SelectedPlayerId.Value, options);
             var spatialTask = StatsApiClient.GetPlayerSpatialAsync(SelectedPlayerId.Value, options);
             var matchesTask = PlayersApiClient.GetPlayerMatchesAsync(SelectedPlayerId.Value, options);
 
-            await Task.WhenAll(profileTask, globalTask, offenseTask, defenseTask, passingTask, sanctionsTask, goalkeeperTask, technicalTask, spatialTask, matchesTask);
+            await Task.WhenAll(profileTask, globalTask, offenseTask, defenseTask, passingTask, sanctionsTask, goalkeeperTask, technicalTask, spatialTask, matchesTask, leagueV2Task);
 
             Profile = profileTask.Result;
             Global = globalTask.Result;
@@ -1371,6 +1380,19 @@
             Technical = technicalTask.Result;
             Spatial = spatialTask.Result;
             PlayerMatches = matchesTask.Result;
+            LeagueAnalytics = LeagueAnalyticsService.Resolve(
+                SelectedPlayerId.Value,
+                leagueV2Task.Result,
+                new LeagueV1Snapshot(
+                    Global!,
+                    Offense!,
+                    Defense!,
+                    Passing!,
+                    Sanctions!,
+                    Goalkeeper!,
+                    Technical!,
+                    Profile?.IsGoalkeeper == true),
+                BuildLeagueScope());
             SpatialFocusKey = null;
             ActiveZoneKey = ResolveActiveZoneKey();
         }
@@ -1457,6 +1479,28 @@
             zone.Attempts,
             zone.SuccessCount,
             zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList());
+    }
+
+    private AnalysisScopeDisplayModel BuildLeagueScope()
+    {
+        var competition = CompetitionId.HasValue
+            ? ReferenceData.Competitions.FirstOrDefault(item => item.CompetitionId == CompetitionId.Value)?.CompetitionName
+                ?? "Compétition sélectionnée"
+            : "Toutes";
+        var team = TeamId.HasValue
+            ? ReferenceData.Teams.FirstOrDefault(item => item.TeamId == TeamId.Value)?.TeamName
+                ?? Profile?.TeamName
+                ?? "Équipe sélectionnée"
+            : Profile?.TeamName ?? "Toutes";
+
+        return new AnalysisScopeDisplayModel(
+            competition,
+            team,
+            string.IsNullOrWhiteSpace(Season) ? "Toutes" : Season,
+            string.IsNullOrWhiteSpace(Day) ? "Toutes" : Day,
+            "Toutes les périodes",
+            Profile?.MatchesPlayed,
+            GeneratedAt: null);
     }
 
     private static string? ResolvePlayerPhotoUrl(string? photo, int playerId, string? fullName, string? teamName)

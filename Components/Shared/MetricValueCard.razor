@@ -1,0 +1,25 @@
+@using HandWStat.Models.Analytics
+@namespace HandWStat.Components.Shared
+
+<article class="metric-value-card"
+         aria-label="@AriaLabel"
+         data-metric-code="@Model.MetricCode">
+    <header>
+        <span>@Model.Label</span>
+        <AnalyticsSourceBadge Source="@Model.Source" />
+    </header>
+    <strong>@(Model.CountValue?.ToString() ?? "—")</strong>
+    @if (!string.IsNullOrWhiteSpace(Model.HelpText))
+    {
+        <p>@Model.HelpText</p>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public LeagueMetricDisplayModel Model { get; set; } = default!;
+
+    private string AriaLabel => Model.CountValue.HasValue
+        ? $"{Model.Label} : {Model.CountValue.Value}"
+        : $"{Model.Label} : Non disponible";
+}

@@ -34,6 +34,13 @@
 
     <p>@Model.QualityLabel</p>
 
+    @if (Source.HasValue)
+    {
+        <AnalyticsSourceBadge Source="@Source.Value" />
+    }
+
+    <MetricEvidence Model="@Model" />
+
     @if (!string.IsNullOrWhiteSpace(DetailsHref))
     {
         <a href="@DetailsHref" aria-label="@($"{DetailsLabel} : {Model.Label}")">@DetailsLabel</a>
@@ -49,6 +56,9 @@
 
     [Parameter]
     public string DetailsLabel { get; set; } = "Voir le detail";
+
+    [Parameter]
+    public AnalyticsSourceStatus? Source { get; set; }
 
     private string ToneClass => Model.Tone.ToLowerInvariant() switch
     {
