@@ -83,6 +83,30 @@ public sealed class MetricComponentTests
     }
 
     [Fact]
+    public async Task RateMetricCard_V1WithoutVolume_DoesNotInventEvidenceOrVersion()
+    {
+        var model = RateDisplayModel.FromV1(
+            "LEGACY_RATE",
+            "Taux historique",
+            58.4,
+            "%",
+            "Valeur API v1 sans preuve de volume.");
+
+        var html = await RenderAsync<RateMetricCard>(new Dictionary<string, object?>
+        {
+            [nameof(RateMetricCard.Model)] = model,
+            [nameof(RateMetricCard.Source)] = AnalyticsSourceStatus.V1Partial
+        });
+
+        Assert.Contains("58", html, StringComparison.Ordinal);
+        Assert.Contains("Volume non fourni par l&#x27;API", html, StringComparison.Ordinal);
+        Assert.Contains("MetricVersion", html, StringComparison.Ordinal);
+        Assert.Contains("Non fournie", html, StringComparison.Ordinal);
+        Assert.Contains("Unknown", html, StringComparison.Ordinal);
+        Assert.Contains("V1_PARTIAL", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task DataQualityBadge_Unknown_RendersExplicitUnknownLabel()
     {
         var html = await RenderAsync<DataQualityBadge>(new Dictionary<string, object?>
