@@ -1,6 +1,7 @@
 using ApexCharts;
 using HandWStat.Configuration;
 using HandWStat.Services;
+using HandWStat.Services.Analytics;
 using HandWStat.Services.Api;
 using HandWStat.Services.Updates;
 using Microsoft.Extensions.Logging;
@@ -52,8 +53,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<MatchesApiClient>();
         builder.Services.AddSingleton<MatchEventsApiClient>();
         builder.Services.AddSingleton<StatsApiClient>();
+        builder.Services.AddSingleton<IAnalyticsGateway, V1AnalyticsGateway>();
         builder.Services.AddSingleton<ReferenceDataService>();
         builder.Services.AddSingleton<TeamOfTheDayService>();
+        builder.Services.AddSingleton<DashboardSnapshotBuilder>();
         builder.Services.AddSingleton<StatsDashboardService>();
         builder.Services.AddSingleton<AnalysisScopeService>();
         builder.Services.AddSingleton<GlobalSearchService>();

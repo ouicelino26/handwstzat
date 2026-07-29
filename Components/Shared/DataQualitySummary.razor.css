@@ -1,0 +1,36 @@
+.data-quality-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
+}
+
+.data-quality-summary > div {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.data-quality-summary span,
+.data-quality-summary p {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.data-quality-summary strong {
+    color: var(--text);
+}
+
+.data-quality-summary p {
+    margin: 0;
+}
+
+@media (max-width: 42rem) {
+    .data-quality-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

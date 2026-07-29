@@ -1,0 +1,35 @@
+@using HandWStat.Models.Analytics
+@namespace HandWStat.Components.Shared
+
+<span class="data-quality-badge @CssClass"
+      role="status"
+      aria-label="@Label">
+    <span aria-hidden="true">@Icon</span>
+    <span>@Label</span>
+</span>
+
+@code {
+    [Parameter]
+    public DataQualityLevel Level { get; set; } = DataQualityLevel.Unknown;
+
+    [Parameter]
+    public string? Text { get; set; }
+
+    private string Label => !string.IsNullOrWhiteSpace(Text) ? Text : Level switch
+    {
+        DataQualityLevel.Low => "Qualite faible",
+        DataQualityLevel.Medium => "Qualite moyenne",
+        DataQualityLevel.High => "Qualite elevee",
+        _ => "Qualite non renseignee"
+    };
+
+    private string Icon => Level switch
+    {
+        DataQualityLevel.Low => "!",
+        DataQualityLevel.Medium => "~",
+        DataQualityLevel.High => "✓",
+        _ => "?"
+    };
+
+    private string CssClass => $"is-{Level.ToString().ToLowerInvariant()}";
+}

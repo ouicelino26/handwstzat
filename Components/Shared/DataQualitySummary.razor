@@ -1,0 +1,21 @@
+@using HandWStat.Models.Analytics
+
+<section class="data-quality-summary" aria-labelledby="data-quality-title">
+    <div>
+        <span>Qualite des donnees</span>
+        <strong id="data-quality-title">@Title</strong>
+        <p>@Message</p>
+    </div>
+    <DataQualityBadge Level="@Level" />
+</section>
+
+@code {
+    [Parameter]
+    public DataQualityLevel Level { get; set; } = DataQualityLevel.Unknown;
+
+    [Parameter]
+    public string Title { get; set; } = "Provenance a confirmer";
+
+    [Parameter]
+    public string Message { get; set; } = "L'API v1 ne fournit pas encore de score de qualite consolide.";
+}

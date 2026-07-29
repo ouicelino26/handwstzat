@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using HandWStat.Models.Analytics;
 using HandWStat.Services;
 using HandWStat.Services.Api;
 using HandWStat.Components.Shared;
 using HandballManagerCore.DTO;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace HandWStat.Components.Pages;
 
@@ -27,7 +29,15 @@ public class HomeBase : ComponentBase, IDisposable
     [Inject]
     protected AnalysisScopeService ScopeService { get; set; } = default!;
 
+    [Inject]
+    protected ILogger<HomeBase> Logger { get; set; } = default!;
+
     private bool _publishingScope;
+    private readonly SemaphoreSlim _dashboardLoadGate = new(1, 1);
+    private readonly SemaphoreSlim _teamOfTheDayLoadGate = new(1, 1);
+    private CancellationTokenSource? _dashboardLoadCts;
+    private CancellationTokenSource? _rankingLoadCts;
+    private CancellationTokenSource? _teamOfTheDayLoadCts;
 
     protected DashboardSnapshot? Snapshot { get; set; }
 
@@ -46,6 +56,12 @@ public class HomeBase : ComponentBase, IDisposable
     protected string? ErrorMessage { get; set; }
 
     protected string? SelectedZoneKey { get; set; }
+
+    protected DateTimeOffset? DashboardGeneratedAt { get; set; }
+
+    protected bool IsTeamOfTheDayLoaded { get; set; }
+
+    protected bool IsTeamOfTheDayLoading { get; set; }
 
     protected IReadOnlyList<RankingMetricOption> RankingMetrics => RankingMetricCatalog.Default;
 
@@ -79,6 +95,45 @@ public class HomeBase : ComponentBase, IDisposable
         new("Journee", string.IsNullOrWhiteSpace(Filters.Day) ? "Toutes" : Filters.Day),
         new("Matchs", Snapshot?.Overview.MatchCount.ToString() ?? FilterScopeMatches.Count.ToString())
     ];
+
+    protected AnalysisScopeDisplayModel DashboardScopeSummary => new(
+        Filters.CompetitionId.HasValue
+            ? AvailableCompetitions.FirstOrDefault(item => item.CompetitionId == Filters.CompetitionId.Value)?.CompetitionName ?? "Selection"
+            : "Toutes les competitions",
+        Filters.TeamId.HasValue
+            ? AvailableTeams.FirstOrDefault(item => item.TeamId == Filters.TeamId.Value)?.TeamName ?? "Selection"
+            : "Toutes les equipes",
+        string.IsNullOrWhiteSpace(Filters.Season) ? "Toutes" : Filters.Season,
+        string.IsNullOrWhiteSpace(Filters.Day) ? "Toutes" : Filters.Day,
+        FormatPeriod(Filters.From, Filters.To),
+        Snapshot?.Overview.MatchCount ?? FilterScopeMatches.Count,
+        DashboardGeneratedAt);
+
+    protected IReadOnlyList<RateDisplayModel> DashboardHeadlineMetrics => Snapshot is null
+        ? []
+        :
+        [
+            RateDisplayModel.FromV1(
+                "GOALS_PER_MATCH",
+                "Cadence offensive",
+                HandballKpiHelper.Ratio(Snapshot.Overview.GoalCount, Snapshot.Overview.MatchCount),
+                "buts/match",
+                "Buts totaux rapportes au nombre de matchs du scope.",
+                Snapshot.Overview.GoalCount,
+                Snapshot.Overview.MatchCount,
+                minimumSample: 1,
+                tone: "positive"),
+            RateDisplayModel.FromV1(
+                "ASSISTED_GOAL_SHARE",
+                "Jeu prepare",
+                HandballKpiHelper.Percentage(Snapshot.Overview.AssistCount, Snapshot.Overview.GoalCount),
+                "%",
+                "Part des buts accompagnes d'une passe decisive. Ce n'est pas un taux de possession.",
+                Snapshot.Overview.AssistCount,
+                Snapshot.Overview.GoalCount,
+                minimumSample: 1,
+                tone: "good")
+        ];
 
     protected IReadOnlyList<KpiTile> LeagueKpis => Snapshot is null
         ? []
@@ -149,6 +204,64 @@ public class HomeBase : ComponentBase, IDisposable
     public void Dispose()
     {
         ScopeService.Changed -= HandleGlobalScopeChanged;
+        CancelAndDispose(ref _dashboardLoadCts);
+        CancelAndDispose(ref _rankingLoadCts);
+        CancelAndDispose(ref _teamOfTheDayLoadCts);
+    }
+
+    protected CancellationToken BeginRankingLoad()
+    {
+        var next = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _rankingLoadCts, next);
+        previous?.Cancel();
+        previous?.Dispose();
+        return next.Token;
+    }
+
+    protected async Task EnsureTeamOfTheDayLoadedAsync()
+    {
+        if (Snapshot is null || IsTeamOfTheDayLoaded)
+        {
+            return;
+        }
+
+        var next = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _teamOfTheDayLoadCts, next);
+        previous?.Cancel();
+        previous?.Dispose();
+        var acquired = false;
+
+        try
+        {
+            await _teamOfTheDayLoadGate.WaitAsync(next.Token);
+            acquired = true;
+            IsTeamOfTheDayLoading = true;
+            await InvokeAsync(StateHasChanged);
+
+            var teamOfTheDay = await DashboardService.LoadTeamOfTheDayAsync(Filters, next.Token);
+            next.Token.ThrowIfCancellationRequested();
+            Snapshot = Snapshot with { TeamOfTheDay = teamOfTheDay };
+            IsTeamOfTheDayLoaded = true;
+        }
+        catch (OperationCanceledException) when (next.IsCancellationRequested)
+        {
+            // A newer scope or navigation superseded this secondary load.
+        }
+        finally
+        {
+            if (acquired)
+            {
+                _teamOfTheDayLoadGate.Release();
+            }
+
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _teamOfTheDayLoadCts, null, next), next))
+            {
+                IsTeamOfTheDayLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+
+            next.Dispose();
+        }
     }
 
     private void HandleGlobalScopeChanged()
@@ -367,15 +480,24 @@ public class HomeBase : ComponentBase, IDisposable
             return;
         }
 
+        var next = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _dashboardLoadCts, next);
+        previous?.Cancel();
+        CancelAndDispose(ref _teamOfTheDayLoadCts);
+        IsTeamOfTheDayLoaded = false;
         var loadStartedAt = DateTimeOffset.UtcNow;
+        var timestamp = Stopwatch.GetTimestamp();
+        var acquired = false;
 
         try
         {
+            await _dashboardLoadGate.WaitAsync(next.Token);
+            acquired = true;
             await BusyUiHelper.EnterAsync(() => IsBusy = true, () => InvokeAsync(StateHasChanged));
             ErrorMessage = null;
 
-            ReferenceData = await ReferenceDataService.GetReferenceDataAsync(forceRefresh, CancellationToken.None);
-            await LoadFilterScopesAsync();
+            ReferenceData = await ReferenceDataService.GetReferenceDataAsync(forceRefresh, next.Token);
+            await LoadFilterScopesAsync(next.Token);
 
             var filtersAdjusted = false;
 
@@ -393,7 +515,7 @@ public class HomeBase : ComponentBase, IDisposable
 
             if (filtersAdjusted)
             {
-                await LoadFilterScopesAsync();
+                await LoadFilterScopesAsync(next.Token);
             }
 
             if (!string.IsNullOrWhiteSpace(Filters.Season) && !SeasonOptions.Contains(Filters.Season, StringComparer.OrdinalIgnoreCase))
@@ -406,22 +528,58 @@ public class HomeBase : ComponentBase, IDisposable
                 Filters.Day = null;
             }
 
-            Snapshot = await DashboardService.LoadDashboardAsync(Filters, forceRefresh, CancellationToken.None);
+            Snapshot = await DashboardService.LoadDashboardAsync(Filters, forceRefresh, next.Token);
+            next.Token.ThrowIfCancellationRequested();
+            DashboardGeneratedAt = DateTimeOffset.UtcNow;
             Filters.SpotlightPlayerId = Snapshot.Spotlight.PlayerId > 0 ? Snapshot.Spotlight.PlayerId : null;
             SelectedZoneKey = ResolveActiveZoneKey();
+
+#if DEBUG
+            Logger.LogInformation(
+                "Dashboard charge en {ElapsedMilliseconds} ms pour {MatchCount} matchs.",
+                Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds,
+                Snapshot.Overview.MatchCount);
+#endif
+        }
+        catch (OperationCanceledException) when (next.IsCancellationRequested)
+        {
+            // Expected when a new filter supersedes this request or the component is disposed.
+        }
+        catch (ApiRequestException ex)
+        {
+            ErrorMessage = string.IsNullOrWhiteSpace(ex.CorrelationId)
+                ? ex.UserMessage
+                : $"{ex.UserMessage} Reference : {ex.CorrelationId}.";
+            Snapshot = null;
+            Logger.LogWarning(
+                "Dashboard API error {TechnicalCode}, status {StatusCode}, correlation {CorrelationId}.",
+                ex.TechnicalCode,
+                ex.StatusCode,
+                ex.CorrelationId);
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = "Le tableau de bord ne peut pas etre charge pour le moment.";
             Snapshot = null;
+            Logger.LogError(ex, "Unexpected dashboard loading failure.");
         }
         finally
         {
-            await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
+            if (acquired)
+            {
+                _dashboardLoadGate.Release();
+            }
+
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _dashboardLoadCts, null, next), next))
+            {
+                await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
+            }
+
+            next.Dispose();
         }
     }
 
-    private async Task LoadFilterScopesAsync()
+    private async Task LoadFilterScopesAsync(CancellationToken cancellationToken)
     {
         var competitionScopeTask = MatchesApiClient.GetMatchesAsync(
             teamId: Filters.TeamId,
@@ -430,7 +588,7 @@ public class HomeBase : ComponentBase, IDisposable
             year: Filters.Year,
             page: 1,
             pageSize: 500,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
         var teamScopeTask = MatchesApiClient.GetMatchesAsync(
             competitionId: Filters.CompetitionId,
             from: Filters.From,
@@ -438,7 +596,7 @@ public class HomeBase : ComponentBase, IDisposable
             year: Filters.Year,
             page: 1,
             pageSize: 500,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
         var contextScopeTask = MatchesApiClient.GetMatchesAsync(
             competitionId: Filters.CompetitionId,
             teamId: Filters.TeamId,
@@ -447,13 +605,31 @@ public class HomeBase : ComponentBase, IDisposable
             year: Filters.Year,
             page: 1,
             pageSize: 500,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         await Task.WhenAll(competitionScopeTask, teamScopeTask, contextScopeTask);
 
         CompetitionOptionMatches = competitionScopeTask.Result;
         TeamOptionMatches = teamScopeTask.Result;
         FilterScopeMatches = contextScopeTask.Result;
+    }
+
+    private static string FormatPeriod(DateTime? from, DateTime? to)
+    {
+        return (from, to) switch
+        {
+            ({ } start, { } end) => $"Du {start:dd/MM/yyyy} au {end:dd/MM/yyyy}",
+            ({ } start, null) => $"Depuis le {start:dd/MM/yyyy}",
+            (null, { } end) => $"Jusqu'au {end:dd/MM/yyyy}",
+            _ => "Toutes les dates"
+        };
+    }
+
+    private static void CancelAndDispose(ref CancellationTokenSource? source)
+    {
+        var current = Interlocked.Exchange(ref source, null);
+        current?.Cancel();
+        current?.Dispose();
     }
 
     private string? ResolveActiveZoneKey()

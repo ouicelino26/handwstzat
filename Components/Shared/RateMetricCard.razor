@@ -1,0 +1,73 @@
+@using HandWStat.Models.Analytics
+@namespace HandWStat.Components.Shared
+
+<article class="rate-metric-card @ToneClass"
+         aria-label="@AriaLabel"
+         data-metric-code="@Model.MetricCode">
+    <header>
+        <span class="rate-metric-card__status" aria-hidden="true">@ToneIcon</span>
+        <span class="rate-metric-card__label">@Model.Label</span>
+        <span class="rate-metric-card__help"
+              role="img"
+              aria-label="Information sur l'indicateur"
+              title="@Model.Tooltip">i</span>
+    </header>
+
+    <div class="rate-metric-card__value">
+        <strong>@Model.ValueLabel</strong>
+        @if (Model.Value.HasValue && !string.IsNullOrWhiteSpace(Model.Unit))
+        {
+            <span>@Model.Unit</span>
+        }
+    </div>
+
+    <dl>
+        <div>
+            <dt>Volume</dt>
+            <dd>@Model.VolumeLabel</dd>
+        </div>
+        <div>
+            <dt>Fiabilite</dt>
+            <dd><span aria-hidden="true">@ReliabilityIcon</span> @Model.ReliabilityLabel</dd>
+        </div>
+    </dl>
+
+    <p>@Model.QualityLabel</p>
+
+    @if (!string.IsNullOrWhiteSpace(DetailsHref))
+    {
+        <a href="@DetailsHref" aria-label="@($"{DetailsLabel} : {Model.Label}")">@DetailsLabel</a>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public RateDisplayModel Model { get; set; } = default!;
+
+    [Parameter]
+    public string? DetailsHref { get; set; }
+
+    [Parameter]
+    public string DetailsLabel { get; set; } = "Voir le detail";
+
+    private string ToneClass => Model.Tone.ToLowerInvariant() switch
+    {
+        "positive" => "is-positive",
+        "good" => "is-good",
+        "warning" => "is-warning",
+        "danger" => "is-danger",
+        _ => "is-neutral"
+    };
+
+    private string ToneIcon => Model.Tone.ToLowerInvariant() switch
+    {
+        "positive" or "good" => "✓",
+        "warning" => "!",
+        "danger" => "×",
+        _ => "i"
+    };
+
+    private string ReliabilityIcon => Model.Value.HasValue && Model.SampleReliable ? "✓" : "!";
+
+    private string AriaLabel => $"{Model.Label} : {Model.ValueLabel} {Model.Unit}. {Model.VolumeLabel}. {Model.ReliabilityLabel}.";
+}
