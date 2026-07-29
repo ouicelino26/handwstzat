@@ -1781,7 +1781,7 @@
 
     private int TechnicalWasteCount()
     {
-        return (Offense?.TirsRates ?? 0) + (Offense?.PenaltyRate ?? 0) + (Offense?.TirContre ?? 0) + (Passing?.MauvaisePasse ?? 0) + (Passing?.PerteDeBalle ?? 0) + (Passing?.FauteTechnique ?? 0) + (Passing?.PassageEnForce ?? 0) + (Sanctions?.Exclusions ?? 0) + (Sanctions?.Avertissements ?? 0) + (Sanctions?.DeuxMinutes ?? 0) + (Sanctions?.PenaltyConcede ?? 0) + (Goalkeeper?.ButsPris ?? 0) + (Goalkeeper?.ButsPenalty ?? 0);
+        return (Offense?.TirsRates ?? 0) + (Offense?.PenaltyRate ?? 0) + (Passing?.MauvaisePasse ?? 0) + (Passing?.PerteDeBalle ?? 0) + (Passing?.FauteTechnique ?? 0) + (Passing?.PassageEnForce ?? 0) + (Sanctions?.Exclusions ?? 0) + (Sanctions?.Avertissements ?? 0) + (Sanctions?.DeuxMinutes ?? 0) + (Sanctions?.PenaltyConcede ?? 0) + (Goalkeeper?.ButsPris ?? 0) + (Goalkeeper?.ButsPenalty ?? 0);
     }
 
     private IReadOnlyList<MetricPlotPoint> BuildPlayerActionProfile()

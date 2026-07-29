@@ -40,27 +40,6 @@ public sealed record DashboardGlobalBoards(
     public static DashboardGlobalBoards Empty { get; } = new([], []);
 }
 
-public sealed record OverviewMetrics(
-    int PlayerCount,
-    int TeamCount,
-    int MatchCount,
-    int EventCount,
-    int GoalCount,
-    int AssistCount,
-    int InterceptionCount,
-    int SaveCount,
-    int TurnoverCount,
-    int SanctionCount);
-
-public sealed record PlayerDirectoryItem(
-    int Id,
-    string FullName,
-    string TeamName,
-    string PositionName,
-    string? CountryName,
-    int? Age,
-    bool IsGoalkeeper);
-
 public sealed record GlobalFieldRankingRow(
     int PlayerId,
     string FullName,
@@ -173,7 +152,7 @@ public sealed record PlayerSpotlight
 
     public double PenaltyStopRate => Technical.GoalkeeperPenaltyStopRate;
 
-    public int GoalkeeperConcededGoals => Technical.GoalkeeperConcededGoals + Technical.GoalkeeperPenaltyConcededGoals;
+    public int GoalkeeperConcededGoals => Technical.GoalkeeperConcededGoals;
 }
 
 public sealed record ZoneStat(

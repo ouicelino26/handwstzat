@@ -16,14 +16,20 @@ public static class HandballKpiHelper
         return matches > 0 ? total / matches : 0;
     }
 
-    public static double Ratio(double numerator, double denominator)
+    public static double? Ratio(double numerator, double denominator)
     {
-        if (denominator <= 0)
+        if (denominator <= 0 || !double.IsFinite(numerator) || !double.IsFinite(denominator))
         {
-            return numerator > 0 ? numerator : 0;
+            return null;
         }
 
         return numerator / denominator;
+    }
+
+    public static double? Percentage(double numerator, double denominator)
+    {
+        var ratio = Ratio(numerator, denominator);
+        return ratio * 100d;
     }
 
     public static double Share(double numerator, double denominator)
@@ -74,7 +80,7 @@ public static class HandballKpiHelper
             return 0;
         }
 
-        return offense.TotalButs + offense.TirsRates + offense.PenaltyRate + offense.TirContre;
+        return offense.TotalButs + offense.TirsRates + offense.PenaltyRate;
     }
 
     public static int ShotWaste(PlayerOffenseStatsDto? offense)
@@ -84,7 +90,7 @@ public static class HandballKpiHelper
             return 0;
         }
 
-        return offense.TirsRates + offense.PenaltyRate + offense.TirContre;
+        return offense.TirsRates + offense.PenaltyRate;
     }
 
     public static int PenaltyAttempts(PlayerOffenseStatsDto? offense)
@@ -343,9 +349,11 @@ public static class HandballKpiHelper
         return "neutral";
     }
 
-    public static string FormatRatio(double value)
+    public static string FormatRatio(double? value)
     {
-        return value.ToString("0.00");
+        return value.HasValue && double.IsFinite(value.Value)
+            ? value.Value.ToString("0.00")
+            : "N/A";
     }
 
     public static string FormatBase(double numerator, double denominator, string label)
