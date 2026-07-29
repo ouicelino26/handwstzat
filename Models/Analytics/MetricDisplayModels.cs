@@ -26,6 +26,20 @@ public sealed record RateDisplayModel
 
     public double? MinimumSample { get; init; }
 
+    public double? QualityScore { get; init; }
+
+    public string? QualityReason { get; init; }
+
+    public bool QualityKnown { get; init; }
+
+    public string? MetricVersion { get; init; }
+
+    public string? SourceLabel { get; init; }
+
+    public string? NumeratorUnit { get; init; }
+
+    public string? DenominatorUnit { get; init; }
+
     public required string QualityLabel { get; init; }
 
     public required string Tooltip { get; init; }
@@ -39,7 +53,7 @@ public sealed record RateDisplayModel
     public bool HasVolume => Numerator.HasValue && Denominator.HasValue;
 
     public string VolumeLabel => HasVolume
-        ? $"{HandballKpiHelper.FormatNumber(Numerator!.Value)} / {HandballKpiHelper.FormatNumber(Denominator!.Value)}"
+        ? $"{HandballKpiHelper.FormatNumber(Numerator!.Value)}{FormatEvidenceUnit(NumeratorUnit)} / {HandballKpiHelper.FormatNumber(Denominator!.Value)}{FormatEvidenceUnit(DenominatorUnit)}"
         : "Volume non fourni par l'API";
 
     public string ReliabilityLabel
@@ -48,7 +62,9 @@ public sealed record RateDisplayModel
         {
             if (!Value.HasValue)
             {
-                return "Indicateur non calculable";
+                return Denominator == 0 && MetricVersion is not null
+                    ? "Aucun tir dans le perimetre"
+                    : "Indicateur non calculable";
             }
 
             if (!MinimumSample.HasValue || !Denominator.HasValue)
@@ -60,6 +76,42 @@ public sealed record RateDisplayModel
                 ? $"Volume suffisant (minimum {HandballKpiHelper.FormatNumber(MinimumSample.Value)})"
                 : $"Volume limite (minimum {HandballKpiHelper.FormatNumber(MinimumSample.Value)})";
         }
+    }
+
+    private static string FormatEvidenceUnit(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? string.Empty : $" {value}";
+
+    public static RateDisplayModel FromV2(
+        string label,
+        LeagueMetricValueDto metric,
+        string numeratorUnit,
+        string denominatorUnit)
+    {
+        return new RateDisplayModel
+        {
+            MetricCode = metric.MetricCode,
+            Label = label,
+            Value = metric.Value,
+            Numerator = metric.Sample.Numerator,
+            Denominator = metric.Sample.Denominator,
+            Unit = "%",
+            SampleReliable = metric.Quality.SampleReliable,
+            MinimumSample = metric.Sample.MinimumSample,
+            QualityScore = metric.Quality.QualityScore,
+            QualityReason = metric.Quality.Reason,
+            QualityKnown = true,
+            MetricVersion = metric.MetricVersion,
+            SourceLabel = AnalyticsSourceStatus.V2Complete.Label(),
+            NumeratorUnit = numeratorUnit,
+            DenominatorUnit = denominatorUnit,
+            QualityLabel = metric.Value.HasValue
+                ? metric.Quality.SampleReliable ? "Echantillon suffisant" : "Echantillon limite"
+                : "Non calculable",
+            Tooltip = $"{label} : preuve et qualite fournies par l'API v2.",
+            Tone = metric.Value.HasValue
+                ? metric.Quality.SampleReliable ? "good" : "warning"
+                : "neutral"
+        };
     }
 
     public static RateDisplayModel FromV1(
@@ -93,6 +145,8 @@ public sealed record RateDisplayModel
             Unit = unit,
             SampleReliable = sampleReliable,
             MinimumSample = minimumSample,
+            QualityKnown = reliabilityKnown,
+            SourceLabel = "API v1",
             QualityLabel = !calculableValue.HasValue
                 ? "Non calculable"
                 : !reliabilityKnown
