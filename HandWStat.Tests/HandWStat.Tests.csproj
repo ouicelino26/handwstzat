@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -7,9 +7,11 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <PropertyGroup>
     <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('D:\repos\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj')">D:\repos\HandballManagerCore</HandballManagerCorePath>
@@ -21,6 +23,14 @@
   <ItemGroup>
     <Compile Include="..\Configuration\ApiSettings.cs" Link="Configuration\ApiSettings.cs" />
     <Compile Include="..\Configuration\UpdateSettings.cs" Link="Configuration\UpdateSettings.cs" />
+    <Compile Include="..\Models\Analytics\DashboardFoundationModels.cs" Link="Models\Analytics\DashboardFoundationModels.cs" />
+    <Compile Include="..\Models\Analytics\KpiModels.cs" Link="Models\Analytics\KpiModels.cs" />
+    <Compile Include="..\Models\Analytics\MetricDisplayModels.cs" Link="Models\Analytics\MetricDisplayModels.cs" />
+    <Compile Include="..\Services\Api\ApiClientBase.cs" Link="Services\Api\ApiClientBase.cs" />
+    <Compile Include="..\Services\Api\ApiQueryBuilder.cs" Link="Services\Api\ApiQueryBuilder.cs" />
+    <Compile Include="..\Services\Api\ApiRequestException.cs" Link="Services\Api\ApiRequestException.cs" />
+    <Compile Include="..\Services\DashboardSnapshotBuilder.cs" Link="Services\DashboardSnapshotBuilder.cs" />
+    <Compile Include="..\Services\IApiAuthService.cs" Link="Services\IApiAuthService.cs" />
     <Compile Include="..\Models\Updates\*.cs" Link="Models\Updates\%(Filename)%(Extension)" />
     <Compile Include="..\Services\Updates\AppUpdateService.cs" Link="Services\Updates\AppUpdateService.cs" />
     <Compile Include="..\Services\Updates\AppVersionProvider.cs" Link="Services\Updates\AppVersionProvider.cs" />
@@ -34,6 +44,11 @@
     <Compile Include="..\Services\Updates\IUpdatePreferenceStore.cs" Link="Services\Updates\IUpdatePreferenceStore.cs" />
     <Compile Include="..\Services\Updates\UpdateArtifactDownloader.cs" Link="Services\Updates\UpdateArtifactDownloader.cs" />
     <Compile Include="..\Services\Updates\UpdateCheckCoordinator.cs" Link="Services\Updates\UpdateCheckCoordinator.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <RazorComponent Include="..\Components\Shared\AnalysisScopeSummary.razor" Link="Components\Shared\AnalysisScopeSummary.razor" />
+    <RazorComponent Include="..\Components\Shared\DataQualityBadge.razor" Link="Components\Shared\DataQualityBadge.razor" />
+    <RazorComponent Include="..\Components\Shared\RateMetricCard.razor" Link="Components\Shared\RateMetricCard.razor" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
