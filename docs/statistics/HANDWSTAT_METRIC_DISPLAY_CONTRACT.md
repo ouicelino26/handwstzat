@@ -145,4 +145,18 @@ Les seuils UI existants sont des aides de lecture et non des benchmarks statisti
 - `V1AnalyticsGateway` delegue sans changer les routes ni DTO.
 - Si un taux v1 arrive sans volume, sa valeur peut etre affichee, mais `SampleReliable=false`, `QualityLabel=Qualite non renseignee` et le volume n'est pas invente.
 - Si le denominateur est disponible et vaut 0, la valeur affichee est `N/A`, meme si le DTO v1 contient `0`.
-- Un futur `V2AnalyticsGateway` pourra mapper directement `MetricValue/Sample/Quality` sans modifier les composants.
+- `V2AnalyticsGateway` mappe directement `MetricValue/Sample/Quality` pour les six taux Ligue.
+
+## Extension Ligue v2 - version UI `1.1-league`
+
+- Les compteurs v2 sont des entiers non nullables et leur zero est conserve. Un compteur devient nullable dans le modele de presentation uniquement lorsqu'aucune source v1 canonique n'existe pendant un fallback.
+- Un taux v2 est un objet non nullable ; seul son champ `value` peut etre `null`. Les champs `metricVersion`, `sample`, `quality` et leurs copies aplaties sont valides avant affichage.
+- Le format normal est `58,4 % - 45 buts / 77 tirs` ou `41,2 % - 21 arrets / 51 tirs subis`.
+- Un denominateur nul affiche `N/A` et « Aucun tir dans le perimetre » ; la preuve `0 / 0` reste consultable.
+- Une valeur v1 sans preuve affiche `Volume non fourni par l'API`, `MetricVersion : Non fournie`, qualite `Unknown` et provenance `V1_PARTIAL`.
+- `MetricEvidence` affiche numerateur, denominateur, minimum, `SampleReliable`, score/raison de qualite, version et provenance. Aucune classe `Low/Medium/High` n'est derivee du score cote client.
+- `AnalyticsSourceBadge` expose `V2_COMPLETE`, `V1_COMPATIBLE`, `V1_PARTIAL`, `UNAVAILABLE` ou `CONTRACT_ERROR` avec texte et icone.
+- `FailedPivotPasses` conserve `value = null`, `availability = DATA_MISSING` et sa raison. La ligne reste visible et `BadPasses` n'est jamais substitue.
+- Les pertes et sanctions utilisent un total unique et un detail repliable. Les 7 m concedés restent hors du total disciplinaire.
+- Les tirs subis gardienne proviennent exclusivement de l'API ou des atomes v1 exacts `arrets + buts encaisses`; hors cadre, poteaux non cadres et tirs contres ne sont jamais ajoutes.
+- Le panneau Ligue affiche le scope complet et n'affiche la section gardienne que si `overview.isGoalkeeper` ou le profil v1 de fallback l'identifie.

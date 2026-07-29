@@ -27,6 +27,18 @@ Estimations relatives : `XS` moins d'une journee, `S` 1-2 jours, `M` 3-5 jours, 
 
 Dependances API : P1-04 et P1-06 de `ULTIMATE_API_ROADMAP.md`, DTO metrique/scope/qualite, ProblemDetails uniforme.
 
+## Tranche Phase 1 Ligue livree le 2026-07-29
+
+1. Contrat v2 joueuse copie et mappe champ par champ : termine.
+2. `V2AnalyticsGateway`, validation structurelle et provenance : termine.
+3. Fallback v1 par metrique uniquement sur endpoint absent : termine.
+4. Panneaux Attaque, Defense et Gardienne repliables et accessibles : termine.
+5. Six taux avec preuve, qualite et version serveur : termine.
+6. `FailedPivotPasses` explicite `DATA_MISSING` : termine cote UI, bloque cote donnee.
+7. Tests handlers/composants/non-regression et quatre builds plateforme : termine.
+
+Gate restant : appel live authentifie non execute. Aucune fonctionnalite possession, lineup ou xG n'a ete commencee.
+
 ## Phase 2 - fiche joueuse et benchmarks
 
 1. Decouper `Players.razor` en annuaire, resume, efficacite, spatial, tendance et historique.
