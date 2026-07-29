@@ -25,9 +25,9 @@ Tous les fichiers sont ignores par Git sous `.artifacts/ai-context/`.
 | `05-handwstat-analytics-models.md` | 51 066 | REGENERE Phase 1 Ligue |
 | `06-handwstat-api-services.md` | 19 022 | REGENERE Phase 1 Ligue, gateway inclus |
 | `07-handwstat-ui-components-css.md` | 57 842 | REGENERE Phase 1 Ligue, compression structurelle |
-| `08-handwstat-tests.md` | 18 328 | REGENERE Phase 1 Ligue |
+| `08-handwstat-tests.md` | 18 356 | REGENERE Phase 1 Ligue |
 | `09-handwstat-updates.md` | 39 327 | OK |
-| **Total avec recouvrements** | **358 761** | chaque snapshot < 60 000 |
+| **Total avec recouvrements** | **358 789** | chaque snapshot < 60 000 |
 
 ## Phase 0 / 1A
 

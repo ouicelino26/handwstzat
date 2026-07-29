@@ -62,6 +62,8 @@ public sealed class V2AnalyticsGatewayTests
         Assert.Contains("shootShade=Aile", requestUri, StringComparison.Ordinal);
         Assert.DoesNotContain("playerId=", requestUri, StringComparison.Ordinal);
         Assert.DoesNotContain("positionId=", requestUri, StringComparison.Ordinal);
+        Assert.Equal("Bearer", handler.LastRequest.Headers.Authorization?.Scheme);
+        Assert.Equal("token", handler.LastRequest.Headers.Authorization?.Parameter);
     }
 
     [Fact]
