@@ -11,7 +11,7 @@
 |------|--------|--------|
 | `GATE_CORE_DEPENDENCY_REMOVED` | ✅ PASS | Aucun ProjectReference à HandballManagerCore |
 | `GATE_BUILD_WINDOWS` | ✅ PASS | 0 erreur, 32 warnings, net10.0-windows10.0.19041.0 |
-| `GATE_TESTS_PASS` | ✅ PASS | 82 / 82 — en repo local et en clone vierge |
+| `GATE_TESTS_PASS` | ✅ PASS | 84 / 84 — 82 baseline + 2 RC-06 (RetryAfterSeconds, X-Correlation-ID) |
 | `GATE_ETAG_IMPLEMENTED` | ✅ PASS | If-None-Match + 304 handling |
 | `GATE_RETRY_AFTER_IMPLEMENTED` | ✅ PASS | Header parsé, RetryAfterSeconds propagé |
 | `GATE_503_FALLBACK_ONLY` | ✅ PASS | ServiceUnavailable uniquement → fallback v1 |

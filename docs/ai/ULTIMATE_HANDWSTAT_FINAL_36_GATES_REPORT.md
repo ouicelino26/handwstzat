@@ -33,8 +33,8 @@
 | G-03 | `GATE_BUILD_ANDROID` | ❌ DISK_FULL | 0 erreur code, 16 warnings — échoué `XAJCW7024` (espace disque insuffisant pendant génération Java wrappers) |
 | G-04 | `GATE_BUILD_IOS` | ⚠️ NON_TESTÉ | Nécessite un agent macOS |
 | G-05 | `GATE_BUILD_MACCATALYST` | ⚠️ NON_TESTÉ | Nécessite un agent macOS |
-| G-06 | `GATE_TESTS_PASS` | ✅ PASS | 82/82 — xUnit `HandWStat.Tests` sur Windows |
-| G-07 | `GATE_CLEAN_CLONE` | ✅ PASS | Clone vierge → workload restore → build Windows 0 erreur → 82/82 tests |
+| G-06 | `GATE_TESTS_PASS` | ✅ PASS | 84/84 — xUnit `HandWStat.Tests` sur Windows (82 baseline + 2 RC-06 ApiClientBase) |
+| G-07 | `GATE_CLEAN_CLONE` | ✅ PASS | Clone vierge → workload restore → build Windows 0 erreur → 84/84 tests |
 | G-08 | `GATE_CI_VALID` | ✅ FIXED | CI corrigé : step `HandballManagerMaui` supprimé, Core-reference guard ajouté, TRX upload |
 | G-09 | `GATE_RELEASE_SCRIPTS` | ✅ PASS | `scripts/release/`: Build-Release, Package-Windows, Package-Android, Verify-Artifact, Run-Tests |
 | G-10 | `GATE_ETAG_IMPLEMENTED` | ✅ PASS | `ApiClientBase.GetConditionalAsync<T>` + `ApiGetResult<T>`, `ConcurrentDictionary` ETag cache |
