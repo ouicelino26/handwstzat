@@ -1026,7 +1026,7 @@
         Task<MatchListItemDto?>? matchTask = null;
         Task<MatchSummaryDto?>? summaryTask = null;
         Task<IReadOnlyList<PlayerGlobalStatsDto>>? playersTask = null;
-        Task<IReadOnlyList<MatchEvent>>? eventsTask = null;
+        Task<IReadOnlyList<MatchEventAnalyticsDto>>? eventsTask = null;
 
         if (cache.Match is null)
         {

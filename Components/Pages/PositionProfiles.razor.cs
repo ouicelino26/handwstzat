@@ -1,8 +1,8 @@
 using HandWStat.Components.Shared;
 using HandWStat.Models.Analytics;
+using HandWStat.Models.Contracts;
 using HandWStat.Services;
 using HandWStat.Services.Api;
-using HandballManagerCore.DTO;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;

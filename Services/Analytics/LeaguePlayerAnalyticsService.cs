@@ -1,5 +1,5 @@
 using HandWStat.Models.Analytics;
-using HandballManagerCore.DTO;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Services.Analytics;
 
@@ -341,14 +341,22 @@ public sealed class LeaguePlayerAnalyticsService
     {
         if (gatewayResult.Outcome == LeagueGatewayOutcome.Success)
         {
+            if (gatewayResult.Response is null)
+            {
+                return new LeaguePlayerAnalyticsLoadResult
+                {
+                    Source = AnalyticsSourceStatus.V2Complete
+                };
+            }
+
             return new LeaguePlayerAnalyticsLoadResult
             {
-                Analytics = LeaguePlayerAnalyticsMapper.FromV2(gatewayResult.Response!, scope),
+                Analytics = LeaguePlayerAnalyticsMapper.FromV2(gatewayResult.Response, scope),
                 Source = AnalyticsSourceStatus.V2Complete
             };
         }
 
-        if (gatewayResult.Outcome == LeagueGatewayOutcome.Unavailable)
+        if (gatewayResult.Outcome == LeagueGatewayOutcome.ServiceUnavailable)
         {
             return new LeaguePlayerAnalyticsLoadResult
             {

@@ -1,11 +1,10 @@
-using HandballManagerCore.DTO;
-using HandballManagerCore.Models;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Models.Analytics;
 
 public static class MatchScenarioAnalyzer
 {
-    public static IReadOnlyList<ScoreTimelinePoint> BuildScoreTimeline(IReadOnlyList<MatchEvent> events, MatchListItemDto? match)
+    public static IReadOnlyList<ScoreTimelinePoint> BuildScoreTimeline(IReadOnlyList<MatchEventAnalyticsDto> events, MatchListItemDto? match)
     {
         var points = new List<ScoreTimelinePoint>
         {
@@ -22,7 +21,7 @@ public static class MatchScenarioAnalyzer
                 Minute = ResolveMatchMinute(matchEvent.Time, matchEvent.MiTemps),
                 Team1 = matchEvent.TeamScore1 ?? 0,
                 Team2 = matchEvent.TeamScore2 ?? 0,
-                matchEvent.Id
+                Id = matchEvent.MatchEventId
             })
             .OrderBy(item => item.Minute)
             .ThenBy(item => item.Id))

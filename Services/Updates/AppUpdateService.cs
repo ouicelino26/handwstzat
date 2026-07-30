@@ -1,8 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
-using HandballManagerCore.DTO;
-using HandballManagerCore.Releases;
 using HandWStat.Configuration;
+using HandWStat.Models.Contracts;
 using HandWStat.Models.Updates;
 using Microsoft.Extensions.Logging;
 
@@ -239,7 +238,7 @@ public sealed class AppUpdateService(
             Mandatory = response.Mandatory,
             DownloadUrl = response.DownloadUrl ?? string.Empty,
             FileName = response.FileName ?? string.Empty,
-            FileSizeBytes = response.FileSizeBytes ?? 0,
+            FileSizeBytes = response.FileSizeBytes,
             Sha256 = response.Sha256 ?? string.Empty,
             MinimumOsVersion = response.MinimumOsVersion,
             SignatureThumbprint = response.SignatureThumbprint,

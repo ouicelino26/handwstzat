@@ -1,7 +1,7 @@
 using HandWStat.Models.Analytics;
+using HandWStat.Models.Contracts;
 using HandWStat.Services.Analytics;
 using HandWStat.Services.Api;
-using HandballManagerCore.DTO;
 
 namespace HandWStat.Services;
 

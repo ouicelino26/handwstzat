@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json.Serialization;
-using HandballManagerCore.DTO;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Models.Analytics;
 
@@ -275,6 +275,7 @@ public enum LeagueGatewayOutcome
     NotFound,
     Timeout,
     Unavailable,
+    ServiceUnavailable,
     ServerError,
     RequestError,
     ContractError
@@ -285,14 +286,15 @@ public sealed record LeagueAnalyticsError(
     string TechnicalCode,
     string? CorrelationId,
     bool Retryable,
-    HttpStatusCode? StatusCode);
+    HttpStatusCode? StatusCode,
+    int? RetryAfterSeconds = null);
 
 public sealed record LeagueGatewayResult(
     LeagueGatewayOutcome Outcome,
     LeaguePlayerAnalyticsResponseDto? Response,
     LeagueAnalyticsError? Error)
 {
-    public static LeagueGatewayResult Success(LeaguePlayerAnalyticsResponseDto response) =>
+    public static LeagueGatewayResult Success(LeaguePlayerAnalyticsResponseDto? response) =>
         new(LeagueGatewayOutcome.Success, response, null);
 
     public static LeagueGatewayResult Failure(LeagueGatewayOutcome outcome, LeagueAnalyticsError error) =>

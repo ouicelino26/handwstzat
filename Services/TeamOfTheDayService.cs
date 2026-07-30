@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Text;
 using HandWStat.Models.Analytics;
+using HandWStat.Models.Contracts;
 using HandWStat.Services.Api;
-using HandballManagerCore.DTO;
 
 namespace HandWStat.Services;
 

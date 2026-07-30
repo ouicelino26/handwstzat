@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
-using HandballManagerCore.DTO;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Services.Updates;
 
