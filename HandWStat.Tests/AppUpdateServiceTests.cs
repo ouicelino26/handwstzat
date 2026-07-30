@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.InteropServices;
-using HandballManagerCore.DTO;
 using HandWStat.Configuration;
+using HandWStat.Models.Contracts;
 using HandWStat.Models.Updates;
 using HandWStat.Services.Updates;
 using Microsoft.Extensions.Logging.Abstractions;

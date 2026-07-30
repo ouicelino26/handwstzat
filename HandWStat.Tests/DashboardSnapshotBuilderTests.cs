@@ -1,5 +1,5 @@
+using HandWStat.Models.Contracts;
 using HandWStat.Services;
-using HandballManagerCore.DTO;
 
 namespace HandWStat.Tests;
 

@@ -1,6 +1,6 @@
 using HandWStat.Models.Analytics;
+using HandWStat.Models.Contracts;
 using HandWStat.Services.Analytics;
-using HandballManagerCore.DTO;
 
 namespace HandWStat.Tests;
 
@@ -62,16 +62,16 @@ public sealed class LeagueAnalyticsFallbackTests
     }
 
     [Fact]
-    public void EndpointUnavailable_UsesOnlyCompatibleV1MetricsWithExplicitProvenance()
+    public void ServiceUnavailable503_TriggersV1FallbackWithExplicitProvenance()
     {
         var unavailable = LeagueGatewayResult.Failure(
-            LeagueGatewayOutcome.Unavailable,
+            LeagueGatewayOutcome.ServiceUnavailable,
             new LeagueAnalyticsError(
-                "Endpoint absent",
-                "HTTP_501",
+                "Service indisponible",
+                "HTTP_503",
                 "corr-1",
                 true,
-                System.Net.HttpStatusCode.NotImplemented));
+                System.Net.HttpStatusCode.ServiceUnavailable));
 
         var result = Service().Resolve(
             42,
@@ -172,7 +172,9 @@ public sealed class LeagueAnalyticsFallbackTests
     [InlineData(LeagueGatewayOutcome.NotFound, AnalyticsSourceStatus.Unavailable)]
     [InlineData(LeagueGatewayOutcome.Timeout, AnalyticsSourceStatus.Unavailable)]
     [InlineData(LeagueGatewayOutcome.ServerError, AnalyticsSourceStatus.Unavailable)]
-    public void ReceivedV2FailureOtherThanEndpointUnavailable_NeverFallsBack(
+    [InlineData(LeagueGatewayOutcome.Unavailable, AnalyticsSourceStatus.Unavailable)]
+    [InlineData(LeagueGatewayOutcome.RequestError, AnalyticsSourceStatus.Unavailable)]
+    public void ReceivedV2FailureOtherThan503_NeverFallsBack(
         LeagueGatewayOutcome outcome,
         AnalyticsSourceStatus expectedSource)
     {

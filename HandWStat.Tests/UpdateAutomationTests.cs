@@ -1,7 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
-using HandballManagerCore.DTO;
 using HandWStat.Configuration;
+using HandWStat.Models.Contracts;
 using HandWStat.Models.Updates;
 using HandWStat.Services.Updates;
 

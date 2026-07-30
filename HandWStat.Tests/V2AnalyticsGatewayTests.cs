@@ -3,9 +3,9 @@ using System.Text;
 using System.Text.Json;
 using HandWStat.Configuration;
 using HandWStat.Models.Analytics;
+using HandWStat.Models.Contracts;
 using HandWStat.Services;
 using HandWStat.Services.Analytics;
-using HandballManagerCore.DTO;
 
 namespace HandWStat.Tests;
 
@@ -264,7 +264,7 @@ public sealed class V2AnalyticsGatewayTests
     [Theory]
     [InlineData(HttpStatusCode.MethodNotAllowed)]
     [InlineData(HttpStatusCode.NotImplemented)]
-    public async Task EndpointUnavailable_IsTheOnlyFallbackOutcome(HttpStatusCode statusCode)
+    public async Task EndpointNotImplemented_ReturnsUnavailableOutcome(HttpStatusCode statusCode)
     {
         var gateway = CreateGateway(new RecordingHandler(
             (_, _) => Task.FromResult(ProblemResponse(statusCode, "ENDPOINT_UNAVAILABLE"))));
@@ -276,6 +276,109 @@ public sealed class V2AnalyticsGatewayTests
             CancellationToken.None);
 
         Assert.Equal(LeagueGatewayOutcome.Unavailable, result.Outcome);
+    }
+
+    [Fact]
+    public async Task ServiceUnavailable503_ReturnsServiceUnavailableOutcomeWithCorrelationId()
+    {
+        var gateway = CreateGateway(new RecordingHandler(
+            (_, _) => Task.FromResult(ProblemResponse(HttpStatusCode.ServiceUnavailable, "SERVICE_UNAVAILABLE"))));
+
+        var result = await gateway.GetPlayerAsync(
+            42,
+            new StatsQueryOptionsDto(),
+            LeagueAnalyticsContract.AllSections,
+            CancellationToken.None);
+
+        Assert.Equal(LeagueGatewayOutcome.ServiceUnavailable, result.Outcome);
+        Assert.True(result.Error!.Retryable);
+        Assert.Equal("corr-league", result.Error.CorrelationId);
+    }
+
+    [Fact]
+    public async Task TooManyRequests429_HasRetryAfterSecondsFromHeader()
+    {
+        var response = ProblemResponse(HttpStatusCode.TooManyRequests, "RATE_LIMITED");
+        response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(42));
+        var gateway = CreateGateway(new RecordingHandler((_, _) => Task.FromResult(response)));
+
+        var result = await gateway.GetPlayerAsync(
+            42,
+            new StatsQueryOptionsDto(),
+            LeagueAnalyticsContract.AllSections,
+            CancellationToken.None);
+
+        Assert.Equal(LeagueGatewayOutcome.ServerError, result.Outcome);
+        Assert.True(result.Error!.Retryable);
+        Assert.Equal(42, result.Error.RetryAfterSeconds);
+    }
+
+    [Fact]
+    public async Task ETagSentOnSecondRequest_And304ReturnsNull()
+    {
+        var etag = "\"abc123\"";
+        var callCount = 0;
+        var handler = new RecordingHandler((req, _) =>
+        {
+            callCount++;
+            if (callCount == 1)
+            {
+                var ok = JsonResponse(LeagueAnalyticsTestData.CompleteResponse());
+                ok.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue(etag);
+                return Task.FromResult(ok);
+            }
+
+            var ifNoneMatch = req.Headers.IfNoneMatch.FirstOrDefault()?.Tag;
+            Assert.Equal(etag, ifNoneMatch);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotModified));
+        });
+
+        var gateway = CreateGateway(handler);
+        var options = new StatsQueryOptionsDto();
+        var sections = LeagueAnalyticsContract.AllSections;
+
+        var first = await gateway.GetPlayerAsync(42, options, sections, CancellationToken.None);
+        Assert.Equal(LeagueGatewayOutcome.Success, first.Outcome);
+        Assert.NotNull(first.Response);
+
+        var second = await gateway.GetPlayerAsync(42, options, sections, CancellationToken.None);
+        Assert.Equal(LeagueGatewayOutcome.Success, second.Outcome);
+        Assert.Null(second.Response);
+
+        Assert.Equal(2, callCount);
+    }
+
+    [Fact]
+    public async Task BadRequest400_IsNotRetryableAndReturnsRequestErrorOutcome()
+    {
+        var gateway = CreateGateway(new RecordingHandler(
+            (_, _) => Task.FromResult(ProblemResponse(HttpStatusCode.BadRequest, "INVALID_FILTER"))));
+
+        var result = await gateway.GetPlayerAsync(
+            42,
+            new StatsQueryOptionsDto(),
+            LeagueAnalyticsContract.AllSections,
+            CancellationToken.None);
+
+        Assert.Equal(LeagueGatewayOutcome.RequestError, result.Outcome);
+        Assert.False(result.Error!.Retryable);
+        Assert.Equal("INVALID_FILTER", result.Error.TechnicalCode);
+    }
+
+    [Fact]
+    public async Task Unauthorized401_IsNotRetryableAndReturnsRequestErrorOutcome()
+    {
+        var gateway = CreateGateway(new RecordingHandler(
+            (_, _) => Task.FromResult(ProblemResponse(HttpStatusCode.Unauthorized, "UNAUTHORIZED"))));
+
+        var result = await gateway.GetPlayerAsync(
+            42,
+            new StatsQueryOptionsDto(),
+            LeagueAnalyticsContract.AllSections,
+            CancellationToken.None);
+
+        Assert.Equal(LeagueGatewayOutcome.RequestError, result.Outcome);
+        Assert.False(result.Error!.Retryable);
     }
 
     private static V2AnalyticsGateway CreateGateway(HttpMessageHandler handler)
