@@ -13,15 +13,10 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
-  <PropertyGroup>
-    <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('D:\repos\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj')">D:\repos\HandballManagerCore</HandballManagerCorePath>
-    <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == '' and Exists('..\..\HandballManagerCore\HandballManagerCore\HandballManagerCore.csproj')">..\..\HandballManagerCore</HandballManagerCorePath>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="$(HandballManagerCorePath)\HandballManagerCore\HandballManagerCore.csproj" />
-  </ItemGroup>
   <ItemGroup>
     <Compile Include="..\Configuration\ApiSettings.cs" Link="Configuration\ApiSettings.cs" />
+    <Compile Include="..\Models\Contracts\ApiContracts.cs" Link="Models\Contracts\ApiContracts.cs" />
+    <Compile Include="..\Models\Contracts\ReleaseArtifactValidator.cs" Link="Models\Contracts\ReleaseArtifactValidator.cs" />
     <Compile Include="..\Configuration\UpdateSettings.cs" Link="Configuration\UpdateSettings.cs" />
     <Compile Include="..\Models\Analytics\DashboardFoundationModels.cs" Link="Models\Analytics\DashboardFoundationModels.cs" />
     <Compile Include="..\Models\Analytics\KpiModels.cs" Link="Models\Analytics\KpiModels.cs" />
