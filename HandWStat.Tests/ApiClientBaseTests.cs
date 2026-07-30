@@ -27,6 +27,36 @@ public sealed class ApiClientBaseTests
         Assert.DoesNotContain("SQL stack trace", error.UserMessage, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task TooManyRequests_SurfacesRetryAfterSecondsFromDeltaHeader()
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.Add("Retry-After", "42");
+        using var httpClient = new HttpClient(new StubHandler(response));
+        var client = new TestApiClient(httpClient, new ApiSettings { BaseUrl = "https://example.test/" }, new StubAuthService());
+
+        var error = await Assert.ThrowsAsync<ApiRequestException>(() => client.GetValueAsync());
+
+        Assert.Equal(42, error.RetryAfterSeconds);
+        Assert.Equal(HttpStatusCode.TooManyRequests, error.StatusCode);
+    }
+
+    [Fact]
+    public async Task CorrelationId_IsExtractedFromXCorrelationIdHeaderWhenBodyIsNotProblemDetails()
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        response.Headers.Add("X-Correlation-ID", "header-corr-456");
+        using var httpClient = new HttpClient(new StubHandler(response));
+        var client = new TestApiClient(httpClient, new ApiSettings { BaseUrl = "https://example.test/" }, new StubAuthService());
+
+        var error = await Assert.ThrowsAsync<ApiRequestException>(() => client.GetValueAsync());
+
+        Assert.Equal("header-corr-456", error.CorrelationId);
+    }
+
     private sealed class TestApiClient : ApiClientBase
     {
         public TestApiClient(HttpClient httpClient, ApiSettings settings, IApiAuthService authService)
