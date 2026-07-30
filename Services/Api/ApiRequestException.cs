@@ -10,6 +10,7 @@ public sealed class ApiRequestException : Exception
         string? correlationId,
         bool retryable,
         HttpStatusCode? statusCode,
+        int? retryAfterSeconds = null,
         Exception? innerException = null)
         : base(userMessage, innerException)
     {
@@ -18,6 +19,7 @@ public sealed class ApiRequestException : Exception
         CorrelationId = correlationId;
         Retryable = retryable;
         StatusCode = statusCode;
+        RetryAfterSeconds = retryAfterSeconds;
     }
 
     public string UserMessage { get; }
@@ -29,4 +31,6 @@ public sealed class ApiRequestException : Exception
     public bool Retryable { get; }
 
     public HttpStatusCode? StatusCode { get; }
+
+    public int? RetryAfterSeconds { get; }
 }

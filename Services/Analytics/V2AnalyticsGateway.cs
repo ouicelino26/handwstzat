@@ -3,8 +3,8 @@ using System.Net;
 using System.Text.Json;
 using HandWStat.Configuration;
 using HandWStat.Models.Analytics;
+using HandWStat.Models.Contracts;
 using HandWStat.Services.Api;
-using HandballManagerCore.DTO;
 
 namespace HandWStat.Services.Analytics;
 
@@ -34,13 +34,18 @@ public sealed class V2AnalyticsGateway : ApiClientBase, ILeagueAnalyticsGateway
 
         try
         {
-            var response = await GetAsync<LeaguePlayerAnalyticsResponseDto>(
+            var getResult = await GetConditionalAsync<LeaguePlayerAnalyticsResponseDto>(
                 $"api/v2/analytics/players/{playerId}",
                 BuildQuery(options, normalizedInclude),
                 cancellationToken);
 
+            if (getResult.IsNotModified)
+            {
+                return LeagueGatewayResult.Success(null);
+            }
+
             var contractError = LeagueAnalyticsContractValidator.Validate(
-                response,
+                getResult.Value,
                 playerId,
                 normalizedInclude);
 
@@ -57,7 +62,7 @@ public sealed class V2AnalyticsGateway : ApiClientBase, ILeagueAnalyticsGateway
                         StatusCode: HttpStatusCode.OK));
             }
 
-            return LeagueGatewayResult.Success(response!);
+            return LeagueGatewayResult.Success(getResult.Value!);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -107,6 +112,8 @@ public sealed class V2AnalyticsGateway : ApiClientBase, ILeagueAnalyticsGateway
         {
             HttpStatusCode.NotFound => LeagueGatewayOutcome.NotFound,
             HttpStatusCode.MethodNotAllowed or HttpStatusCode.NotImplemented => LeagueGatewayOutcome.Unavailable,
+            HttpStatusCode.ServiceUnavailable => LeagueGatewayOutcome.ServiceUnavailable,
+            HttpStatusCode.TooManyRequests => LeagueGatewayOutcome.ServerError,
             _ when string.Equals(error.TechnicalCode, "API_TIMEOUT", StringComparison.Ordinal) =>
                 LeagueGatewayOutcome.Timeout,
             _ when error.StatusCode.HasValue && (int)error.StatusCode.Value >= 500 =>
@@ -120,6 +127,8 @@ public sealed class V2AnalyticsGateway : ApiClientBase, ILeagueAnalyticsGateway
                 "Cette joueuse est introuvable dans le périmètre demandé.",
             LeagueGatewayOutcome.Unavailable =>
                 "L'endpoint Ligue v2 n'est pas disponible sur ce serveur.",
+            LeagueGatewayOutcome.ServiceUnavailable =>
+                "Le service Ligue v2 est momentanément indisponible.",
             LeagueGatewayOutcome.Timeout =>
                 "Le service Ligue v2 met trop de temps à répondre.",
             LeagueGatewayOutcome.ServerError =>
@@ -134,7 +143,8 @@ public sealed class V2AnalyticsGateway : ApiClientBase, ILeagueAnalyticsGateway
                 error.TechnicalCode,
                 error.CorrelationId,
                 error.Retryable,
-                error.StatusCode));
+                error.StatusCode,
+                error.RetryAfterSeconds));
     }
 
     private static LeagueGatewayResult ContractFailure(string code) =>

@@ -26,6 +26,10 @@
                 <div><dt>Code technique</dt><dd>@(Result.Error?.TechnicalCode ?? "LEAGUE_UNAVAILABLE")</dd></div>
                 <div><dt>CorrelationId</dt><dd>@(Result.Error?.CorrelationId ?? "Non fourni")</dd></div>
                 <div><dt>Réessai possible</dt><dd>@(Result.Error?.Retryable == true ? "Oui" : "Non")</dd></div>
+                @if (Result.Error?.RetryAfterSeconds is { } retryAfter and > 0)
+                {
+                    <div><dt>Réessayez dans</dt><dd>@retryAfter secondes</dd></div>
+                }
                 <div><dt>Provenance</dt><dd>@Result.Source.Code()</dd></div>
             </dl>
         </div>

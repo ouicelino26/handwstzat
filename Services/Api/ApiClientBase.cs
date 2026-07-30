@@ -1,5 +1,7 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
 using HandWStat.Configuration;
@@ -13,6 +15,7 @@ public abstract class ApiClientBase
         PropertyNameCaseInsensitive = true
     };
 
+    private readonly ConcurrentDictionary<string, string> _etagCache = new(StringComparer.Ordinal);
     private readonly HttpClient _httpClient;
     private readonly ApiSettings _settings;
     private readonly IApiAuthService _authService;
@@ -26,8 +29,22 @@ public abstract class ApiClientBase
 
     protected async Task<T?> GetAsync<T>(string relativePath, ApiQueryBuilder? query = null, CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, BuildUri(relativePath, query));
-        return await SendAsync<T>(request, cancellationToken);
+        var result = await GetConditionalAsync<T>(relativePath, query, cancellationToken);
+        return result.Value;
+    }
+
+    protected async Task<ApiGetResult<T>> GetConditionalAsync<T>(string relativePath, ApiQueryBuilder? query = null, CancellationToken cancellationToken = default)
+    {
+        var uri = BuildUri(relativePath, query);
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+        var cacheKey = uri.AbsoluteUri;
+        if (_etagCache.TryGetValue(cacheKey, out var cachedEtag))
+        {
+            request.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(cachedEtag, isWeak: false));
+        }
+
+        return await SendConditionalAsync<T>(request, cacheKey, cancellationToken);
     }
 
     protected async Task<IReadOnlyList<T>> GetListAsync<T>(string relativePath, ApiQueryBuilder? query = null, CancellationToken cancellationToken = default)
@@ -39,10 +56,11 @@ public abstract class ApiClientBase
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, BuildUri(relativePath));
         request.Content = JsonContent.Create(requestBody, options: SerializerOptions);
-        return await SendAsync<T>(request, cancellationToken);
+        var result = await SendConditionalAsync<T>(request, cacheKey: null, cancellationToken);
+        return result.Value;
     }
 
-    private async Task<T?> SendAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken)
+    private async Task<ApiGetResult<T>> SendConditionalAsync<T>(HttpRequestMessage request, string? cacheKey, CancellationToken cancellationToken)
     {
         _authService.ApplyAuthorization(request);
 
@@ -69,17 +87,28 @@ public abstract class ApiClientBase
                 null,
                 retryable: true,
                 ex.StatusCode,
-                ex);
+                innerException: ex);
         }
 
         using (response)
         {
+            if (response.StatusCode == HttpStatusCode.NotModified)
+            {
+                return ApiGetResult<T>.NotModified();
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 throw await CreateRequestExceptionAsync(request, response, cancellationToken);
             }
 
-            return await response.Content.ReadFromJsonAsync<T>(SerializerOptions, cancellationToken);
+            if (cacheKey is not null && response.Headers.ETag is { Tag: { Length: > 0 } etag })
+            {
+                _etagCache[cacheKey] = etag;
+            }
+
+            var value = await response.Content.ReadFromJsonAsync<T>(SerializerOptions, cancellationToken);
+            return ApiGetResult<T>.Ok(value);
         }
     }
 
@@ -99,6 +128,8 @@ public abstract class ApiClientBase
             or HttpStatusCode.TooManyRequests
             || (int)response.StatusCode >= 500;
 
+        var retryAfterSeconds = TryReadRetryAfter(response);
+
         var userMessage = response.StatusCode switch
         {
             HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
@@ -117,14 +148,36 @@ public abstract class ApiClientBase
 
         Debug.WriteLine(
             $"[HandWStat API] {(int)response.StatusCode} {response.ReasonPhrase} for {request.RequestUri}; "
-            + $"code={technicalCode}; correlationId={correlationId}; body={details}");
+            + $"code={technicalCode}; correlationId={correlationId}; retryAfter={retryAfterSeconds}s; body={details}");
 
         return new ApiRequestException(
             userMessage,
             technicalCode,
             correlationId,
             retryable,
-            response.StatusCode);
+            response.StatusCode,
+            retryAfterSeconds);
+    }
+
+    private static int? TryReadRetryAfter(HttpResponseMessage response)
+    {
+        if (response.Headers.RetryAfter is not { } retryAfter)
+        {
+            return null;
+        }
+
+        if (retryAfter.Delta.HasValue)
+        {
+            return (int)Math.Ceiling(retryAfter.Delta.Value.TotalSeconds);
+        }
+
+        if (retryAfter.Date.HasValue)
+        {
+            var seconds = (retryAfter.Date.Value - DateTimeOffset.UtcNow).TotalSeconds;
+            return seconds > 0 ? (int)Math.Ceiling(seconds) : 0;
+        }
+
+        return null;
     }
 
     private static string? TryReadProblemString(string json, string propertyName)
@@ -174,4 +227,20 @@ public abstract class ApiClientBase
 
         return normalized.EndsWith("/", StringComparison.Ordinal) ? normalized : normalized + "/";
     }
+}
+
+public readonly struct ApiGetResult<T>
+{
+    public T? Value { get; }
+    public bool IsNotModified { get; }
+
+    private ApiGetResult(T? value, bool notModified)
+    {
+        Value = value;
+        IsNotModified = notModified;
+    }
+
+    public static ApiGetResult<T> Ok(T? value) => new(value, notModified: false);
+
+    public static ApiGetResult<T> NotModified() => new(default, notModified: true);
 }
