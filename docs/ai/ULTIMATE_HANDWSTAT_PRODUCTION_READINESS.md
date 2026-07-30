@@ -21,7 +21,9 @@
 | `GATE_HANDOFF_CHECKSUMS_VERIFIED` | ✅ PASS | 9 / 9 fichiers SHA-256 source == destination |
 | `GATE_API_REMOTE_REPRODUCIBILITY` | ❌ BLOCKED | `BLOCKED_BY_UNPUSHED_CORE` |
 | `GATE_BUILD_IOS` | ⚠️ NON TESTÉ | Build iOS nécessite macOS |
-| `GATE_BUILD_ANDROID` | ⚠️ NON TESTÉ | Build Android non exécuté (hors scope local) |
+| `GATE_BUILD_ANDROID` | ❌ DISK_FULL | 0 erreur code, 16 warnings — échoué `XAJCW7024` disque plein (110/110 AOT compilés, échec Java wrappers écriture) |
+| `GATE_CI_VALID` | ❌ CASSÉ | Step Core checkout référence `HandballManagerMaui` — **corrigé dans RC-04** |
+| `GATE_DISK_SPACE` | ❌ BLOQUÉ | Disque local plein — scripts release et clean-clone non exécutables |
 
 ---
 

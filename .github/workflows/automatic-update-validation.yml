@@ -16,13 +16,6 @@ jobs:
         with:
           path: HandWStat
 
-      - name: Checkout shared Core contracts
-        uses: actions/checkout@v4
-        with:
-          repository: ouicelino26/HandballManagerMaui
-          ref: feature/release-versioning-v1
-          path: HandballManagerCore
-
       - name: Install .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -44,9 +37,16 @@ jobs:
         working-directory: HandWStat
         run: dotnet build HandWStat.csproj -c Release -f net10.0-android --no-restore
 
-      - name: Test automatic update workflow
+      - name: Run tests
         working-directory: HandWStat
-        run: dotnet test HandWStat.Tests/HandWStat.Tests.csproj -c Release --no-restore
+        run: dotnet test HandWStat.Tests/HandWStat.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: HandWStat/HandWStat.Tests/TestResults/*.trx
 
       - name: Targeted secret scan
         shell: pwsh
@@ -54,4 +54,15 @@ jobs:
         run: |
           $matches = git grep -n -I -E 'AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{30,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
           if ($LASTEXITCODE -eq 0) { $matches; exit 1 }
+          exit 0
+
+      - name: Verify no HandballManagerCore reference
+        shell: pwsh
+        working-directory: HandWStat
+        run: |
+          $refs = git grep -rn 'HandballManagerCore' -- '*.csproj' '*.cs' '*.razor'
+          if ($LASTEXITCODE -eq 0) {
+            Write-Error "Found HandballManagerCore reference(s) — dependency must not exist:`n$refs"
+            exit 1
+          }
           exit 0
