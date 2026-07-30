@@ -434,18 +434,19 @@ public sealed class StatsDashboardService
     private static IReadOnlyList<ZoneStat> MapGoalZones(IReadOnlyList<ZoneStatDto>? stats, IReadOnlyList<ZoneStatDto>? eventsByZone)
     {
         var outcomesByZone = (eventsByZone ?? [])
-            .ToDictionary(zone => zone.ZoneCode, zone => zone.Outcomes, StringComparer.OrdinalIgnoreCase);
+            .Where(zone => zone.ZoneCode is not null)
+            .ToDictionary(zone => zone.ZoneCode!, zone => zone.Outcomes, StringComparer.OrdinalIgnoreCase);
 
         return (stats ?? [])
             .Select(zone => new ZoneStat(
-                zone.ZoneCode,
-                zone.ZoneCode,
+                zone.ZoneCode ?? string.Empty,
+                zone.ZoneCode ?? string.Empty,
                 zone.SuccessRate,
                 zone.Attempts,
                 zone.SuccessCount,
-                outcomesByZone.TryGetValue(zone.ZoneCode, out var outcomes)
-                    ? outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList()
-                    : zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList()))
+                outcomesByZone.TryGetValue(zone.ZoneCode ?? string.Empty, out var outcomes)
+                    ? outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList()
+                    : zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList()))
             .ToList();
     }
 
@@ -458,7 +459,7 @@ public sealed class StatsDashboardService
                 zone.SuccessRate,
                 zone.Attempts,
                 zone.SuccessCount,
-                zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList()))
+                zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList()))
             .ToList();
     }
 

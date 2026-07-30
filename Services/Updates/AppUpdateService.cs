@@ -250,7 +250,7 @@ public sealed class AppUpdateService(
                 || string.Equals(artifact.Architecture, "ANY", StringComparison.OrdinalIgnoreCase))
             && ReleaseArtifactValidator.TryValidate(
                 new ReleaseArtifactValidationInput(
-                    response.LatestVersion,
+                    response.LatestVersion ?? string.Empty,
                     artifact.BuildNumber,
                     artifact.Platform,
                     artifact.Architecture,
