@@ -25,6 +25,11 @@
     <Compile Include="..\Services\Api\ApiClientBase.cs" Link="Services\Api\ApiClientBase.cs" />
     <Compile Include="..\Services\Api\ApiQueryBuilder.cs" Link="Services\Api\ApiQueryBuilder.cs" />
     <Compile Include="..\Services\Api\ApiRequestException.cs" Link="Services\Api\ApiRequestException.cs" />
+    <Compile Include="..\Services\Api\StatsApiClient.cs" Link="Services\Api\StatsApiClient.cs" />
+    <Compile Include="..\Services\Api\MatchesApiClient.cs" Link="Services\Api\MatchesApiClient.cs" />
+    <Compile Include="..\Services\Api\PlayersApiClient.cs" Link="Services\Api\PlayersApiClient.cs" />
+    <Compile Include="..\Models\Analytics\TeamOfTheDayModels.cs" Link="Models\Analytics\TeamOfTheDayModels.cs" />
+    <Compile Include="..\Models\Analytics\FilterModels.cs" Link="Models\Analytics\FilterModels.cs" />
     <Compile Include="..\Services\Analytics\ILeagueAnalyticsGateway.cs" Link="Services\Analytics\ILeagueAnalyticsGateway.cs" />
     <Compile Include="..\Services\Analytics\LeagueAnalyticsContractValidator.cs" Link="Services\Analytics\LeagueAnalyticsContractValidator.cs" />
     <Compile Include="..\Services\Analytics\LeaguePlayerAnalyticsService.cs" Link="Services\Analytics\LeaguePlayerAnalyticsService.cs" />
