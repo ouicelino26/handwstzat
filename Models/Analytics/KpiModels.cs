@@ -70,7 +70,7 @@ public static class HandballKpiHelper
             return 0;
         }
 
-        return sanctions.Exclusions + sanctions.Avertissements + sanctions.DeuxMinutes + sanctions.PenaltyConcede;
+        return sanctions.Exclusions + sanctions.Avertissements + sanctions.DeuxMinutes;
     }
 
     public static int ShotAttempts(PlayerOffenseStatsDto? offense)
