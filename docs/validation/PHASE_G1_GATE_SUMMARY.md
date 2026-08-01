@@ -7,8 +7,8 @@ Date: 2026-08-02 | Branches: fix/handwstat-final-validation-v1 + fix/analytics-f
 | Indicateur | Valeur |
 |---|---|
 | Gates évalués | 26 |
-| PASS | 24 |
-| BLOCKED_EXTERNAL | 2 (GATE_ACCESSIBILITY, GATE_CLEAN_CLONE) |
+| PASS | 25 |
+| BLOCKED_EXTERNAL | 1 (GATE_ACCESSIBILITY) |
 | `GATE_TESTS` API | PASS (116/116, +26 ajoutés) |
 | `GATE_TESTS` HandWStat | PASS (257/257, +25 ajoutés) |
 | `EXPORT_RAW_ID_FIELD_COUNT` | 0 ✅ |
@@ -49,7 +49,7 @@ Date: 2026-08-02 | Branches: fix/handwstat-final-validation-v1 + fix/analytics-f
 | G1-23 | `GATE_MATCH_TEAM_FILTER` | ✅ PASS (Phase G) | Filtres équipe/journée/saison synchronisés |
 | G1-24 | `GATE_ACCESSIBILITY` | ⚠️ BLOCKED_EXTERNAL | Nécessite test manuel sur device |
 | G1-25 | `GATE_RESPONSIVE` | ⚠️ BLOCKED_EXTERNAL | Nécessite test manuel multi-tailles |
-| G1-26 | `GATE_CLEAN_CLONE` | ⏳ PENDING | Nécessite push des branches + clone vierge |
+| G1-26 | `GATE_CLEAN_CLONE` | ✅ PASS | Clone vierge → restore → build 0 erreur → 257/257 HandWStat + 116/116 API (avec HandballManagerCore co-localisé) |
 
 ## Commits Phase G.1
 
@@ -80,5 +80,5 @@ Date: 2026-08-02 | Branches: fix/handwstat-final-validation-v1 + fix/analytics-f
 11. `RANKING_VALIDATION.md`
 12. `PHASE_G1_GATE_SUMMARY.md` (ce document)
 
-**CODE_RELEASE_READINESS_G1 = 24/26 = 92 %**
+**CODE_RELEASE_READINESS_G1 = 25/26 = 96 %**
 **READY_FOR_PUBLICATION = NO** (GATE_CLEAN_CLONE + externals)
