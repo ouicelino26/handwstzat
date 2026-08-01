@@ -13,7 +13,7 @@ public sealed class TeamOfTheDayService
         new("goalkeeper", "Gardienne", "goalkeeper", 1, ["GB", "GK", "GARDIENNE", "GARDIEN", "GOALKEEPER"]),
         new("left-wing", "Ailiere gauche", "left-wing", 2, ["ALG", "AG", "AIG", "AILIERE GAUCHE", "AILIER GAUCHE", "LEFT WING", "LW"]),
         new("left-back", "Arriere gauche", "left-back", 3, ["ARG", "AR G", "ARRIERE GAUCHE", "LEFT BACK", "LB"]),
-        new("center-back", "Demi-centre", "center-back", 4, ["DC", "DEMI CENTRE", "DEMI-CENTRE", "CENTRE", "CENTER BACK", "PLAYMAKER", "CB"]),
+        new("center-back", "Demi-centre", "center-back", 4, ["DC", "DEMI", "DEMI CENTRE", "DEMI-CENTRE", "CENTRE", "CENTER BACK", "PLAYMAKER", "CB"]),
         new("pivot", "Pivot", "pivot", 5, ["P", "PIV", "PIVOT", "LINE PLAYER", "LP"]),
         new("right-back", "Arriere droite", "right-back", 6, ["ARD", "AR D", "ARRIERE DROITE", "RIGHT BACK", "RB"]),
         new("right-wing", "Ailiere droite", "right-wing", 7, ["ALD", "AD", "AID", "AILIERE DROITE", "AILIER DROIT", "RIGHT WING", "RW"])

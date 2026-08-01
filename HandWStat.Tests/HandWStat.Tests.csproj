@@ -30,6 +30,10 @@
     <Compile Include="..\Services\Api\PlayersApiClient.cs" Link="Services\Api\PlayersApiClient.cs" />
     <Compile Include="..\Models\Analytics\TeamOfTheDayModels.cs" Link="Models\Analytics\TeamOfTheDayModels.cs" />
     <Compile Include="..\Models\Analytics\FilterModels.cs" Link="Models\Analytics\FilterModels.cs" />
+    <Compile Include="..\Models\Analytics\ChartModels.cs" Link="Models\Analytics\ChartModels.cs" />
+    <Compile Include="..\Models\Analytics\MatchScenarioAnalyzer.cs" Link="Models\Analytics\MatchScenarioAnalyzer.cs" />
+    <Compile Include="..\Models\Analytics\MatchFilterCatalog.cs" Link="Models\Analytics\MatchFilterCatalog.cs" />
+    <Compile Include="..\Services\AnalysisScopeService.cs" Link="Services\AnalysisScopeService.cs" />
     <Compile Include="..\Services\Analytics\ILeagueAnalyticsGateway.cs" Link="Services\Analytics\ILeagueAnalyticsGateway.cs" />
     <Compile Include="..\Services\Analytics\LeagueAnalyticsContractValidator.cs" Link="Services\Analytics\LeagueAnalyticsContractValidator.cs" />
     <Compile Include="..\Services\Analytics\LeaguePlayerAnalyticsService.cs" Link="Services\Analytics\LeaguePlayerAnalyticsService.cs" />

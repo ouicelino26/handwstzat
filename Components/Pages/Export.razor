@@ -1,6 +1,12 @@
 @page "/export"
 @inject ExportApiClient ExportClient
 @inject IApiAuthService AuthService
+@inject AnalysisScopeService ScopeService
+@inject ReferenceDataService RefData
+@inject CompetitionsApiClient CompetitionsClient
+@inject TeamsApiClient TeamsClient
+@inject PlayersApiClient PlayersClient
+@inject MatchesApiClient MatchesClient
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -43,48 +49,125 @@
                         </div>
                     </div>
 
+                    <!-- Competition selector -->
+                    <div class="form-group">
+                        <label class="form-label">Competition</label>
+                        @if (_competitions.Count > 0)
+                        {
+                            <select class="form-input form-select"
+                                    value="@_selectedCompetitionId"
+                                    @onchange="OnCompetitionChanged">
+                                <option value="">— Toutes les competitions —</option>
+                                @foreach (var c in _competitions)
+                                {
+                                    <option value="@c.CompetitionId">@c.CompetitionName (@c.MatchCount matchs)</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <span class="form-loading">Chargement…</span>
+                        }
+                    </div>
+
+                    <!-- Season input -->
                     <div class="form-group">
                         <label class="form-label">Saison</label>
                         <input class="form-input" type="text" placeholder="ex: 2024-2025"
                                @bind="SeasonLabel" @bind:event="oninput" />
                     </div>
 
+                    <!-- Year input -->
                     <div class="form-group">
                         <label class="form-label">Annee</label>
                         <input class="form-input" type="number" placeholder="ex: 2025"
                                @bind="SeasonYear" />
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Competition (id)</label>
-                        <input class="form-input" type="number" placeholder="Optionnel"
-                               @bind="CompetitionId" />
-                    </div>
-
+                    <!-- Team selector (Scope=TEAM) -->
                     @if (Scope is "TEAM")
                     {
                         <div class="form-group">
-                            <label class="form-label">Equipe (id)</label>
-                            <input class="form-input" type="number" placeholder="Id equipe"
-                                   @bind="TeamId" />
+                            <label class="form-label">Equipe</label>
+                            @if (_teams.Count > 0)
+                            {
+                                <select class="form-input form-select"
+                                        value="@_selectedTeamId"
+                                        @onchange="OnTeamChanged">
+                                    <option value="">— Choisir une equipe —</option>
+                                    @foreach (var t in _teams)
+                                    {
+                                        <option value="@t.TeamId">@t.TeamName</option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                <span class="form-loading">Chargement…</span>
+                            }
                         </div>
                     }
 
+                    <!-- Player selector (Scope=PLAYER or MULTIPLE_PLAYERS) -->
                     @if (Scope is "PLAYER" or "MULTIPLE_PLAYERS")
                     {
                         <div class="form-group">
-                            <label class="form-label">Joueuses (ids, virgule)</label>
-                            <input class="form-input" type="text" placeholder="ex: 12,45,78"
-                                   @bind="PlayerIdsRaw" @bind:event="oninput" />
+                            <label class="form-label">Joueuse(s)</label>
+                            @if (_players.Count > 0)
+                            {
+                                <select class="form-input form-select" multiple="@(Scope == "MULTIPLE_PLAYERS")"
+                                        @onchange="OnPlayersChanged" size="@(Scope == "MULTIPLE_PLAYERS" ? 6 : 1)">
+                                    @if (Scope == "PLAYER")
+                                    {
+                                        <option value="">— Choisir une joueuse —</option>
+                                    }
+                                    @foreach (var p in _players)
+                                    {
+                                        <option value="@p.PlayerId"
+                                                selected="@_selectedPlayerIds.Contains(p.PlayerId)">
+                                            @p.FullName @(p.TeamName is not null ? $"({p.TeamName})" : "")
+                                        </option>
+                                    }
+                                </select>
+                                @if (Scope == "MULTIPLE_PLAYERS")
+                                {
+                                    <small class="form-hint">Maintenez Ctrl/Cmd pour selectionner plusieurs joueuses</small>
+                                }
+                            }
+                            else
+                            {
+                                <span class="form-loading">Chargement…</span>
+                            }
                         </div>
                     }
 
+                    <!-- Match selector (Scope=MATCH) -->
                     @if (Scope is "MATCH")
                     {
                         <div class="form-group">
-                            <label class="form-label">Matchs (ids, virgule)</label>
-                            <input class="form-input" type="text" placeholder="ex: 101,102"
-                                   @bind="MatchIdsRaw" @bind:event="oninput" />
+                            <label class="form-label">Match(s)</label>
+                            @if (_matches.Count > 0)
+                            {
+                                <select class="form-input form-select" multiple size="6"
+                                        @onchange="OnMatchesChanged">
+                                    @foreach (var m in _matches)
+                                    {
+                                        <option value="@m.MatchId"
+                                                selected="@_selectedMatchIds.Contains(m.MatchId)">
+                                            @FormatMatchLabel(m)
+                                        </option>
+                                    }
+                                </select>
+                                <small class="form-hint">Maintenez Ctrl/Cmd pour selectionner plusieurs matchs</small>
+                            }
+                            else if (_matchesLoading)
+                            {
+                                <span class="form-loading">Chargement…</span>
+                            }
+                            else
+                            {
+                                <span class="form-hint">Selectionnez une competition ou une saison pour filtrer les matchs.</span>
+                            }
                         </div>
                     }
 
@@ -201,10 +284,6 @@
     private string Scope { get; set; } = "SEASON";
     private string? SeasonLabel { get; set; }
     private int? SeasonYear { get; set; }
-    private int? CompetitionId { get; set; }
-    private int? TeamId { get; set; }
-    private string? PlayerIdsRaw { get; set; }
-    private string? MatchIdsRaw { get; set; }
     private DateTime? DateFrom { get; set; }
     private DateTime? DateTo { get; set; }
     private bool IncludeRawEvents { get; set; }
@@ -216,6 +295,19 @@
         "SEASON_SUMMARY", "TEAMS", "PLAYERS", "PLAYERS_PER_MATCH",
         "GOALKEEPERS", "MATCHES", "SHOTS", "DEFENSE", "METRIC_DICTIONARY"
     };
+
+    // lookup selections (IDs for BuildRequest; names from selected items for display)
+    private int? _selectedCompetitionId;
+    private int? _selectedTeamId;
+    private List<int> _selectedPlayerIds = [];
+    private List<int> _selectedMatchIds = [];
+
+    // reference data
+    private List<CompetitionDto> _competitions = [];
+    private List<TeamDto> _teams = [];
+    private List<PlayerListItemDto> _players = [];
+    private List<MatchListItemDto> _matches = [];
+    private bool _matchesLoading;
 
     private bool IsBusy { get; set; }
     private string? ErrorMessage { get; set; }
@@ -247,7 +339,7 @@
         ("SEASON_SUMMARY", "Totaux aggreges saison"),
         ("TEAMS", "Stats par equipe"),
         ("PLAYERS", "Stats par joueuse"),
-        ("PLAYERS_PER_MATCH", "Stats joueuse × match"),
+        ("PLAYERS_PER_MATCH", "Stats joueuse x match"),
         ("GOALKEEPERS", "Metriques gardiennes"),
         ("MATCHES", "Liste des matchs"),
         ("SHOTS", "Logs de tirs"),
@@ -255,12 +347,143 @@
         ("METRIC_DICTIONARY", "Dictionnaire des metriques"),
     ];
 
-    // ── handlers ───────────────────────────────────────────────────────────────
+    // ── lifecycle ──────────────────────────────────────────────────────────────
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.Session.IsAuthenticated)
+        {
+            return;
+        }
+
+        // Load reference data and players in parallel
+        var refTask = RefData.GetReferenceDataAsync();
+        var playersTask = PlayersClient.GetPlayersAsync(pageSize: 500, cancellationToken: CancellationToken.None);
+
+        try { await Task.WhenAll(refTask, playersTask); } catch { /* partial failures handled below */ }
+
+        var refDataResult = refTask.IsCompletedSuccessfully ? refTask.Result : null;
+        _competitions = refDataResult?.Competitions.ToList() ?? [];
+        _teams = refDataResult?.Teams.ToList() ?? [];
+
+        try
+        {
+            _players = playersTask.IsCompletedSuccessfully
+                ? playersTask.Result.OrderBy(p => p.FullName).ToList()
+                : [];
+        }
+        catch { _players = []; }
+
+        // Prefill from active scope
+        PrefillFromScope();
+    }
+
+    private void PrefillFromScope()
+    {
+        var scope = ScopeService.Current;
+        if (!scope.HasValue)
+        {
+            return;
+        }
+
+        if (scope.CompetitionId.HasValue)
+        {
+            _selectedCompetitionId = scope.CompetitionId;
+        }
+
+        if (scope.TeamId.HasValue)
+        {
+            _selectedTeamId = scope.TeamId;
+            if (Scope == "SEASON")
+            {
+                Scope = "TEAM";
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(scope.Season))
+        {
+            SeasonLabel = scope.Season;
+        }
+    }
+
+    // ── event handlers ─────────────────────────────────────────────────────────
 
     private void SetScope(string scope)
     {
         Scope = scope;
         ErrorMessage = null;
+        _selectedMatchIds = [];
+        if (scope == "MATCH")
+        {
+            _ = LoadMatchesAsync();
+        }
+    }
+
+    private async Task OnCompetitionChanged(ChangeEventArgs e)
+    {
+        _selectedCompetitionId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
+        if (Scope == "MATCH")
+        {
+            await LoadMatchesAsync();
+        }
+    }
+
+    private void OnTeamChanged(ChangeEventArgs e)
+    {
+        _selectedTeamId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
+    }
+
+    private void OnPlayersChanged(ChangeEventArgs e)
+    {
+        if (e.Value is string single)
+        {
+            _selectedPlayerIds = int.TryParse(single, out var id) && id > 0
+                ? [id]
+                : [];
+        }
+        else if (e.Value is string[] multiple)
+        {
+            _selectedPlayerIds = multiple
+                .Where(s => int.TryParse(s, out _))
+                .Select(int.Parse)
+                .ToList();
+        }
+    }
+
+    private void OnMatchesChanged(ChangeEventArgs e)
+    {
+        if (e.Value is string[] multiple)
+        {
+            _selectedMatchIds = multiple
+                .Where(s => int.TryParse(s, out _))
+                .Select(int.Parse)
+                .ToList();
+        }
+    }
+
+    private async Task LoadMatchesAsync()
+    {
+        _matchesLoading = true;
+        _matches = [];
+        StateHasChanged();
+
+        try
+        {
+            var result = await MatchesClient.GetMatchesAsync(
+                competitionId: _selectedCompetitionId,
+                season: SeasonLabel,
+                page: 1,
+                pageSize: 500,
+                cancellationToken: CancellationToken.None);
+
+            _matches = result.OrderByDescending(m => m.Date).ToList();
+        }
+        catch { /* non-blocking */ }
+        finally
+        {
+            _matchesLoading = false;
+            StateHasChanged();
+        }
     }
 
     private void ToggleSection(string key)
@@ -332,8 +555,6 @@
 
     private AnalyticsExportRequestDto BuildRequest()
     {
-        var playerIds = ParseIds(PlayerIdsRaw);
-        var matchIds = ParseIds(MatchIdsRaw);
         var sections = SelectedSections.ToList();
         if (IncludeDataQuality) sections.Add("DATA_QUALITY");
         if (IncludeRawEvents) sections.Add("EVENTS");
@@ -343,10 +564,10 @@
             Scope = Scope,
             SeasonLabel = string.IsNullOrWhiteSpace(SeasonLabel) ? null : SeasonLabel.Trim(),
             SeasonYear = SeasonYear,
-            CompetitionId = CompetitionId,
-            TeamId = TeamId,
-            PlayerIds = playerIds.Count > 0 ? playerIds : null,
-            MatchIds = matchIds.Count > 0 ? matchIds : null,
+            CompetitionId = _selectedCompetitionId,
+            TeamId = _selectedTeamId,
+            PlayerIds = _selectedPlayerIds.Count > 0 ? _selectedPlayerIds : null,
+            MatchIds = _selectedMatchIds.Count > 0 ? _selectedMatchIds : null,
             DateFrom = DateFrom,
             DateTo = DateTo,
             Sections = sections,
@@ -357,19 +578,19 @@
         };
     }
 
-    private static List<int> ParseIds(string? raw)
+    private static string FormatMatchLabel(MatchListItemDto m)
     {
-        if (string.IsNullOrWhiteSpace(raw)) return [];
-        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                  .Where(s => int.TryParse(s, out _))
-                  .Select(int.Parse)
-                  .Distinct()
-                  .ToList();
+        var date = m.Date.HasValue ? m.Date.Value.ToString("dd/MM/yyyy") : "—";
+        var team1 = m.Team1Name ?? "Eq.1";
+        var team2 = m.Team2Name ?? "Eq.2";
+        var score = (m.Team1Score.HasValue && m.Team2Score.HasValue)
+            ? $" {m.Team1Score}-{m.Team2Score}"
+            : "";
+        return $"{date} — {team1} vs {team2}{score}";
     }
 
     private async Task SaveFileAsync(byte[] content, string fileName, string contentType)
     {
-        // Write to app data dir, then share via MAUI Share API
         var path = Path.Combine(FileSystem.AppDataDirectory, fileName);
         await File.WriteAllBytesAsync(path, content);
 
