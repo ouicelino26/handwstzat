@@ -228,7 +228,7 @@
 
                                     <div class="stats-grid player-stat-grid">
                                         <div class="mini-card"><span>Matchs</span><strong>@profile.MatchesPlayed</strong></div>
-                                        <div class="mini-card"><span>Temps / match</span><strong>@FormatRate(profile.AveragePlayingTimePerMatchMinutes) min</strong></div>
+                                        <div class="mini-card"><span>Temps / match</span><strong>@(profile.MatchesWithPlayingTime > 0 ? $"{FormatRate(profile.AveragePlayingTimePerMatchMinutes)} min" : "Non disponible")</strong></div>
                                         <div class="mini-card"><span>Actions directes</span><strong>@DirectActionsCount()</strong></div>
                                         <div class="mini-card"><span>Indice global</span><strong>@FormatRate(PlayerTechnicalBalanceScore)%</strong></div>
                                     </div>
