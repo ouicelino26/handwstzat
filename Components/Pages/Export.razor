@@ -1,0 +1,388 @@
+@page "/export"
+@inject ExportApiClient ExportClient
+@inject IApiAuthService AuthService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Export</PageTitle>
+
+<div class="export-workspace" data-workspace="export">
+    @if (!AuthService.Session.IsAuthenticated)
+    {
+        <AccessRequiredCard Message="Connectez-vous pour generer un export analytique." />
+    }
+    else
+    {
+        <header class="lab-manifesto">
+            <span>Workspace 06 / Export</span>
+            <h2 data-page-title>Extraire la donnee brute du scope.</h2>
+            <p>Generez un classeur Excel avec les 12 feuilles analytiques du perimetre choisi.</p>
+        </header>
+
+        <div class="export-layout">
+
+            <!-- ── Scope panel ── -->
+            <section class="export-panel">
+                <div class="panel-head">
+                    <p class="section-kicker">Perimetre</p>
+                    <h3>Definition du scope</h3>
+                </div>
+
+                <div class="export-form">
+
+                    <div class="form-group">
+                        <label class="form-label">Type d'export</label>
+                        <div class="scope-pills">
+                            @foreach (var s in ScopeOptions)
+                            {
+                                <button class="scope-pill @(Scope == s.Value ? "is-active" : "")"
+                                        @onclick="() => SetScope(s.Value)">
+                                    @s.Label
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Saison</label>
+                        <input class="form-input" type="text" placeholder="ex: 2024-2025"
+                               @bind="SeasonLabel" @bind:event="oninput" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Annee</label>
+                        <input class="form-input" type="number" placeholder="ex: 2025"
+                               @bind="SeasonYear" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Competition (id)</label>
+                        <input class="form-input" type="number" placeholder="Optionnel"
+                               @bind="CompetitionId" />
+                    </div>
+
+                    @if (Scope is "TEAM")
+                    {
+                        <div class="form-group">
+                            <label class="form-label">Equipe (id)</label>
+                            <input class="form-input" type="number" placeholder="Id equipe"
+                                   @bind="TeamId" />
+                        </div>
+                    }
+
+                    @if (Scope is "PLAYER" or "MULTIPLE_PLAYERS")
+                    {
+                        <div class="form-group">
+                            <label class="form-label">Joueuses (ids, virgule)</label>
+                            <input class="form-input" type="text" placeholder="ex: 12,45,78"
+                                   @bind="PlayerIdsRaw" @bind:event="oninput" />
+                        </div>
+                    }
+
+                    @if (Scope is "MATCH")
+                    {
+                        <div class="form-group">
+                            <label class="form-label">Matchs (ids, virgule)</label>
+                            <input class="form-input" type="text" placeholder="ex: 101,102"
+                                   @bind="MatchIdsRaw" @bind:event="oninput" />
+                        </div>
+                    }
+
+                    <div class="form-group form-group--dates">
+                        <div>
+                            <label class="form-label">De</label>
+                            <input class="form-input" type="date"
+                                   @bind="DateFrom" />
+                        </div>
+                        <div>
+                            <label class="form-label">Au</label>
+                            <input class="form-input" type="date"
+                                   @bind="DateTo" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Sections panel ── -->
+            <section class="export-panel">
+                <div class="panel-head">
+                    <p class="section-kicker">Contenu</p>
+                    <h3>Feuilles a inclure</h3>
+                </div>
+
+                <div class="section-checkboxes">
+                    @foreach (var sec in AllSections)
+                    {
+                        <label class="section-checkbox">
+                            <input type="checkbox"
+                                   checked="@SelectedSections.Contains(sec.Key)"
+                                   @onchange="() => ToggleSection(sec.Key)" />
+                            <span>
+                                <strong>@sec.Key</strong>
+                                <em>@sec.Description</em>
+                            </span>
+                        </label>
+                    }
+                </div>
+
+                <div class="export-options">
+                    <label class="section-checkbox">
+                        <input type="checkbox" @bind="IncludeRawEvents" />
+                        <span><strong>09_Events</strong> <em>Evenements bruts (lent)</em></span>
+                    </label>
+                    <label class="section-checkbox">
+                        <input type="checkbox" @bind="IncludeShotCoordinates" />
+                        <span><strong>Coordonnees de tir</strong> <em>Zone + raw x/y</em></span>
+                    </label>
+                    <label class="section-checkbox">
+                        <input type="checkbox" @bind="IncludeDataQuality" />
+                        <span><strong>10_Data_Quality</strong> <em>Completude par match</em></span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- ── Action panel ── -->
+            <section class="export-panel export-panel--action">
+                @if (ErrorMessage is not null)
+                {
+                    <div class="export-error">
+                        <span>@ErrorMessage</span>
+                        <button class="btn-dismiss" @onclick="ClearError">×</button>
+                    </div>
+                }
+
+                @if (Warnings.Count > 0)
+                {
+                    <div class="export-warnings">
+                        @foreach (var w in Warnings)
+                        {
+                            <p>⚠ @w</p>
+                        }
+                    </div>
+                }
+
+                @if (GeneratedFileName is not null)
+                {
+                    <div class="export-success">
+                        <p>Fichier genere : <strong>@GeneratedFileName</strong></p>
+                        <p class="export-meta">@GeneratedFileSize KB · SHA-256: @(GeneratedSha256?[..16])…</p>
+                    </div>
+                }
+
+                <div class="export-actions">
+                    <button class="btn-primary @(IsBusy ? "is-loading" : "")"
+                            disabled="@IsBusy"
+                            @onclick="GenerateAndDownload">
+                        @if (IsBusy)
+                        {
+                            <span class="spinner" aria-hidden="true"></span>
+                            <span>Generation en cours…</span>
+                        }
+                        else
+                        {
+                            <span>Generer et telecharger</span>
+                        }
+                    </button>
+
+                    @if (IsBusy)
+                    {
+                        <button class="btn-secondary" @onclick="Cancel">Annuler</button>
+                    }
+                </div>
+            </section>
+
+        </div>
+    }
+</div>
+
+@code {
+    // ── state ──────────────────────────────────────────────────────────────────
+
+    private string Scope { get; set; } = "SEASON";
+    private string? SeasonLabel { get; set; }
+    private int? SeasonYear { get; set; }
+    private int? CompetitionId { get; set; }
+    private int? TeamId { get; set; }
+    private string? PlayerIdsRaw { get; set; }
+    private string? MatchIdsRaw { get; set; }
+    private DateTime? DateFrom { get; set; }
+    private DateTime? DateTo { get; set; }
+    private bool IncludeRawEvents { get; set; }
+    private bool IncludeShotCoordinates { get; set; }
+    private bool IncludeDataQuality { get; set; } = true;
+
+    private HashSet<string> SelectedSections { get; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "SEASON_SUMMARY", "TEAMS", "PLAYERS", "PLAYERS_PER_MATCH",
+        "GOALKEEPERS", "MATCHES", "SHOTS", "DEFENSE", "METRIC_DICTIONARY"
+    };
+
+    private bool IsBusy { get; set; }
+    private string? ErrorMessage { get; set; }
+    private List<string> Warnings { get; set; } = [];
+    private string? GeneratedFileName { get; set; }
+    private string? GeneratedSha256 { get; set; }
+    private long? GeneratedFileSizeRaw { get; set; }
+    private string? GeneratedFileSize => GeneratedFileSizeRaw.HasValue
+        ? ((GeneratedFileSizeRaw.Value + 512) / 1024).ToString("N0")
+        : null;
+
+    private CancellationTokenSource? _cts;
+
+    // ── static data ────────────────────────────────────────────────────────────
+
+    private static readonly IReadOnlyList<(string Value, string Label)> ScopeOptions =
+    [
+        ("SEASON", "Saison complète"),
+        ("TEAM", "Equipe"),
+        ("PLAYER", "Joueuse"),
+        ("MULTIPLE_PLAYERS", "Plusieurs joueuses"),
+        ("GOALKEEPERS", "Gardiennes"),
+        ("MATCH", "Match(s)"),
+        ("CUSTOM", "Personnalise"),
+    ];
+
+    private static readonly IReadOnlyList<(string Key, string Description)> AllSections =
+    [
+        ("SEASON_SUMMARY", "Totaux aggreges saison"),
+        ("TEAMS", "Stats par equipe"),
+        ("PLAYERS", "Stats par joueuse"),
+        ("PLAYERS_PER_MATCH", "Stats joueuse × match"),
+        ("GOALKEEPERS", "Metriques gardiennes"),
+        ("MATCHES", "Liste des matchs"),
+        ("SHOTS", "Logs de tirs"),
+        ("DEFENSE", "Stats defensives"),
+        ("METRIC_DICTIONARY", "Dictionnaire des metriques"),
+    ];
+
+    // ── handlers ───────────────────────────────────────────────────────────────
+
+    private void SetScope(string scope)
+    {
+        Scope = scope;
+        ErrorMessage = null;
+    }
+
+    private void ToggleSection(string key)
+    {
+        if (!SelectedSections.Remove(key))
+            SelectedSections.Add(key);
+    }
+
+    private void ClearError() => ErrorMessage = null;
+
+    private void Cancel()
+    {
+        _cts?.Cancel();
+        _cts = null;
+        IsBusy = false;
+    }
+
+    private async Task GenerateAndDownload()
+    {
+        ErrorMessage = null;
+        Warnings = [];
+        GeneratedFileName = null;
+        GeneratedSha256 = null;
+        GeneratedFileSizeRaw = null;
+
+        IsBusy = true;
+        _cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+
+        try
+        {
+            var request = BuildRequest();
+            var (content, fileName, contentType) = await ExportClient.DownloadExportAsync(request, _cts.Token);
+
+            if (content is null || content.Length == 0)
+            {
+                ErrorMessage = "Le serveur n'a retourne aucun contenu.";
+                return;
+            }
+
+            fileName ??= $"HandWStat_Export_{DateTime.Now:yyyyMMdd}.xlsx";
+            contentType ??= "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+            GeneratedFileName = fileName;
+            GeneratedSha256 = Convert.ToHexString(
+                System.Security.Cryptography.SHA256.HashData(content)).ToLowerInvariant();
+            GeneratedFileSizeRaw = content.Length;
+
+            await SaveFileAsync(content, fileName, contentType);
+        }
+        catch (OperationCanceledException)
+        {
+            ErrorMessage = "Export annule.";
+        }
+        catch (HandWStat.Services.Api.ApiRequestException ex)
+        {
+            ErrorMessage = ex.UserMessage;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Erreur inattendue: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts?.Dispose();
+            _cts = null;
+        }
+    }
+
+    private AnalyticsExportRequestDto BuildRequest()
+    {
+        var playerIds = ParseIds(PlayerIdsRaw);
+        var matchIds = ParseIds(MatchIdsRaw);
+        var sections = SelectedSections.ToList();
+        if (IncludeDataQuality) sections.Add("DATA_QUALITY");
+        if (IncludeRawEvents) sections.Add("EVENTS");
+
+        return new AnalyticsExportRequestDto
+        {
+            Scope = Scope,
+            SeasonLabel = string.IsNullOrWhiteSpace(SeasonLabel) ? null : SeasonLabel.Trim(),
+            SeasonYear = SeasonYear,
+            CompetitionId = CompetitionId,
+            TeamId = TeamId,
+            PlayerIds = playerIds.Count > 0 ? playerIds : null,
+            MatchIds = matchIds.Count > 0 ? matchIds : null,
+            DateFrom = DateFrom,
+            DateTo = DateTo,
+            Sections = sections,
+            IncludeRawEvents = IncludeRawEvents,
+            IncludeShotCoordinates = IncludeShotCoordinates,
+            IncludeDataQuality = IncludeDataQuality,
+            RequestedBy = "HandWStat"
+        };
+    }
+
+    private static List<int> ParseIds(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                  .Where(s => int.TryParse(s, out _))
+                  .Select(int.Parse)
+                  .Distinct()
+                  .ToList();
+    }
+
+    private async Task SaveFileAsync(byte[] content, string fileName, string contentType)
+    {
+        // Write to app data dir, then share via MAUI Share API
+        var path = Path.Combine(FileSystem.AppDataDirectory, fileName);
+        await File.WriteAllBytesAsync(path, content);
+
+        await Share.RequestAsync(new ShareFileRequest
+        {
+            Title = "Exporter le classeur analytique",
+            File = new ShareFile(path, contentType)
+        });
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

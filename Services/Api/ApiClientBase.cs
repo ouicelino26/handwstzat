@@ -60,6 +60,42 @@ public abstract class ApiClientBase
         return result.Value;
     }
 
+    protected async Task<(byte[]? Content, string? FileName, string? ContentType)> PostDownloadAsync<TRequest>(
+        string relativePath,
+        TRequest requestBody,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, BuildUri(relativePath));
+        request.Content = JsonContent.Create(requestBody, options: SerializerOptions);
+        _authService.ApplyAuthorization(request);
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new ApiRequestException("Le service met trop de temps a repondre. Reessayez dans quelques instants.", "API_TIMEOUT", null, retryable: true, statusCode: null);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new ApiRequestException("Le service statistique est momentanement inaccessible.", "API_NETWORK_ERROR", null, retryable: true, ex.StatusCode, innerException: ex);
+        }
+
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+                throw await CreateRequestExceptionAsync(request, response, cancellationToken);
+
+            var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+            var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+                ?? response.Content.Headers.ContentDisposition?.FileName;
+            return (content, fileName, contentType);
+        }
+    }
+
     private async Task<ApiGetResult<T>> SendConditionalAsync<T>(HttpRequestMessage request, string? cacheKey, CancellationToken cancellationToken)
     {
         _authService.ApplyAuthorization(request);

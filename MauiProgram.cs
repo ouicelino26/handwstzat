@@ -53,6 +53,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<MatchesApiClient>();
         builder.Services.AddSingleton<MatchEventsApiClient>();
         builder.Services.AddSingleton<StatsApiClient>();
+        builder.Services.AddSingleton<ExportApiClient>();
         builder.Services.AddSingleton<IAnalyticsGateway, V1AnalyticsGateway>();
         builder.Services.AddSingleton<ILeagueAnalyticsGateway, V2AnalyticsGateway>();
         builder.Services.AddSingleton<LeaguePlayerAnalyticsService>();
