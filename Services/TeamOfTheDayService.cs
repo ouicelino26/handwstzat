@@ -436,6 +436,12 @@ public sealed class TeamOfTheDayService
             }
         }
 
+        // Players with goalkeeper activity but no matching position code
+        if (player.SaveCount > 0 || player.GoalkeeperSaveRate > 0)
+        {
+            return KnownSlots[0];
+        }
+
         var fallbackLabel = Clean(player.PositionName ?? player.PositionCode, string.Empty);
         if (string.IsNullOrWhiteSpace(fallbackLabel))
         {

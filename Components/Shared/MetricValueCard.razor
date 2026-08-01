@@ -6,7 +6,6 @@
          data-metric-code="@Model.MetricCode">
     <header>
         <span>@Model.Label</span>
-        <AnalyticsSourceBadge Source="@Model.Source" />
     </header>
     <strong>@(Model.CountValue?.ToString() ?? "—")</strong>
     @if (!string.IsNullOrWhiteSpace(Model.HelpText))

@@ -38,8 +38,6 @@
     {
         var analytics = Result.Analytics!;
 
-        <AnalysisScopeSummary Scope="@analytics.Scope" />
-
         <div class="league-player-stats__meta">
             <span>MetricVersion : @(analytics.MetricVersion ?? "Non fournie par l'API v1")</span>
             <span>Provenance : @analytics.Source.Code()</span>

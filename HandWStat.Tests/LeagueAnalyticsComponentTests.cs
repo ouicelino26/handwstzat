@@ -37,7 +37,6 @@ public sealed class LeagueAnalyticsComponentTests
         Assert.Contains("Numérateur", html, StringComparison.Ordinal);
         Assert.Contains("Dénominateur", html, StringComparison.Ordinal);
         Assert.Contains("API v2 compl", html, StringComparison.Ordinal);
-        Assert.Contains("Scope statistique actif", html, StringComparison.Ordinal);
         Assert.Contains("aria-label", html, StringComparison.Ordinal);
 
         AssertInOrder(

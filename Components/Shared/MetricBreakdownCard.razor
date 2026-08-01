@@ -9,7 +9,6 @@
             <span>@Model.Label</span>
             <strong>@(Model.CountValue?.ToString() ?? "—")</strong>
         </div>
-        <AnalyticsSourceBadge Source="@Model.Source" />
     </header>
 
     @if (Model.Breakdown.Count > 0)

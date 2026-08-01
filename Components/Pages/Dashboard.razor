@@ -133,8 +133,6 @@ else if (Snapshot is not null)
                 </div>
             </details>
 
-            <AnalysisScopeSummary Scope="@DashboardScopeSummary" />
-
             <DataQualitySummary Level="DataQualityLevel.Unknown"
                                 Title="Qualite non renseignee"
                                 Message="L'API v1 ne fournit pas encore de score de qualite consolide. Les volumes affiches restent visibles quand ils existent." />
@@ -309,10 +307,10 @@ else if (Snapshot is not null)
                     <div class="page-panel team-day-hero">
                         <div class="panel-head panel-head-wrap">
                             <div>
-                                <p class="section-kicker">Equipe type de la journee</p>
+                                <p class="section-kicker">Selection statistique exploratoire</p>
                                 <h3>@teamOfTheDay.ScopeLabel</h3>
                                 <p class="page-subtitle">
-                                    Meilleure joueuse par poste selon @TeamOfTheDayMetricLabel(TeamOfTheDayMetric). Les scores sont des calculs locaux exploratoires, non contractuels dans l'API v1.
+                                    Meilleure joueuse par poste selon @TeamOfTheDayMetricLabel(TeamOfTheDayMetric). Scores locaux exploratoires, non contractuels.
                                 </p>
                             </div>
 
