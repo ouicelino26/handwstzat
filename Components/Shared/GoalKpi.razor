@@ -3,7 +3,7 @@
 <div class="court-studio @(IsLoading ? "is-loading" : string.Empty)" aria-busy="@(IsLoading ? "true" : "false")">
     <header class="court-studio__head">
         <div>
-            <span>Court intelligence</span>
+            <span>Analyse spatiale</span>
             <h3>Zones et declenchements</h3>
             <p>Selectionnez un secteur pour isoler son volume, son efficacite et ses issues.</p>
         </div>
@@ -58,6 +58,8 @@
 
             <div class="goal-map-wrap">
                 <svg class="goal-map" viewBox="0 0 804 440" role="img" aria-label="Carte de precision du but">
+                    <title>Carte de precision du but</title>
+                    <desc>Zones de tir avec taux de reussite par secteur du but</desc>
                     <rect x="0" y="0" width="804" height="440" rx="24" class="goal-bg" fill="#0f2520" />
 
                     @foreach (var zone in GoalGeometries)
@@ -79,7 +81,12 @@
                                   fill="@GetGoalFillColor(stat)"
                                   stroke="@GetStrokeColor(zone.Key)"
                                   stroke-width="@GetStrokeWidth(zone.Key)"
-                                  @onclick="() => SelectZoneAsync(zone.Key)">
+                                  role="button"
+                                  tabindex="0"
+                                  aria-label="@GetZoneAccessibleLabel(zone.Key)"
+                                  aria-pressed="@IsZoneActive(zone.Key).ToString().ToLowerInvariant()"
+                                  @onclick="() => SelectZoneAsync(zone.Key)"
+                                  @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
                                 <title>@GetTooltip(zone.Key, stat)</title>
                             </rect>
                         }
@@ -90,7 +97,12 @@
                                   fill="@GetGoalFillColor(stat)"
                                   stroke="@GetStrokeColor(zone.Key)"
                                   stroke-width="@GetStrokeWidth(zone.Key)"
-                                  @onclick="() => SelectZoneAsync(zone.Key)">
+                                  role="button"
+                                  tabindex="0"
+                                  aria-label="@GetZoneAccessibleLabel(zone.Key)"
+                                  aria-pressed="@IsZoneActive(zone.Key).ToString().ToLowerInvariant()"
+                                  @onclick="() => SelectZoneAsync(zone.Key)"
+                                  @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
                                 <title>@GetTooltip(zone.Key, stat)</title>
                             </path>
                         }
@@ -101,7 +113,12 @@
                                      fill="@GetGoalFillColor(stat)"
                                      stroke="@GetStrokeColor(zone.Key)"
                                      stroke-width="@GetStrokeWidth(zone.Key)"
-                                     @onclick="() => SelectZoneAsync(zone.Key)">
+                                     role="button"
+                                     tabindex="0"
+                                     aria-label="@GetZoneAccessibleLabel(zone.Key)"
+                                     aria-pressed="@IsZoneActive(zone.Key).ToString().ToLowerInvariant()"
+                                     @onclick="() => SelectZoneAsync(zone.Key)"
+                                     @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
                                 <title>@GetTooltip(zone.Key, stat)</title>
                             </polygon>
                         }
@@ -132,6 +149,8 @@
 
             <div class="pitch-map-wrap">
                 <svg class="pitch-map" viewBox="0 0 706 464" role="img" aria-label="Carte terrain des declenchements">
+                    <title>Carte terrain des declenchements</title>
+                    <desc>Zones de declenchement des tirs avec volume et efficacite par secteur</desc>
                     <image href="/design/pitch-map-template.svg"
                            x="0"
                            y="0"
@@ -152,7 +171,12 @@
                               fill="@GetTriggerFillColor(stat)"
                               stroke="@GetStrokeColor(zone.Key)"
                               stroke-width="@GetStrokeWidth(zone.Key)"
-                              @onclick="() => SelectZoneAsync(zone.Key)">
+                              role="button"
+                              tabindex="0"
+                              aria-label="@GetZoneAccessibleLabel(zone.Key)"
+                              aria-pressed="@IsZoneActive(zone.Key).ToString().ToLowerInvariant()"
+                              @onclick="() => SelectZoneAsync(zone.Key)"
+                              @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
                             <title>@GetTooltip(zone.Key, stat)</title>
                         </path>
 
@@ -165,10 +189,10 @@
 
 @code {
     [Parameter]
-    public IReadOnlyList<ZoneStat> GoalZones { get; set; } = [];
+    public IReadOnlyList<CourtZoneStat> GoalZones { get; set; } = [];
 
     [Parameter]
-    public IReadOnlyList<ZoneStat> TriggerZones { get; set; } = [];
+    public IReadOnlyList<CourtZoneStat> TriggerZones { get; set; } = [];
 
     [Parameter]
     public string? ActiveZoneKey { get; set; }
@@ -190,6 +214,15 @@
 
     [Parameter]
     public bool IsLoading { get; set; }
+
+    [Parameter]
+    public PlayerCourtDisplayMode DisplayMode { get; set; } = PlayerCourtDisplayMode.Volume;
+
+    [Parameter]
+    public EventCallback<PlayerCourtDisplayMode> DisplayModeChanged { get; set; }
+
+    [Parameter]
+    public PlayerCourtAttackType AttackType { get; set; } = PlayerCourtAttackType.All;
 
     private const string NeutralGoalZoneFill = ChartPalette.GoalZoneNeutralFill;
     private const string ViewModeBoth = "both";
@@ -250,18 +283,38 @@
         .Select(index => new HeatColorStop(ChartPalette.GoalHeatStops[index], ChartPalette.GoalHeatColors[index]))
         .ToArray();
 
-    private ZoneStat GetGoalZone(string key) => GoalZones.FirstOrDefault(zone => zone.Key == key) ?? Empty(key);
+    private CourtZoneStat GetGoalZone(string key) => GoalZones.FirstOrDefault(zone => zone.Key == key) ?? Empty(key);
 
-    private ZoneStat GetTriggerZone(string key) => TriggerZones.FirstOrDefault(zone => zone.Key == key) ?? Empty(key);
+    private CourtZoneStat GetTriggerZone(string key) => TriggerZones.FirstOrDefault(zone => zone.Key == key) ?? Empty(key);
 
-    private static ZoneStat Empty(string key) => new(key, key, 0, 0, 0, Array.Empty<OutcomeCount>());
+    private static CourtZoneStat Empty(string key) => new(key, key, 0, 0, 0, false, false, Array.Empty<OutcomeCount>());
 
-    private string GetLabel(ZoneStat zone)
+    private string GetLabel(CourtZoneStat zone)
     {
-        return zone.Attempts == 0
-            ? "0%"
-            : zone.Rate.ToString("0.#", CultureInfo.GetCultureInfo("fr-FR")) + "%";
+        if (zone.Attempts == 0)
+            return "0";
+        if (DisplayMode == PlayerCourtDisplayMode.Volume)
+            return zone.Attempts.ToString();
+        return zone.Rate.ToString("0.#", CultureInfo.GetCultureInfo("fr-FR")) + "%";
     }
+
+    private string GetZoneAccessibleLabel(string key)
+    {
+        var stat = GoalZones.Concat(TriggerZones).FirstOrDefault(z => z.Key == key);
+        if (stat is null) return key;
+        var reliability = stat.SampleReliable ? "volume fiable" : "faible echantillon";
+        return $"{stat.Label} : {stat.Attempts} tirs, {stat.Successes} buts, {FormatPct(stat.Rate)}, {reliability}";
+    }
+
+    private bool IsZoneActive(string key) => ActiveZoneKey is not null && string.Equals(ActiveZoneKey, key, StringComparison.OrdinalIgnoreCase);
+
+    private async Task HandleZoneKeyDownAsync(string key, KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+            await SelectZoneAsync(key);
+    }
+
+    private static string FormatPct(double rate) => rate.ToString("0.#", CultureInfo.GetCultureInfo("fr-FR")) + "%";
 
     private bool IsActive(string key)
     {
@@ -294,12 +347,13 @@
         }
     }
 
-    private string GetTooltip(string key, ZoneStat stat)
+    private string GetTooltip(string key, CourtZoneStat stat)
     {
-        return $"{key} - {stat.Rate.ToString("0.#", CultureInfo.GetCultureInfo("fr-FR"))}%\n" +
+        return $"{stat.Label} - {stat.Rate.ToString("0.#", CultureInfo.GetCultureInfo("fr-FR"))}%\n" +
                $"Volume : {stat.Attempts}\n" +
                $"Succes : {stat.Successes}\n" +
-               $"Echecs : {stat.Failures}";
+               $"Echecs : {stat.Failures}" +
+               (stat.SampleReliable ? string.Empty : "\n(volume limite)");
     }
 
     private string LegendStartLabel => IsGoalkeeper
@@ -314,11 +368,18 @@
         ? $"{SpatialZoneVisuals.GoalkeeperHeatMaxRate:0}%+"
         : "100%";
 
-    private string GetGoalFillColor(ZoneStat zone)
+    private string GetGoalFillColor(CourtZoneStat zone)
     {
-        return zone.Attempts == 0
-            ? NeutralGoalZoneFill
-            : GetFillColor(GetPaletteRate(zone.Rate));
+        if (zone.Attempts == 0)
+            return NeutralGoalZoneFill;
+        if (DisplayMode == PlayerCourtDisplayMode.Volume)
+        {
+            // Normalize by max attempts across all goal zones for volume heatmap
+            var maxAttempts = GoalZones.Count > 0 ? GoalZones.Max(z => z.Attempts) : 1;
+            var normalizedVolume = maxAttempts > 0 ? (double)zone.Attempts / maxAttempts * 100.0 : 0;
+            return GetFillColor(normalizedVolume);
+        }
+        return GetFillColor(GetPaletteRate(zone.Rate));
     }
 
     private double GetPaletteRate(double rawRate) => SpatialZoneVisuals.ToPaletteRate(rawRate, IsGoalkeeper);
@@ -343,9 +404,18 @@
         return HeatPalette[^1].Color;
     }
 
-    private string GetTriggerFillColor(ZoneStat zone)
+    private string GetTriggerFillColor(CourtZoneStat zone)
     {
-        return zone.Attempts == 0 ? "transparent" : GetFillColor(GetPaletteRate(zone.Rate));
+        if (zone.Attempts == 0)
+            return "transparent";
+        if (DisplayMode == PlayerCourtDisplayMode.Volume)
+        {
+            // Normalize by max attempts across all trigger zones for volume heatmap
+            var maxAttempts = TriggerZones.Count > 0 ? TriggerZones.Max(z => z.Attempts) : 1;
+            var normalizedVolume = maxAttempts > 0 ? (double)zone.Attempts / maxAttempts * 100.0 : 0;
+            return GetFillColor(normalizedVolume);
+        }
+        return GetFillColor(GetPaletteRate(zone.Rate));
     }
 
     private static string InterpolateColor(string startHex, string endHex, double progress)
@@ -389,7 +459,7 @@
         return IsActive(key) ? "4" : "1.5";
     }
 
-    private bool ShouldRenderZone(string key, ZoneStat stat)
+    private bool ShouldRenderZone(string key, CourtZoneStat stat)
     {
         return !HideZeroZones || stat.Attempts > 0 || IsActive(key);
     }
