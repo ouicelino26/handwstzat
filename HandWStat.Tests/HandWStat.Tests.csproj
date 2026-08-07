@@ -18,6 +18,9 @@
     <Compile Include="..\Models\Contracts\ApiContracts.cs" Link="Models\Contracts\ApiContracts.cs" />
     <Compile Include="..\Models\Contracts\ReleaseArtifactValidator.cs" Link="Models\Contracts\ReleaseArtifactValidator.cs" />
     <Compile Include="..\Configuration\UpdateSettings.cs" Link="Configuration\UpdateSettings.cs" />
+    <Compile Include="..\Models\Analytics\CourtZoneModels.cs" Link="Models\Analytics\CourtZoneModels.cs" />
+    <Compile Include="..\Models\Analytics\CourtZoneMapper.cs" Link="Models\Analytics\CourtZoneMapper.cs" />
+    <Compile Include="..\Models\Analytics\SpatialZoneVisuals.cs" Link="Models\Analytics\SpatialZoneVisuals.cs" />
     <Compile Include="..\Models\Analytics\DashboardFoundationModels.cs" Link="Models\Analytics\DashboardFoundationModels.cs" />
     <Compile Include="..\Models\Analytics\DashboardModels.cs" Link="Models\Analytics\DashboardModels.cs" />
     <Compile Include="..\Services\PlayerTableMapper.cs" Link="Services\PlayerTableMapper.cs" />
