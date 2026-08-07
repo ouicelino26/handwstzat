@@ -684,8 +684,8 @@
     private bool ShowMatchDetailView => MatchIdFromQuery.HasValue;
     private string? SpatialFocusKey { get; set; }
 
-    private IReadOnlyList<ZoneStat> GoalZones => MatchSpatial?.Zones.Select(MapZone).ToList() ?? [];
-    private IReadOnlyList<ZoneStat> TriggerZones => MatchSpatial?.Triggers.Select(MapTrigger).ToList() ?? [];
+    private IReadOnlyList<CourtZoneStat> GoalZones => MatchSpatial?.Zones.Select(CourtZoneMapper.MapShotZone).ToList() ?? [];
+    private IReadOnlyList<CourtZoneStat> TriggerZones => MatchSpatial?.Triggers.Select(CourtZoneMapper.MapTriggerZone).ToList() ?? [];
     private bool HasSpatialFocus => !string.IsNullOrWhiteSpace(SpatialFocusKey);
     private string MatchSpatialScopeKey => MatchTeamScope switch
     {
@@ -763,7 +763,7 @@
     private bool ShowMatchAnalystPanels => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
     private bool ShowTeam1TimelineSeries => MatchTeamScope is MatchTeamScopeBoth or MatchTeamScopeTeam1;
     private bool ShowTeam2TimelineSeries => MatchTeamScope is MatchTeamScopeBoth or MatchTeamScopeTeam2;
-    private ZoneStat? CurrentZone => GoalZones.Concat(TriggerZones).FirstOrDefault(zone => zone.Key == ActiveZoneKey)
+    private CourtZoneStat? CurrentZone => GoalZones.Concat(TriggerZones).FirstOrDefault(zone => zone.Key == ActiveZoneKey)
         ?? GoalZones.FirstOrDefault(zone => zone.Attempts > 0)
         ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)
         ?? GoalZones.FirstOrDefault()
@@ -1345,27 +1345,7 @@
         MatchList = ScopedMatches;
     }
 
-    private static ZoneStat MapZone(ZoneStatDto zone)
-    {
-        return new ZoneStat(
-            zone.ZoneCode ?? string.Empty,
-            zone.ZoneCode ?? string.Empty,
-            zone.SuccessRate,
-            zone.Attempts,
-            zone.SuccessCount,
-            zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList());
-    }
-
-    private static ZoneStat MapTrigger(TriggerZoneStatDto zone)
-    {
-        return new ZoneStat(
-            SpatialZoneVisuals.ToVisualTriggerKey(zone.TriggerCode),
-            SpatialZoneVisuals.ToVisualTriggerKey(zone.TriggerCode),
-            zone.SuccessRate,
-            zone.Attempts,
-            zone.SuccessCount,
-            zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList());
-    }
+    // MapZone and MapTrigger replaced by CourtZoneMapper.MapShotZone / MapTriggerZone
 
     private IReadOnlyList<KpiTile> BuildMatchKpis()
     {

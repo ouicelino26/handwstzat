@@ -672,8 +672,8 @@ else if (Snapshot is not null)
                                 </div>
                             </div>
 
-                            <GoalKpi GoalZones="@Snapshot.Spotlight.GoalZones"
-                                     TriggerZones="@Snapshot.Spotlight.TriggerZones"
+                            <GoalKpi GoalZones="@CourtZoneMapper.FromZoneStats(Snapshot.Spotlight.GoalZones)"
+                                     TriggerZones="@CourtZoneMapper.FromZoneStats(Snapshot.Spotlight.TriggerZones)"
                                      IsGoalkeeper="@Snapshot.Spotlight.IsGoalkeeper"
                                      ActiveZoneKey="@SelectedZoneKey"
                                      OnZoneSelected="HandleZoneSelectionAsync" />

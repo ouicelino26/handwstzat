@@ -544,83 +544,158 @@
                                            Tone="loading"
                                            CssClass="empty-card-inline" />
                             }
-                            else if (Spatial is null)
-                            {
-                                <StateCard Kicker="Aucune carte"
-                                           Title="La lecture spatiale n’est pas encore disponible pour cette joueuse"
-                                           Message="Le spatial s’ouvre apres chargement du dossier de la joueuse."
-                                           Tone="empty"
-                                           CssClass="empty-card-inline" />
-                            }
-                            else
-                            {
-                                @if (HasSpatialFocus)
+
+                            <div class="court-context-bar">
+                                <span>@TotalCourtAttempts tirs</span>
+                                <span>@(Spatial?.MatchesPlayed ?? 0) matchs</span>
+                                @if (Profile is not null)
                                 {
-                                    <div class="match-scope-toolbar spatial-focus-toolbar">
-                                        <div class="match-scope-copy">
-                                            <p class="section-kicker">Lecture ciblee</p>
-                                            <span>Zones liees a @SpatialFocusKey</span>
-                                        </div>
-
-                                        <button type="button"
-                                                class="match-scope-button"
-                                                @onclick="ResetSpatialFocusAsync"
-                                                disabled="@IsSpatialLoading">
-                                            Voir toutes les zones
-                                        </button>
-                                    </div>
+                                    <span>@Profile.PositionCode</span>
                                 }
+                            </div>
 
-                                <div class="dual-grid">
-                                    <section class="page-panel @(IsSpatialLoading ? "is-loading" : string.Empty)">
-                                        <p class="section-kicker">Spatial</p>
-                                        <h4>But et declenchements</h4>
-                                        <GoalKpi GoalZones="@GoalZones"
-                                                 TriggerZones="@TriggerZones"
-                                                 IsGoalkeeper="@Profile.IsGoalkeeper"
-                                                 ActiveZoneKey="@ActiveZoneKey"
-                                                 OnZoneSelected="HandleZoneSelectionAsync"
-                                                 HideZeroZones="@HasSpatialFocus"
-                                                 IsLoading="@IsSpatialLoading" />
-                                    </section>
+                            <div class="court-filter-bar">
+                                <div class="court-filter-group" role="group" aria-label="Type d’attaque">
+                                    <span class="filter-label">Type</span>
+                                    <button type="button" class="court-filter-btn @(CourtAttackType == PlayerCourtAttackType.All ? "is-active" : "")"
+                                            aria-pressed="@(CourtAttackType == PlayerCourtAttackType.All)"
+                                            @onclick="() => SetCourtAttackTypeAsync(PlayerCourtAttackType.All)">Toutes</button>
+                                    <button type="button" class="court-filter-btn @(CourtAttackType == PlayerCourtAttackType.OpenPlay ? "is-active" : "")"
+                                            aria-pressed="@(CourtAttackType == PlayerCourtAttackType.OpenPlay)"
+                                            @onclick="() => SetCourtAttackTypeAsync(PlayerCourtAttackType.OpenPlay)">Jeu ouvert</button>
+                                    <button type="button" class="court-filter-btn @(CourtAttackType == PlayerCourtAttackType.SevenMeter ? "is-active" : "")"
+                                            aria-pressed="@(CourtAttackType == PlayerCourtAttackType.SevenMeter)"
+                                            @onclick="() => SetCourtAttackTypeAsync(PlayerCourtAttackType.SevenMeter)">7 metres</button>
+                                </div>
+                                <div class="court-filter-group" role="group" aria-label="Lecture">
+                                    <span class="filter-label">Lecture</span>
+                                    <button type="button" class="court-filter-btn @(CourtDisplayMode == PlayerCourtDisplayMode.Volume ? "is-active" : "")"
+                                            aria-pressed="@(CourtDisplayMode == PlayerCourtDisplayMode.Volume)"
+                                            @onclick="() => CourtDisplayMode = PlayerCourtDisplayMode.Volume">Volume</button>
+                                    <button type="button" class="court-filter-btn @(CourtDisplayMode == PlayerCourtDisplayMode.Efficiency ? "is-active" : "")"
+                                            aria-pressed="@(CourtDisplayMode == PlayerCourtDisplayMode.Efficiency)"
+                                            @onclick="() => CourtDisplayMode = PlayerCourtDisplayMode.Efficiency">Efficacite</button>
+                                </div>
+                                <div class="court-filter-group" role="group" aria-label="Vue">
+                                    <span class="filter-label">Vue</span>
+                                    <button type="button" class="court-filter-btn @(CourtScene == PlayerCourtScene.ShotZones ? "is-active" : "")"
+                                            aria-pressed="@(CourtScene == PlayerCourtScene.ShotZones)"
+                                            @onclick="() => CourtScene = PlayerCourtScene.ShotZones">Zones de tir</button>
+                                    <button type="button" class="court-filter-btn @(CourtScene == PlayerCourtScene.TriggerZones ? "is-active" : "")"
+                                            aria-pressed="@(CourtScene == PlayerCourtScene.TriggerZones)"
+                                            @onclick="() => CourtScene = PlayerCourtScene.TriggerZones">Declenchements</button>
+                                </div>
+                            </div>
 
-                                    <section class="page-panel">
-                                        <div class="panel-head">
-                                            <div>
-                                                <p class="section-kicker">Zone active</p>
-                                                <h4>@(CurrentZone?.Label ?? "Selectionnez une zone")</h4>
-                                            </div>
-                                            @if (IsSpatialLoading)
-                                            {
-                                                <span class="hero-badge">Chargement spatial</span>
-                                            }
-                                            else if (CurrentZone is not null)
-                                            {
-                                                <span class="hero-badge">@FormatRate(CurrentZone.Rate)%</span>
-                                            }
-                                        </div>
+                            @if (CourtAttackType == PlayerCourtAttackType.SevenMeter && CourtScene == PlayerCourtScene.TriggerZones)
+                            {
+                                <div class="court-seven-meter-note">
+                                    <p>Zones de declenchement des 7m non disponibles — seule la zone d’execution est enregistree.</p>
+                                </div>
+                            }
 
-                                        @if (CurrentZone is not null)
+                            <GoalKpi GoalZones="@CourtShotZones"
+                                     TriggerZones="@CourtTriggerZones"
+                                     IsGoalkeeper="@(Profile?.IsGoalkeeper ?? false)"
+                                     ActiveZoneKey="@ActiveZoneKey"
+                                     OnZoneSelected="HandleZoneSelectionAsync"
+                                     HideZeroZones="@HasSpatialFocus"
+                                     IsLoading="@IsSpatialLoading"
+                                     DisplayMode="@CourtDisplayMode"
+                                     DisplayModeChanged="@(mode => CourtDisplayMode = mode)"
+                                     AttackType="@CourtAttackType"
+                                     ViewMode="@(CourtScene == PlayerCourtScene.ShotZones ? "goal" : "trigger")" />
+
+                            @if (ActiveCourtZone is not null)
+                            {
+                                <aside class="court-zone-detail">
+                                    <header class="court-zone-detail__head">
+                                        <h4>@ActiveCourtZone.Label</h4>
+                                        @if (!ActiveCourtZone.SampleReliable && ActiveCourtZone.Attempts > 0)
                                         {
-                                            <div class="badge-row">
-                                                <div class="mini-card"><span>Volume</span><strong>@CurrentZone.Attempts</strong></div>
-                                                <div class="mini-card"><span>Succes</span><strong>@CurrentZone.Successes</strong></div>
-                                                <div class="mini-card"><span>Echecs</span><strong>@CurrentZone.Failures</strong></div>
-                                            </div>
-
-                                            <div class="list-stack">
-                                                @foreach (var outcome in CurrentZone.Outcomes)
-                                                {
-                                                    <div class="list-item">
-                                                        <div class="key-metric">
-                                                            <strong>@outcome.Label</strong>
-                                                            <span>@outcome.Count</span>
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
+                                            <span class="court-sample-warning">Faible echantillon</span>
                                         }
-                                    </section>
+                                    </header>
+                                    <div class="court-zone-stats">
+                                        <div class="court-zone-stat">
+                                            <span class="cz-label">Taux</span>
+                                            <strong class="cz-value">@FormatRate(ActiveCourtZone.Rate)%</strong>
+                                            <small class="cz-proof">@ActiveCourtZone.Successes / @ActiveCourtZone.Attempts</small>
+                                        </div>
+                                        <div class="court-zone-stat">
+                                            <span class="cz-label">Tirs</span>
+                                            <strong class="cz-value">@ActiveCourtZone.Attempts</strong>
+                                        </div>
+                                        <div class="court-zone-stat">
+                                            <span class="cz-label">Buts</span>
+                                            <strong class="cz-value">@ActiveCourtZone.Successes</strong>
+                                        </div>
+                                        <div class="court-zone-stat">
+                                            <span class="cz-label">Echecs</span>
+                                            <strong class="cz-value">@ActiveCourtZone.Failures</strong>
+                                        </div>
+                                    </div>
+                                    @if (ActiveCourtZone.Outcomes.Any())
+                                    {
+                                        <div class="court-zone-outcomes">
+                                            <p class="cz-outcomes-head">Detail</p>
+                                            <ul class="cz-outcomes-list">
+                                                @foreach (var outcome in ActiveCourtZone.Outcomes)
+                                                {
+                                                    <li>@outcome.Label <span>@outcome.Count</span></li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                    @if (!ActiveCourtZone.SampleReliable && ActiveCourtZone.Attempts > 0)
+                                    {
+                                        <p class="court-sample-note">Volume limite (@ActiveCourtZone.Attempts tirs) — taux indicatif.</p>
+                                    }
+                                </aside>
+                            }
+
+                            <details class="court-table-alt">
+                                <summary>Vue tabulaire des zones</summary>
+                                <table class="court-alt-table" role="grid" aria-label="Donnees de zones en format tableau">
+                                    <caption>@(CourtScene == PlayerCourtScene.ShotZones ? "Zones de tir" : "Zones de declenchement")</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Zone</th>
+                                            <th scope="col">Tirs</th>
+                                            <th scope="col">Buts</th>
+                                            <th scope="col">Taux</th>
+                                            <th scope="col">Fiabilite</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var zone in ActiveCourtZones.Where(z => z.Attempts > 0).OrderByDescending(z => z.Attempts))
+                                        {
+                                            <tr>
+                                                <td>@zone.Label</td>
+                                                <td>@zone.Attempts</td>
+                                                <td>@zone.Successes</td>
+                                                <td>@FormatRate(zone.Rate)%</td>
+                                                <td>@(zone.SampleReliable ? "Fiable" : "Faible")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </details>
+
+                            @if (HasSpatialFocus)
+                            {
+                                <div class="match-scope-toolbar spatial-focus-toolbar">
+                                    <div class="match-scope-copy">
+                                        <p class="section-kicker">Lecture ciblee</p>
+                                        <span>Zones liees a @SpatialFocusKey</span>
+                                    </div>
+
+                                    <button type="button"
+                                            class="match-scope-button"
+                                            @onclick="ResetSpatialFocusAsync"
+                                            disabled="@IsSpatialLoading">
+                                        Voir toutes les zones
+                                    </button>
                                 </div>
                             }
                         }
@@ -788,6 +863,10 @@
     private string? SpatialFocusKey { get; set; }
     private long SpatialLoadToken;
     private bool _publishingScope;
+    private PlayerCourtAttackType CourtAttackType { get; set; } = PlayerCourtAttackType.All;
+    private PlayerCourtDisplayMode CourtDisplayMode { get; set; } = PlayerCourtDisplayMode.Volume;
+    private PlayerCourtScene CourtScene { get; set; } = PlayerCourtScene.ShotZones;
+    private bool IsCourtLoaded { get; set; }
 
     [Parameter, SupplyParameterFromQuery(Name = "playerId")]
     public int? PlayerIdFromQuery { get; set; }
@@ -801,8 +880,42 @@
     private TableSortState PlayerMatchSort { get; set; } = new("date", SortDirection.Desc);
     private bool IsPlayerListOpen { get; set; } = true;
 
-    private IReadOnlyList<ZoneStat> GoalZones => Spatial?.Zones.Select(MapZone).ToList() ?? [];
-    private IReadOnlyList<ZoneStat> TriggerZones => Spatial?.Triggers.Select(MapTrigger).ToList() ?? [];
+    private IReadOnlyList<CourtZoneStat> CourtShotZones
+    {
+        get
+        {
+            if (Spatial is null) return [];
+            return Spatial.Zones
+                .Select(CourtZoneMapper.MapShotZone)
+                .Select(z => CourtZoneMapper.FilterByAttackType(z, CourtAttackType, Profile?.IsGoalkeeper ?? false))
+                .ToList();
+        }
+    }
+
+    private IReadOnlyList<CourtZoneStat> CourtTriggerZones
+    {
+        get
+        {
+            if (Spatial is null) return [];
+            return Spatial.Triggers
+                .Select(CourtZoneMapper.MapTriggerZone)
+                .Select(z => CourtZoneMapper.FilterByAttackType(z, CourtAttackType, Profile?.IsGoalkeeper ?? false))
+                .ToList();
+        }
+    }
+
+    private IReadOnlyList<CourtZoneStat> ActiveCourtZones =>
+        CourtScene == PlayerCourtScene.ShotZones ? CourtShotZones : CourtTriggerZones;
+
+    private CourtZoneStat? ActiveCourtZone =>
+        ActiveCourtZones.FirstOrDefault(z => z.Key == ActiveZoneKey)
+        ?? ActiveCourtZones.FirstOrDefault(z => z.Attempts > 0);
+
+    private int TotalCourtAttempts => CourtShotZones.Sum(z => z.Attempts);
+
+    // Legacy aliases kept for ResolveActiveZoneKey and SelectedPlayerScopeItems
+    private IReadOnlyList<CourtZoneStat> GoalZones => CourtShotZones;
+    private IReadOnlyList<CourtZoneStat> TriggerZones => CourtTriggerZones;
     private bool HasSpatialFocus => !string.IsNullOrWhiteSpace(SpatialFocusKey);
     private IReadOnlyList<string> SeasonOptions => MatchFilterCatalog.GetSeasons(ScopedMatches);
     private IReadOnlyList<string> DayOptions => MatchFilterCatalog.GetDays(ScopedMatches, Season);
@@ -862,7 +975,7 @@
     private IReadOnlyList<MatchTrendPoint> PlayerTrendSeries => BuildPlayerTrendSeries();
     private IReadOnlyList<MatchTrendPoint> PlayerScatterSeries => BuildPlayerScatterSeries();
     private IReadOnlyList<PlayerMatchItemDto> FilteredPlayerMatches => GetFilteredPlayerMatches();
-    private ZoneStat? CurrentZone => GoalZones.Concat(TriggerZones).FirstOrDefault(zone => zone.Key == ActiveZoneKey)
+    private CourtZoneStat? CurrentZone => GoalZones.Concat(TriggerZones).FirstOrDefault(zone => zone.Key == ActiveZoneKey)
         ?? GoalZones.FirstOrDefault(zone => zone.Attempts > 0)
         ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)
         ?? GoalZones.FirstOrDefault()
@@ -968,10 +1081,27 @@
         await LoadPlayerDetailsAsync();
     }
 
-    private Task SetActiveSection(string section)
+    private async Task SetActiveSection(string section)
     {
         ActiveSection = section;
-        return InvokeAsync(StateHasChanged);
+        if (section == "zones")
+            await EnsureCourtLoadedAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task EnsureCourtLoadedAsync()
+    {
+        if (IsCourtLoaded || IsSpatialLoading || !SelectedPlayerId.HasValue)
+            return;
+        await LoadSpatialForFocusAsync(null);
+        IsCourtLoaded = true;
+    }
+
+    private async Task SetCourtAttackTypeAsync(PlayerCourtAttackType type)
+    {
+        CourtAttackType = type;
+        ActiveZoneKey = null;
+        await Task.CompletedTask;
     }
 
     private async Task HandleZoneSelectionAsync(string zoneKey)
@@ -987,6 +1117,13 @@
             : normalizedZoneKey;
 
         ActiveZoneKey = normalizedZoneKey;
+
+        // Auto-switch scene based on zone key type
+        if (SpatialZoneVisuals.IsTriggerZoneKey(normalizedZoneKey))
+            CourtScene = PlayerCourtScene.TriggerZones;
+        else
+            CourtScene = PlayerCourtScene.ShotZones;
+
         await LoadSpatialForFocusAsync(nextFocusKey);
     }
 
@@ -1325,6 +1462,10 @@
             SpatialFocusKey = null;
             IsSpatialLoading = false;
             PlayerMatches = [];
+            IsCourtLoaded = false;
+            CourtAttackType = PlayerCourtAttackType.All;
+            CourtDisplayMode = PlayerCourtDisplayMode.Volume;
+            CourtScene = PlayerCourtScene.ShotZones;
             return;
         }
 
@@ -1349,10 +1490,9 @@
             var goalkeeperTask = StatsApiClient.GetPlayerGoalkeeperAsync(SelectedPlayerId.Value, options);
             var technicalTask = StatsApiClient.GetPlayerTechnicalAsync(SelectedPlayerId.Value, options);
             var leagueV2Task = LeagueAnalyticsService.LoadV2Async(SelectedPlayerId.Value, options);
-            var spatialTask = StatsApiClient.GetPlayerSpatialAsync(SelectedPlayerId.Value, options);
             var matchesTask = PlayersApiClient.GetPlayerMatchesAsync(SelectedPlayerId.Value, options);
 
-            await Task.WhenAll(profileTask, globalTask, offenseTask, defenseTask, passingTask, sanctionsTask, goalkeeperTask, technicalTask, spatialTask, matchesTask, leagueV2Task);
+            await Task.WhenAll(profileTask, globalTask, offenseTask, defenseTask, passingTask, sanctionsTask, goalkeeperTask, technicalTask, matchesTask, leagueV2Task);
 
             Profile = profileTask.Result;
             Global = globalTask.Result;
@@ -1362,7 +1502,8 @@
             Sanctions = sanctionsTask.Result;
             Goalkeeper = goalkeeperTask.Result;
             Technical = technicalTask.Result;
-            Spatial = spatialTask.Result;
+            // Spatial is lazy-loaded — only fetched when the "zones" tab is activated
+            Spatial = null;
             PlayerMatches = matchesTask.Result;
             LeagueAnalytics = LeagueAnalyticsService.Resolve(
                 SelectedPlayerId.Value,
@@ -1378,7 +1519,11 @@
                     Profile?.IsGoalkeeper == true),
                 BuildLeagueScope());
             SpatialFocusKey = null;
-            ActiveZoneKey = ResolveActiveZoneKey();
+            IsCourtLoaded = false;
+            CourtAttackType = PlayerCourtAttackType.All;
+            CourtDisplayMode = PlayerCourtDisplayMode.Volume;
+            CourtScene = PlayerCourtScene.ShotZones;
+            ActiveZoneKey = null;
         }
         catch (Exception ex)
         {
@@ -1443,27 +1588,7 @@
         ScopedMatches = contextScopeTask.Result;
     }
 
-    private static ZoneStat MapZone(ZoneStatDto zone)
-    {
-        return new ZoneStat(
-            zone.ZoneCode ?? string.Empty,
-            zone.ZoneCode ?? string.Empty,
-            zone.SuccessRate,
-            zone.Attempts,
-            zone.SuccessCount,
-            zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList());
-    }
-
-    private static ZoneStat MapTrigger(TriggerZoneStatDto zone)
-    {
-        return new ZoneStat(
-            SpatialZoneVisuals.ToVisualTriggerKey(zone.TriggerCode),
-            SpatialZoneVisuals.ToVisualTriggerKey(zone.TriggerCode),
-            zone.SuccessRate,
-            zone.Attempts,
-            zone.SuccessCount,
-            zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList());
-    }
+    // MapZone and MapTrigger replaced by CourtZoneMapper.MapShotZone / MapTriggerZone
 
     private AnalysisScopeDisplayModel BuildLeagueScope()
     {
