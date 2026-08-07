@@ -296,81 +296,379 @@
                         }
                         else if (ActiveSection == "analysis")
                         {
-                            @if (LeagueAnalytics is not null)
-                            {
-                                <LeaguePlayerStatsPanel Result="@LeagueAnalytics" />
-                            }
+                            var v2Offense  = LeagueAnalytics?.Analytics?.Offense;
+                            var v2Defense  = LeagueAnalytics?.Analytics?.Defense;
+                            var v2Keeper   = LeagueAnalytics?.Analytics?.Goalkeeper;
 
-                            <div class="triple-grid">
-                                <section class="page-panel">
-                                    <p class="section-kicker">Attaque</p>
-                                    <h4>@Offense.TotalButs buts</h4>
-                                    <p>@Offense.TirsRates tirs rates - @Offense.TirContre tirs contres - @Offense.PenaltyRate penalties rates</p>
-                                    <p class="tiny-note">@FormatRate(HandballKpiHelper.OverallShotSuccessRate(Offense))% de conversion globale</p>
-                                </section>
-
-                                <section class="page-panel">
-                                    <p class="section-kicker">Defense</p>
-                                    <h4>@Defense.Interceptions interceptions</h4>
-                                    <p>@Defense.Contres contres - @Defense.Neutralisations neutralisations</p>
-                                    <p class="tiny-note">@Defense.PassageForce passages en force provoques</p>
-                                </section>
-
-                                <section class="page-panel">
-                                    <p class="section-kicker">Passe / perte</p>
-                                    <h4>@Passing.PasseDecisive passes decisives</h4>
-                                    <p>@Passing.TotalPertes pertes - @Passing.MauvaisePasse mauvaises passes</p>
-                                    <p class="tiny-note">@Passing.FauteTechnique fautes techniques - @Passing.PassageEnForce passages en force</p>
-                                </section>
+                            @* ── Onglets internes Performance ── *@
+                            <div class="perf-tabs" role="tablist" aria-label="Sections Performance">
+                                @if (!profile.IsGoalkeeper)
+                                {
+                                    <button type="button" role="tab"
+                                            class="perf-tab-btn @(PerformanceSection == "attack" ? "is-active" : "")"
+                                            aria-selected="@(PerformanceSection == "attack")"
+                                            aria-controls="perf-panel-attack"
+                                            @onclick='() => PerformanceSection = "attack"'>Attaque</button>
+                                    <button type="button" role="tab"
+                                            class="perf-tab-btn @(PerformanceSection == "defense" ? "is-active" : "")"
+                                            aria-selected="@(PerformanceSection == "defense")"
+                                            aria-controls="perf-panel-defense"
+                                            @onclick='() => PerformanceSection = "defense"'>Défense</button>
+                                    <button type="button" role="tab"
+                                            class="perf-tab-btn @(PerformanceSection == "mastery" ? "is-active" : "")"
+                                            aria-selected="@(PerformanceSection == "mastery")"
+                                            aria-controls="perf-panel-mastery"
+                                            @onclick='() => PerformanceSection = "mastery"'>Maîtrise</button>
+                                    <button type="button" role="tab"
+                                            class="perf-tab-btn @(PerformanceSection == "discipline" ? "is-active" : "")"
+                                            aria-selected="@(PerformanceSection == "discipline")"
+                                            aria-controls="perf-panel-discipline"
+                                            @onclick='() => PerformanceSection = "discipline"'>Discipline</button>
+                                }
+                                else
+                                {
+                                    <button type="button" role="tab"
+                                            class="perf-tab-btn @(PerformanceSection == "saves" ? "is-active" : "")"
+                                            aria-selected="@(PerformanceSection == "saves")"
+                                            aria-controls="perf-panel-saves"
+                                            @onclick='() => PerformanceSection = "saves"'>Arrêts</button>
+                                    <button type="button" role="tab"
+                                            class="perf-tab-btn @(PerformanceSection == "ball" ? "is-active" : "")"
+                                            aria-selected="@(PerformanceSection == "ball")"
+                                            aria-controls="perf-panel-ball"
+                                            @onclick='() => PerformanceSection = "ball"'>Avec ballon</button>
+                                    <button type="button" role="tab"
+                                            class="perf-tab-btn @(PerformanceSection == "discipline" ? "is-active" : "")"
+                                            aria-selected="@(PerformanceSection == "discipline")"
+                                            aria-controls="perf-panel-discipline"
+                                            @onclick='() => PerformanceSection = "discipline"'>Discipline</button>
+                                }
                             </div>
 
-                            <div class="triple-grid">
-                                <section class="page-panel">
-                                    <p class="section-kicker">Sanctions</p>
-                                    <h4>@(Sanctions.Exclusions + Sanctions.Avertissements + Sanctions.DeuxMinutes + Sanctions.PenaltyConcede) incidents</h4>
-                                    <div class="badge-row">
-                                        <div class="mini-card"><span>Exclusions</span><strong>@Sanctions.Exclusions</strong></div>
-                                        <div class="mini-card"><span>Avertissements</span><strong>@Sanctions.Avertissements</strong></div>
-                                        <div class="mini-card"><span>Deux minutes</span><strong>@Sanctions.DeuxMinutes</strong></div>
-                                        <div class="mini-card"><span>Penaltys</span><strong>@Sanctions.PenaltyConcede</strong></div>
-                                    </div>
-                                </section>
-                                @if (profile.IsGoalkeeper)
-                                {
-                                    <section class="page-panel">
-                                        <p class="section-kicker">Bloc gardienne</p>
-                                        <h4>@(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty) arrets</h4>
-                                        <div class="badge-row">
-                                            <div class="mini-card"><span>Buts pris</span><strong>@Goalkeeper.ButsPris</strong></div>
-                                            <div class="mini-card"><span>Tirs subis</span><strong>@Goalkeeper.TirsSubis</strong></div>
-                                            <div class="mini-card"><span>Taux d'arret</span><strong>@FormatRate(Goalkeeper.TauxArret)%</strong></div>
-                                            <div class="mini-card"><span>Passes</span><strong>@Goalkeeper.PasseDecisives</strong></div>
+                            @* ── ATTAQUE ── *@
+                            @if (!profile.IsGoalkeeper && PerformanceSection == "attack")
+                            {
+                                <div id="perf-panel-attack" role="tabpanel" class="perf-panel">
+                                    @{
+                                        var totalGoals = PerfCountOf(v2Offense, "TOTAL_GOALS", Offense?.TotalButs ?? 0);
+                                        var openGoals  = PerfCountOf(v2Offense, "OPEN_PLAY_GOALS", Offense?.Buts ?? 0);
+                                        var penGoals   = PerfCountOf(v2Offense, "PENALTY_GOALS", Offense?.Buts7m ?? 0);
+                                        var assists    = PerfCountOf(v2Offense, "ASSISTS", Passing?.PasseDecisive ?? 0);
+                                        var penWonUnavailable  = PerfIsUnavailable(v2Offense, "PENALTIES_WON");
+                                        var sanctDrawnUnavailable = PerfIsUnavailable(v2Offense, "SANCTIONS_DRAWN");
+                                        var penWonVal  = PerfCountOf(v2Offense, "PENALTIES_WON", -1);
+                                        var sanctDrawnVal = PerfCountOf(v2Offense, "SANCTIONS_DRAWN", -1);
+                                        var matches = profile.MatchesPlayed;
+                                        var totalShots = Technical?.ShotAttempts ?? (Offense != null ? Offense.TotalButs + Offense.TirsRates + Offense.PenaltyRate : 0);
+                                        var openShots  = Offense != null ? Offense.Buts + Offense.TirsRates : 0;
+                                        var penShots   = Offense != null ? Offense.Buts7m + Offense.PenaltyRate : 0;
+                                        var blocked    = Offense?.TirContre ?? 0;
+                                        var totalRateModel = PerfRateOf(v2Offense, "TOTAL_SHOT_RATE");
+                                        var openRateModel  = PerfRateOf(v2Offense, "OPEN_PLAY_SHOT_RATE");
+                                        var penRateModel   = PerfRateOf(v2Offense, "PENALTY_SHOT_RATE");
+                                        var totalRate = totalRateModel?.Value ?? Technical?.OverallShotSuccessRate ?? 0;
+                                        var openRate  = openRateModel?.Value  ?? Technical?.OpenShotSuccessRate ?? 0;
+                                        var penRate   = penRateModel?.Value   ?? Technical?.PenaltySuccessRate ?? 0;
+                                    }
+                                    @* Production *@
+                                    <section class="perf-group">
+                                        <header class="perf-group__head">
+                                            <p class="section-kicker">Production</p>
+                                        </header>
+                                        <div class="perf-metric-list">
+                                            <PerformanceMetricRow Label="Buts" Value="@totalGoals.ToString()"
+                                                Evidence="@($"{openGoals} jeu + {penGoals} sur 7m")"
+                                                Context="@(matches > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalGoals, matches))}/match" : null)" />
+                                            <PerformanceMetricRow Label="Dans le jeu" Value="@openGoals.ToString()"
+                                                Evidence="@(Offense is not null ? $"sur {Offense.Buts + Offense.TirsRates} tirs ouverts" : null)" />
+                                            <PerformanceMetricRow Label="7 mètres" Value="@penGoals.ToString()"
+                                                Evidence="@(Offense is not null ? $"sur {Offense.Buts7m + Offense.PenaltyRate} tirs 7m" : null)" />
+                                            <PerformanceMetricRow Label="Passes décisives" Value="@assists.ToString()"
+                                                Context="@(matches > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(assists, matches))}/match" : null)" />
+                                            @if (!penWonUnavailable && penWonVal >= 0)
+                                            {
+                                                <PerformanceMetricRow Label="7m obtenus" Value="@penWonVal.ToString()" />
+                                            }
+                                            @if (!sanctDrawnUnavailable && sanctDrawnVal >= 0)
+                                            {
+                                                <PerformanceMetricRow Label="Sanctions obtenues" Value="@sanctDrawnVal.ToString()" />
+                                            }
                                         </div>
                                     </section>
-                                }
-                                <section class="page-panel">
-                                    <p class="section-kicker">Technique</p>
-                                    <h4>@(profile.IsGoalkeeper ? $"{technical.TirsSubis} tirs subis" : $"{technical.ShotAttempts} tirs engages")</h4>
-                                    <div class="badge-row">
-                                        <div class="mini-card">
-                                            <span>@(profile.IsGoalkeeper ? "Stop 7m" : "Conversion globale")</span>
-                                            <strong>@FormatRate(profile.IsGoalkeeper ? technical.GoalkeeperPenaltyStopRate : technical.OverallShotSuccessRate)%</strong>
+
+                                    @* Volume de tir *@
+                                    <section class="perf-group">
+                                        <header class="perf-group__head">
+                                            <p class="section-kicker">Volume de tir</p>
+                                        </header>
+                                        <div class="perf-metric-list">
+                                            <PerformanceMetricRow Label="Tirs total" Value="@totalShots.ToString()"
+                                                Context="@(matches > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalShots, matches))}/match" : null)" />
+                                            <PerformanceMetricRow Label="Tirs dans le jeu" Value="@openShots.ToString()" />
+                                            <PerformanceMetricRow Label="Tirs 7 mètres" Value="@penShots.ToString()" />
+                                            @if (blocked > 0)
+                                            {
+                                                <PerformanceMetricRow Label="Tirs contrés" Value="@blocked.ToString()" />
+                                            }
                                         </div>
-                                        <div class="mini-card">
-                                            <span>@(profile.IsGoalkeeper ? "Buts encaisses" : "Tirs contres")</span>
-                                            <strong>@(profile.IsGoalkeeper ? technical.GoalkeeperConcededGoals : offense.TirContre)</strong>
+                                    </section>
+
+                                    @* Efficacité *@
+                                    <section class="perf-group">
+                                        <header class="perf-group__head">
+                                            <p class="section-kicker">Efficacité</p>
+                                        </header>
+                                        <div class="perf-metric-list perf-metric-list--rates">
+                                            <PerformanceMetricRow
+                                                Label="Taux total"
+                                                Value="@(FormatRate(totalRate) + "%")"
+                                                Evidence="@(totalRateModel != null ? $"{totalRateModel.Numerator?.ToString("0") ?? "?"} / {totalRateModel.Denominator?.ToString("0") ?? "?"}" : $"{totalGoals} / {totalShots}")"
+                                                Availability="@(totalRateModel != null && !totalRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)"
+                                                Context="@(totalRateModel != null ? (totalRateModel.SampleReliable ? "Volume fiable" : $"Min. {totalRateModel.MinimumSample?.ToString("0") ?? "?"} tirs") : null)" />
+                                            <PerformanceMetricRow
+                                                Label="Jeu ouvert"
+                                                Value="@(FormatRate(openRate) + "%")"
+                                                Evidence="@(openRateModel != null ? $"{openRateModel.Numerator?.ToString("0") ?? "?"} / {openRateModel.Denominator?.ToString("0") ?? "?"}" : $"{openGoals} / {openShots}")"
+                                                Availability="@(openRateModel != null && !openRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)" />
+                                            <PerformanceMetricRow
+                                                Label="7 mètres"
+                                                Value="@(FormatRate(penRate) + "%")"
+                                                Evidence="@(penRateModel != null ? $"{penRateModel.Numerator?.ToString("0") ?? "?"} / {penRateModel.Denominator?.ToString("0") ?? "?"}" : $"{penGoals} / {penShots}")"
+                                                Availability="@(penRateModel != null && !penRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)" />
                                         </div>
-                                        <div class="mini-card">
-                                            <span>@(profile.IsGoalkeeper ? "Pertes techniques" : "Dechet tir")</span>
-                                            <strong>@(profile.IsGoalkeeper ? technical.TechnicalLosses : technical.ShotWaste)</strong>
+                                    </section>
+                                </div>
+                            }
+
+                            @* ── DÉFENSE ── *@
+                            @if (!profile.IsGoalkeeper && PerformanceSection == "defense")
+                            {
+                                <div id="perf-panel-defense" role="tabpanel" class="perf-panel">
+                                    @{
+                                        var interceptions = PerfCountOf(v2Defense, "INTERCEPTIONS", Defense?.Interceptions ?? 0);
+                                        var blocks        = PerfCountOf(v2Defense, "BLOCKS", Defense?.Contres ?? 0);
+                                        var offFouls      = PerfCountOf(v2Defense, "OFFENSIVE_FOULS_DRAWN", Defense?.PassageForce ?? 0);
+                                        var neutral       = PerfCountOf(v2Defense, "NEUTRALIZATIONS", Defense?.Neutralisations ?? 0);
+                                        var penConc       = PerfCountOf(v2Defense, "PENALTIES_CONCEDED", Sanctions?.PenaltyConcede ?? 0);
+                                        var sanctConc     = PerfCountOf(v2Defense, "SANCTIONS_CONCEDED",
+                                            Sanctions != null ? Sanctions.Avertissements + Sanctions.DeuxMinutes + Sanctions.Exclusions : 0);
+                                        var warn  = PerfCountOf(v2Defense, "WARNINGS_CONCEDED", Sanctions?.Avertissements ?? 0);
+                                        var twom  = PerfCountOf(v2Defense, "TWO_MINUTE_SUSPENSIONS_CONCEDED", Sanctions?.DeuxMinutes ?? 0);
+                                        var dq    = PerfCountOf(v2Defense, "DISQUALIFICATIONS_CONCEDED", Sanctions?.Exclusions ?? 0);
+                                    }
+                                    @* Impact défensif *@
+                                    <section class="perf-group">
+                                        <header class="perf-group__head">
+                                            <p class="section-kicker">Impact défensif</p>
+                                        </header>
+                                        <div class="perf-metric-list">
+                                            <PerformanceMetricRow Label="Interceptions" Value="@interceptions.ToString()"
+                                                Context="@(profile.MatchesPlayed > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(interceptions, profile.MatchesPlayed))}/match" : null)" />
+                                            <PerformanceMetricRow Label="Contres" Value="@blocks.ToString()"
+                                                Context="@(profile.MatchesPlayed > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(blocks, profile.MatchesPlayed))}/match" : null)" />
+                                            <PerformanceMetricRow Label="PF provoqués" Value="@offFouls.ToString()" />
+                                            <PerformanceMetricRow Label="Neutralisations" Value="@neutral.ToString()" />
                                         </div>
-                                        <div class="mini-card">
-                                            <span>Sanctions</span>
-                                            <strong>@technical.Sanctions</strong>
+                                    </section>
+
+                                    @* Coût défensif *@
+                                    <section class="perf-group">
+                                        <header class="perf-group__head">
+                                            <p class="section-kicker">Coût défensif</p>
+                                        </header>
+                                        <div class="perf-metric-list">
+                                            <PerformanceMetricRow Label="7m concédés" Value="@penConc.ToString()" Tone="@(penConc > 3 ? "warning" : "neutral")" />
+                                            <PerformanceMetricRow Label="Sanctions concédées" Value="@sanctConc.ToString()"
+                                                Tone="@(sanctConc > 5 ? "warning" : "neutral")">
+                                                <div class="pmr-sanction-breakdown">
+                                                    <span>@warn avert.</span>
+                                                    <span>@twom × 2 min</span>
+                                                    <span>@dq exclusions</span>
+                                                </div>
+                                            </PerformanceMetricRow>
                                         </div>
-                                    </div>
-                                </section>
-                            </div>
+                                    </section>
+                                </div>
+                            }
+
+                            @* ── MAÎTRISE ── *@
+                            @if (!profile.IsGoalkeeper && PerformanceSection == "mastery")
+                            {
+                                <div id="perf-panel-mastery" role="tabpanel" class="perf-panel">
+                                    @{
+                                        var totalTurnovers = PerfCountOf(v2Offense, "TOTAL_TURNOVERS", Passing?.TotalPertes ?? 0);
+                                        var badPasses      = PerfCountOf(v2Offense, "BAD_PASSES", Passing?.MauvaisePasse ?? 0);
+                                        var pivotMetric    = v2Offense?.FirstOrDefault(m => m.MetricCode == "FAILED_PIVOT_PASSES");
+                                        var pivotValue     = pivotMetric?.CountValue;
+                                        var pivotMissing   = pivotMetric == null || pivotMetric.IsUnavailable || pivotMetric.Availability is "DATA_MISSING" or "UNAVAILABLE_FROM_CURRENT_DATA" or "UNAVAILABLE";
+                                        var matches2 = profile.MatchesPlayed;
+                                    }
+                                    <section class="perf-group">
+                                        <header class="perf-group__head">
+                                            <p class="section-kicker">Conservation du ballon</p>
+                                        </header>
+                                        <div class="perf-metric-list">
+                                            <PerformanceMetricRow Label="Pertes de balle" Value="@totalTurnovers.ToString()"
+                                                Context="@(matches2 > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalTurnovers, matches2))}/match" : null)"
+                                                Tone="@(HandballKpiHelper.PerMatch(totalTurnovers, matches2) > 3 ? "warning" : "neutral")">
+                                                <div class="pmr-turnover-breakdown">
+                                                    <span>Mauvaises passes : @badPasses</span>
+                                                    @if (pivotMissing)
+                                                    {
+                                                        <span class="pmr-data-missing">Passes pivot ratées : —</span>
+                                                    }
+                                                    else if (pivotValue.HasValue)
+                                                    {
+                                                        <span>Passes pivot ratées : @pivotValue.Value</span>
+                                                    }
+                                                </div>
+                                            </PerformanceMetricRow>
+                                            <PerformanceMetricRow Label="Mauvaises passes" Value="@badPasses.ToString()"
+                                                Context="@(matches2 > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(badPasses, matches2))}/match" : null)" />
+                                            @if (!pivotMissing && pivotValue.HasValue)
+                                            {
+                                                <PerformanceMetricRow Label="Passes pivot ratées" Value="@pivotValue.Value.ToString()" />
+                                            }
+                                            else
+                                            {
+                                                <PerformanceMetricRow Label="Passes pivot ratées" Value="—" Availability="DATA_MISSING" />
+                                            }
+                                        </div>
+                                    </section>
+                                </div>
+                            }
+
+                            @* ── DISCIPLINE ── *@
+                            @if (PerformanceSection == "discipline")
+                            {
+                                <div id="perf-panel-discipline" role="tabpanel" class="perf-panel">
+                                    @{
+                                        var warn2  = PerfCountOf(v2Defense, "WARNINGS_CONCEDED", Sanctions?.Avertissements ?? 0);
+                                        var twom2  = PerfCountOf(v2Defense, "TWO_MINUTE_SUSPENSIONS_CONCEDED", Sanctions?.DeuxMinutes ?? 0);
+                                        var dq2    = PerfCountOf(v2Defense, "DISQUALIFICATIONS_CONCEDED", Sanctions?.Exclusions ?? 0);
+                                        var totalSanct2 = warn2 + twom2 + dq2;
+                                        var penConc2 = PerfCountOf(v2Defense, "PENALTIES_CONCEDED", Sanctions?.PenaltyConcede ?? 0);
+                                        var matches3 = profile.MatchesPlayed;
+                                    }
+                                    <section class="perf-group">
+                                        <header class="perf-group__head">
+                                            <p class="section-kicker">Discipline</p>
+                                        </header>
+                                        <div class="perf-metric-list">
+                                            <PerformanceMetricRow Label="Total sanctions" Value="@totalSanct2.ToString()"
+                                                Tone="@(HandballKpiHelper.SanctionsTone(HandballKpiHelper.PerMatch(totalSanct2, matches3), false))"
+                                                Context="@(matches3 > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalSanct2, matches3))}/match" : null)" />
+                                            @* Barres de breakdown *@
+                                            <div class="perf-sanction-bar-group">
+                                                @{ var maxSanct = Math.Max(totalSanct2, 1); }
+                                                <div class="perf-sanction-bar-row">
+                                                    <span class="psb-label">Avert.</span>
+                                                    <div class="psb-bar-wrap"><div class="psb-bar" style="width:@((warn2 * 100.0 / maxSanct).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                                    <span class="psb-value">@warn2</span>
+                                                </div>
+                                                <div class="perf-sanction-bar-row">
+                                                    <span class="psb-label">2 min</span>
+                                                    <div class="psb-bar-wrap"><div class="psb-bar psb-bar--twom" style="width:@((twom2 * 100.0 / maxSanct).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                                    <span class="psb-value">@twom2</span>
+                                                </div>
+                                                <div class="perf-sanction-bar-row">
+                                                    <span class="psb-label">Excl.</span>
+                                                    <div class="psb-bar-wrap"><div class="psb-bar psb-bar--dq" style="width:@((dq2 * 100.0 / maxSanct).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                                    <span class="psb-value">@dq2</span>
+                                                </div>
+                                            </div>
+                                            @* Séparé : 7m concédés N'EST PAS dans sanctions *@
+                                            <PerformanceMetricRow Label="7m concédés" Value="@penConc2.ToString()"
+                                                Context="Distinct des sanctions disciplinaires"
+                                                Tone="@(penConc2 > 3 ? "warning" : "neutral")" />
+                                        </div>
+                                    </section>
+                                </div>
+                            }
+
+                            @* ── GARDIENNE : ARRÊTS ── *@
+                            @if (profile.IsGoalkeeper && PerformanceSection == "saves")
+                            {
+                                <div id="perf-panel-saves" role="tabpanel" class="perf-panel">
+                                    @{
+                                        var totalSaves = PerfCountOf(v2Keeper, "TOTAL_SAVES", Goalkeeper != null ? Goalkeeper.Arrets + Goalkeeper.ArretsPenalty : 0);
+                                        var openSaves  = PerfCountOf(v2Keeper, "OPEN_PLAY_SAVES", Goalkeeper?.Arrets ?? 0);
+                                        var penSaves   = PerfCountOf(v2Keeper, "PENALTY_SAVES", Goalkeeper?.ArretsPenalty ?? 0);
+                                        var totalFaced = PerfCountOf(v2Keeper, "TOTAL_SHOTS_FACED", Goalkeeper?.TirsSubis ?? 0);
+                                        var openFaced  = PerfCountOf(v2Keeper, "OPEN_PLAY_SHOTS_FACED", Goalkeeper != null ? Goalkeeper.Arrets + Goalkeeper.ButsPris : 0);
+                                        var penFaced   = PerfCountOf(v2Keeper, "PENALTY_SHOTS_FACED", Goalkeeper != null ? Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty : 0);
+                                        var gkMatches  = profile.MatchesPlayed;
+                                        var totalSaveRateModel = PerfRateOf(v2Keeper, "TOTAL_SAVE_RATE");
+                                        var openSaveRateModel  = PerfRateOf(v2Keeper, "OPEN_PLAY_SAVE_RATE");
+                                        var penSaveRateModel   = PerfRateOf(v2Keeper, "PENALTY_SAVE_RATE");
+                                        var totalSaveRate = totalSaveRateModel?.Value ?? Technical?.GoalkeeperSaveRate ?? 0;
+                                        var openSaveRate  = openSaveRateModel?.Value  ?? (openFaced > 0 ? openSaves * 100.0 / openFaced : 0.0);
+                                        var penSaveRate   = penSaveRateModel?.Value   ?? Technical?.GoalkeeperPenaltyStopRate ?? 0;
+                                    }
+                                    <section class="perf-group">
+                                        <header class="perf-group__head"><p class="section-kicker">Arrêts</p></header>
+                                        <div class="perf-metric-list">
+                                            <PerformanceMetricRow Label="Arrêts total" Value="@totalSaves.ToString()"
+                                                Evidence="@($"{openSaves} jeu + {penSaves} sur 7m")"
+                                                Context="@(gkMatches > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalSaves, gkMatches))}/match" : null)" />
+                                            <PerformanceMetricRow Label="Arrêts dans le jeu" Value="@openSaves.ToString()" />
+                                            <PerformanceMetricRow Label="Arrêts 7 mètres" Value="@penSaves.ToString()" />
+                                        </div>
+                                    </section>
+                                    <section class="perf-group">
+                                        <header class="perf-group__head"><p class="section-kicker">Tirs subis</p></header>
+                                        <div class="perf-metric-list">
+                                            <PerformanceMetricRow Label="Tirs subis total" Value="@totalFaced.ToString()"
+                                                Evidence="@($"{openFaced} jeu + {penFaced} sur 7m")" />
+                                            <PerformanceMetricRow Label="Dans le jeu" Value="@openFaced.ToString()" />
+                                            <PerformanceMetricRow Label="7 mètres" Value="@penFaced.ToString()" />
+                                            <PerformanceMetricRow Label="Buts encaissés" Value="@(((Goalkeeper?.ButsPris ?? 0) + (Goalkeeper?.ButsPenalty ?? 0)).ToString())"
+                                                Evidence="@($"{Goalkeeper?.ButsPris ?? 0} jeu + {Goalkeeper?.ButsPenalty ?? 0} sur 7m")" />
+                                        </div>
+                                    </section>
+                                    <section class="perf-group">
+                                        <header class="perf-group__head"><p class="section-kicker">Taux d'arrêt</p></header>
+                                        <div class="perf-metric-list perf-metric-list--rates">
+                                            <PerformanceMetricRow Label="Taux total"
+                                                Value="@(FormatRate(totalSaveRate) + "%")"
+                                                Evidence="@(totalSaveRateModel != null ? $"{totalSaveRateModel.Numerator?.ToString("0") ?? "?"} / {totalSaveRateModel.Denominator?.ToString("0") ?? "?"}" : $"{totalSaves} / {totalFaced}")"
+                                                Availability="@(totalSaveRateModel != null && !totalSaveRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)"
+                                                Context="@(totalSaveRateModel != null ? (totalSaveRateModel.SampleReliable ? "Volume fiable" : $"Min. {totalSaveRateModel.MinimumSample?.ToString("0") ?? "?"} tirs") : null)" />
+                                            <PerformanceMetricRow Label="Jeu ouvert"
+                                                Value="@(FormatRate(openSaveRate) + "%")"
+                                                Evidence="@(openSaveRateModel != null ? $"{openSaveRateModel.Numerator?.ToString("0") ?? "?"} / {openSaveRateModel.Denominator?.ToString("0") ?? "?"}" : $"{openSaves} / {openFaced}")"
+                                                Availability="@(openSaveRateModel != null && !openSaveRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)" />
+                                            <PerformanceMetricRow Label="7 mètres"
+                                                Value="@(FormatRate(penSaveRate) + "%")"
+                                                Evidence="@(penSaveRateModel != null ? $"{penSaveRateModel.Numerator?.ToString("0") ?? "?"} / {penSaveRateModel.Denominator?.ToString("0") ?? "?"}" : $"{penSaves} / {penFaced}")"
+                                                Availability="@(penSaveRateModel != null && !penSaveRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)" />
+                                        </div>
+                                    </section>
+                                </div>
+                            }
+
+                            @* ── GARDIENNE : AVEC BALLON ── *@
+                            @if (profile.IsGoalkeeper && PerformanceSection == "ball")
+                            {
+                                <div id="perf-panel-ball" role="tabpanel" class="perf-panel">
+                                    @{
+                                        var gkAssists   = PerfCountOf(v2Keeper, "GOALKEEPER_ASSISTS", Goalkeeper?.PasseDecisives ?? 0);
+                                        var gkGoals     = PerfCountOf(v2Keeper, "GOALKEEPER_GOALS", Goalkeeper?.Buts ?? 0);
+                                        var gkTurnovers = PerfCountOf(v2Keeper, "GOALKEEPER_TURNOVERS", Goalkeeper?.PerteDeBalle ?? 0);
+                                        var gkMissed    = PerfCountOf(v2Keeper, "GOALKEEPER_MISSED_SHOTS", Goalkeeper?.TirsLoupes ?? 0);
+                                    }
+                                    <section class="perf-group">
+                                        <header class="perf-group__head"><p class="section-kicker">Avec ballon</p></header>
+                                        <div class="perf-metric-list">
+                                            <PerformanceMetricRow Label="Passes décisives" Value="@gkAssists.ToString()" />
+                                            <PerformanceMetricRow Label="Buts" Value="@gkGoals.ToString()" />
+                                            <PerformanceMetricRow Label="Pertes de balle" Value="@gkTurnovers.ToString()"
+                                                Tone="@(gkTurnovers > 5 ? "warning" : "neutral")" />
+                                            <PerformanceMetricRow Label="Tirs manqués" Value="@gkMissed.ToString()" />
+                                        </div>
+                                    </section>
+                                </div>
+                            }
                         }
                         else if (ActiveSection == "graphs")
                         {
@@ -867,6 +1165,7 @@
     private PlayerCourtDisplayMode CourtDisplayMode { get; set; } = PlayerCourtDisplayMode.Volume;
     private PlayerCourtScene CourtScene { get; set; } = PlayerCourtScene.ShotZones;
     private bool IsCourtLoaded { get; set; }
+    private string PerformanceSection { get; set; } = "attack";
 
     [Parameter, SupplyParameterFromQuery(Name = "playerId")]
     public int? PlayerIdFromQuery { get; set; }
@@ -969,7 +1268,6 @@
     private IReadOnlyList<BarGaugeKpiItem> BriefDefenseKpis => BuildBriefDefenseKpis();
     private IReadOnlyList<BarGaugeKpiItem> BriefGoalkeeperKpis => BuildBriefGoalkeeperKpis();
     private IReadOnlyList<BarGaugeKpiItem> BriefBallKpis => BuildBriefBallKpis();
-    private IReadOnlyList<KpiTile> PlayerKpis => BuildPlayerKpis();
     private IReadOnlyList<MetricPlotPoint> PlayerActionProfile => BuildPlayerActionProfile();
     private IReadOnlyList<MetricPlotPoint> PlayerRateProfile => BuildPlayerRateProfile();
     private IReadOnlyList<MatchTrendPoint> PlayerTrendSeries => BuildPlayerTrendSeries();
@@ -1466,6 +1764,7 @@
             CourtAttackType = PlayerCourtAttackType.All;
             CourtDisplayMode = PlayerCourtDisplayMode.Volume;
             CourtScene = PlayerCourtScene.ShotZones;
+            PerformanceSection = "attack";
             return;
         }
 
@@ -1524,6 +1823,7 @@
             CourtDisplayMode = PlayerCourtDisplayMode.Volume;
             CourtScene = PlayerCourtScene.ShotZones;
             ActiveZoneKey = null;
+            PerformanceSection = Profile?.IsGoalkeeper == true ? "saves" : "attack";
         }
         catch (Exception ex)
         {
@@ -1745,121 +2045,6 @@
     {
         var parts = (fullName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return string.Concat(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])));
-    }
-
-    private IReadOnlyList<KpiTile> BuildPlayerKpis()
-    {
-        if (Profile is null || Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null || Technical is null)
-        {
-            return [];
-        }
-
-        var matches = Math.Max(Global.MatchesPlayed, 0);
-        var directContributions = Global.TotalGoals + Global.AssistCount;
-        var shotAttempts = Technical.ShotAttempts;
-        var shotWaste = Technical.ShotWaste;
-        var defensiveImpact = Profile.IsGoalkeeper
-            ? Technical.GoalkeeperStops
-            : Technical.DefensiveImpact;
-        var sanctions = Technical.Sanctions;
-        var technicalLosses = Technical.TechnicalLosses;
-        var goalkeeperConcededGoals = Technical.GoalkeeperConcededGoals;
-        var penaltyStopRate = Technical.GoalkeeperPenaltyStopRate;
-        var overallShotRate = Technical.OverallShotSuccessRate;
-
-        return
-        [
-            new KpiTile(
-                "Actions directes / match",
-                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(directContributions, matches)),
-                "Buts et passes decisives rapportes aux matchs.",
-                HandballKpiHelper.DirectActionsTone(HandballKpiHelper.PerMatch(directContributions, matches), Profile.IsGoalkeeper),
-                HandballKpiHelper.FormatPerMatchContext(directContributions, matches, "actions")),
-            new KpiTile(
-                "Ballons valorises",
-                HandballKpiHelper.FormatPercent(HandballKpiHelper.SuccessVsWasteShare(Passing.PasseDecisive, Passing.TotalPertes)),
-                "Part des actions de balle qui se terminent positivement.",
-                HandballKpiHelper.BallRetentionTone(HandballKpiHelper.SuccessVsWasteShare(Passing.PasseDecisive, Passing.TotalPertes), Profile.IsGoalkeeper),
-                $"{Passing.PasseDecisive} passes pour {Passing.TotalPertes} pertes"),
-            new KpiTile(
-                Profile.IsGoalkeeper ? "Arrets / match" : "Impact def. / match",
-                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(defensiveImpact, matches)),
-                Profile.IsGoalkeeper
-                    ? "Arrets classiques et penalties arretes."
-                    : "Interceptions, contres, neutralisations et passages forces.",
-                HandballKpiHelper.DefensiveImpactTone(HandballKpiHelper.PerMatch(defensiveImpact, matches), Profile.IsGoalkeeper),
-                HandballKpiHelper.FormatPerMatchContext(defensiveImpact, matches, Profile.IsGoalkeeper ? "arrets" : "actions def.")),
-            new KpiTile(
-                Profile.IsGoalkeeper ? "Taux d'arret" : "Taux de tir ouvert",
-                HandballKpiHelper.FormatPercent(Profile.IsGoalkeeper ? Goalkeeper.TauxArret : Offense.TauxReussiteTir),
-                Profile.IsGoalkeeper ? "Lecture gardienne sur les tirs subis." : "Capacite de finition sur les tirs ouverts, hors 7m.",
-                Profile.IsGoalkeeper
-                    ? HandballKpiHelper.GoalkeeperSaveRateTone(Goalkeeper.TauxArret)
-                    : HandballKpiHelper.FieldSuccessRateTone(Offense.TauxReussiteTir),
-                Profile.IsGoalkeeper
-                    ? HandballKpiHelper.FormatBase(
-                        HandballKpiHelper.GoalkeeperStops(Goalkeeper),
-                        Math.Max(Goalkeeper.TirsSubis, 1),
-                        "tirs arretes")
-                    : HandballKpiHelper.FormatBase(
-                        Offense.Buts,
-                        Math.Max(Offense.Buts + Offense.TirsRates, 1),
-                        "tirs ouverts")),
-            new KpiTile(
-                Profile.IsGoalkeeper ? "Stop 7m %" : "Conversion globale",
-                HandballKpiHelper.FormatPercent(Profile.IsGoalkeeper ? penaltyStopRate : overallShotRate),
-                Profile.IsGoalkeeper ? "Arrets sur penalties." : "Buts rapportes a tous les tirs engages.",
-                Profile.IsGoalkeeper
-                    ? HandballKpiHelper.GoalkeeperPenaltyStopRateTone(penaltyStopRate)
-                    : HandballKpiHelper.FieldSuccessRateTone(overallShotRate),
-                Profile.IsGoalkeeper
-                    ? HandballKpiHelper.FormatBase(
-                        Goalkeeper.ArretsPenalty,
-                        Math.Max(Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty, 1),
-                        "penalties arretes")
-                    : HandballKpiHelper.FormatBase(
-                        Global.TotalGoals,
-                        Math.Max(shotAttempts, 1),
-                        "tirs engages")),
-            new KpiTile(
-                Profile.IsGoalkeeper ? "Tirs subis / match" : "Tirs engages / match",
-                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(
-                    Profile.IsGoalkeeper ? Goalkeeper.TirsSubis : shotAttempts,
-                    matches)),
-                Profile.IsGoalkeeper ? "Volume de tirs affrontes rapporte au temps de jeu." : "Buts, tirs rates, tirs contres et penalties engages.",
-                "warning",
-                HandballKpiHelper.FormatPerMatchContext(
-                    Profile.IsGoalkeeper ? Goalkeeper.TirsSubis : shotAttempts,
-                    matches,
-                    Profile.IsGoalkeeper ? "tirs subis" : "tirs engages")),
-            new KpiTile(
-                Profile.IsGoalkeeper ? "Buts pris / match" : "Dechet tir / match",
-                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(
-                    Profile.IsGoalkeeper ? goalkeeperConcededGoals : shotWaste,
-                    matches)),
-                Profile.IsGoalkeeper ? "Volume de buts encaisses rapporte au temps de jeu." : "Tirs rates, tirs contres et penalties manques.",
-                Profile.IsGoalkeeper
-                    ? HandballKpiHelper.GoalkeeperConcededGoalsTone(HandballKpiHelper.PerMatch(goalkeeperConcededGoals, matches))
-                    : HandballKpiHelper.FieldWasteTone(HandballKpiHelper.PerMatch(shotWaste, matches)),
-                HandballKpiHelper.FormatPerMatchContext(
-                    Profile.IsGoalkeeper ? goalkeeperConcededGoals : shotWaste,
-                    matches,
-                    Profile.IsGoalkeeper ? "buts encaisses" : "dechets tir")),
-            new KpiTile(
-                "Pertes techniques / match",
-                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(technicalLosses, matches)),
-                "Mauvaises passes, pertes de balle, fautes techniques et passages en force.",
-                Profile.IsGoalkeeper
-                    ? HandballKpiHelper.KeeperWasteTone(HandballKpiHelper.PerMatch(technicalLosses, matches))
-                    : HandballKpiHelper.FieldWasteTone(HandballKpiHelper.PerMatch(technicalLosses, matches)),
-                HandballKpiHelper.FormatPerMatchContext(technicalLosses, matches, "pertes techniques")),
-            new KpiTile(
-                "Sanctions / match",
-                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(sanctions, matches)),
-                "Charge disciplinaire individuelle.",
-                HandballKpiHelper.SanctionsTone(HandballKpiHelper.PerMatch(sanctions, matches), Profile.IsGoalkeeper),
-                HandballKpiHelper.FormatPerMatchContext(sanctions, matches, "sanctions"))
-        ];
     }
 
     // ── Brief : GLOBAL (joueuse de champ ET gardienne) ──
@@ -2911,4 +3096,12 @@
     };
 
     private static string FormatRate(double value) => value.ToString("0.#");
+
+    // ── Performance V2 helpers ──
+    private static int PerfCountOf(IReadOnlyList<LeagueMetricDisplayModel>? list, string code, int fallback = 0)
+        => list?.FirstOrDefault(m => m.MetricCode == code)?.CountValue ?? fallback;
+    private static RateDisplayModel? PerfRateOf(IReadOnlyList<LeagueMetricDisplayModel>? list, string code)
+        => list?.FirstOrDefault(m => m.MetricCode == code)?.Rate;
+    private static bool PerfIsUnavailable(IReadOnlyList<LeagueMetricDisplayModel>? list, string code)
+        => list?.FirstOrDefault(m => m.MetricCode == code)?.IsUnavailable ?? true;
 }
