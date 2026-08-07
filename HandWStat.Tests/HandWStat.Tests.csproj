@@ -48,6 +48,9 @@
     <Compile Include="..\Models\Analytics\PlayerGameRowBuilder.cs" Link="Models\Analytics\PlayerGameRowBuilder.cs" />
     <Compile Include="..\Models\Matches\MatchScoreFormatter.cs" Link="Models\Matches\MatchScoreFormatter.cs" />
     <Compile Include="..\Models\Matches\MatchIdentityDisplay.cs" Link="Models\Matches\MatchIdentityDisplay.cs" />
+    <Compile Include="..\Models\Matches\MatchComparisonModels.cs" Link="Models\Matches\MatchComparisonModels.cs" />
+    <Compile Include="..\Models\Matches\MatchComparisonBuilder.cs" Link="Models\Matches\MatchComparisonBuilder.cs" />
+    <Compile Include="..\Models\Matches\MatchScenarioAnalyzerV2.cs" Link="Models\Matches\MatchScenarioAnalyzerV2.cs" />
     <Compile Include="..\Services\AnalysisScopeService.cs" Link="Services\AnalysisScopeService.cs" />
     <Compile Include="..\Services\Analytics\ILeagueAnalyticsGateway.cs" Link="Services\Analytics\ILeagueAnalyticsGateway.cs" />
     <Compile Include="..\Services\Analytics\LeagueAnalyticsContractValidator.cs" Link="Services\Analytics\LeagueAnalyticsContractValidator.cs" />
