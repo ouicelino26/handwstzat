@@ -6160,3 +6160,217 @@ html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
         padding: 0.2rem 0.5rem;
     }
 }
+
+/* ── Performance V2 ──────────────────────────────────────────────────────── */
+
+.perf-tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem 0 0.75rem;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+    margin-bottom: 1.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.perf-tabs::-webkit-scrollbar { display: none; }
+
+.perf-tab-btn {
+    padding: 0.375rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.12));
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-secondary, #aaa);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.perf-tab-btn:hover {
+    border-color: var(--accent, #4fc3f7);
+    color: var(--text-primary, #e8e8e8);
+}
+
+.perf-tab-btn.is-active {
+    background: var(--accent, #4fc3f7);
+    border-color: var(--accent, #4fc3f7);
+    color: #000;
+    font-weight: 600;
+}
+
+.perf-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.perf-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.perf-group__head {
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.perf-metric-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* PerformanceMetricRow */
+.perf-metric-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.04));
+}
+
+.perf-metric-row:last-child {
+    border-bottom: none;
+}
+
+.pmr-main {
+    display: contents;
+}
+
+.pmr-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #ccc);
+    grid-column: 1;
+}
+
+.pmr-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary, #e8e8e8);
+    text-align: right;
+    grid-column: 2;
+    font-variant-numeric: tabular-nums;
+}
+
+.pmr-value--positive { color: var(--tone-positive, #48a36c); }
+.pmr-value--warning  { color: var(--tone-warning, #f0ca91); }
+.pmr-value--danger   { color: var(--tone-danger, #b9635a); }
+
+.pmr-evidence {
+    grid-column: 1 / -1;
+    font-size: 0.72rem;
+    color: var(--text-muted, #888);
+}
+
+.pmr-context {
+    grid-column: 1 / -1;
+    font-size: 0.72rem;
+    color: var(--text-muted, #888);
+    font-style: italic;
+}
+
+.pmr-unavailable {
+    grid-column: 1 / -1;
+    font-size: 0.72rem;
+    color: var(--text-muted, #888);
+    font-style: italic;
+}
+
+.pmr-sample-warning {
+    grid-column: 1 / -1;
+    font-size: 0.7rem;
+    color: var(--tone-warning, #f0ca91);
+}
+
+.pmr-breakdown,
+.pmr-turnover-breakdown,
+.pmr-sanction-breakdown {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem 1rem;
+    padding: 0.25rem 0 0.125rem;
+    font-size: 0.75rem;
+    color: var(--text-muted, #888);
+}
+
+.pmr-data-missing {
+    color: var(--text-muted, #888);
+    font-style: italic;
+}
+
+/* Taux rate-specific layout */
+.perf-metric-list--rates .pmr-value {
+    font-size: 1.2rem;
+    color: var(--text-primary, #e8e8e8);
+}
+
+/* Discipline bar chart */
+.perf-sanction-bar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.5rem 0;
+}
+
+.perf-sanction-bar-row {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr 2rem;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.psb-label {
+    font-size: 0.72rem;
+    color: var(--text-muted, #888);
+    text-align: right;
+}
+
+.psb-bar-wrap {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.psb-bar {
+    height: 100%;
+    background: var(--accent, #4fc3f7);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.psb-bar--twom { background: var(--tone-warning, #f0ca91); }
+.psb-bar--dq   { background: var(--tone-danger, #b9635a); }
+
+.psb-value {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-primary, #e8e8e8);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 768px) {
+    .perf-tabs {
+        padding-bottom: 0.5rem;
+    }
+    .perf-tab-btn {
+        padding: 0.3rem 0.75rem;
+        font-size: 0.78rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .pmr-label {
+        font-size: 0.8rem;
+    }
+    .pmr-value {
+        font-size: 0.95rem;
+    }
+}
