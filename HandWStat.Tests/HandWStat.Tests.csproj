@@ -38,6 +38,10 @@
     <Compile Include="..\Models\Analytics\ChartModels.cs" Link="Models\Analytics\ChartModels.cs" />
     <Compile Include="..\Models\Analytics\MatchScenarioAnalyzer.cs" Link="Models\Analytics\MatchScenarioAnalyzer.cs" />
     <Compile Include="..\Models\Analytics\MatchFilterCatalog.cs" Link="Models\Analytics\MatchFilterCatalog.cs" />
+    <Compile Include="..\Models\Analytics\TrajectoryModels.cs" Link="Models\Analytics\TrajectoryModels.cs" />
+    <Compile Include="..\Models\Analytics\PlayerTrajectoryMetricCatalog.cs" Link="Models\Analytics\PlayerTrajectoryMetricCatalog.cs" />
+    <Compile Include="..\Models\Analytics\TrajectoryAggregator.cs" Link="Models\Analytics\TrajectoryAggregator.cs" />
+    <Compile Include="..\Models\Analytics\TrajectoryPointBuilder.cs" Link="Models\Analytics\TrajectoryPointBuilder.cs" />
     <Compile Include="..\Services\AnalysisScopeService.cs" Link="Services\AnalysisScopeService.cs" />
     <Compile Include="..\Services\Analytics\ILeagueAnalyticsGateway.cs" Link="Services\Analytics\ILeagueAnalyticsGateway.cs" />
     <Compile Include="..\Services\Analytics\LeagueAnalyticsContractValidator.cs" Link="Services\Analytics\LeagueAnalyticsContractValidator.cs" />
