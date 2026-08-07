@@ -6639,3 +6639,350 @@ html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
     .tsc-value { font-size: 1.1rem; }
     .traj-win-btn { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
 }
+
+/* ── Games V2 / Matchs ─────────────────────────────────────────────────── */
+
+/* Toolbar */
+.games-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    align-items: flex-end;
+    padding-bottom: 1rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+}
+
+.games-search-wrap {
+    flex: 1 1 14rem;
+    min-width: 12rem;
+}
+
+.games-search {
+    width: 100%;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    background: var(--surface, #1e1e1e);
+    color: var(--text-primary, #e8e8e8);
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.12));
+    border-radius: 6px;
+}
+
+.games-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.games-filter-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted, #888);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.games-win-btns,
+.games-result-btns,
+.games-mode-btns {
+    display: flex;
+    gap: 0.2rem;
+}
+
+.games-win-btn,
+.games-result-btn,
+.games-mode-btn {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.12));
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-secondary, #aaa);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s;
+}
+
+.games-win-btn.is-active,
+.games-result-btn.is-active,
+.games-mode-btn.is-active {
+    background: var(--accent, #4fc3f7);
+    border-color: var(--accent, #4fc3f7);
+    color: #000;
+    font-weight: 600;
+}
+
+/* Synthèse */
+.games-summary-bar {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.35rem 0 0.65rem;
+    font-size: 0.75rem;
+    color: var(--text-muted, #888);
+}
+
+.games-summary-warn { color: var(--tone-warning, #f0ca91); }
+
+/* Empty state */
+.games-empty {
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-muted, #888);
+    font-size: 0.85rem;
+}
+
+/* Tableau desktop */
+.games-table-wrap {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+}
+
+.games-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.games-th {
+    padding: 0.5rem 0.6rem;
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted, #888);
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    background: var(--surface, #1e1e1e);
+    z-index: 1;
+}
+
+.games-th--num,
+.games-th--rate,
+.games-th--time,
+.games-th--result,
+.games-th--detail { text-align: center; }
+
+.games-sort-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    padding: 0;
+    text-transform: uppercase;
+    letter-spacing: inherit;
+    font-size: inherit;
+}
+
+.games-sort-btn:hover { color: var(--accent, #4fc3f7); }
+
+.games-td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.04));
+    color: var(--text-primary, #e8e8e8);
+    vertical-align: middle;
+}
+
+.games-td--num,
+.games-td--rate,
+.games-td--time,
+.games-td--result,
+.games-td--detail { text-align: center; }
+
+.games-row {
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.games-row:hover { background: rgba(79,195,247,0.04); }
+.games-row--selected { background: rgba(79,195,247,0.08); }
+
+.games-match-opponent {
+    display: block;
+    font-weight: 500;
+    color: var(--text-primary, #e8e8e8);
+}
+
+.games-match-score {
+    font-size: 0.72rem;
+    color: var(--text-muted, #888);
+    font-variant-numeric: tabular-nums;
+}
+
+.games-result {
+    display: inline-block;
+    width: 1.6rem;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 3px;
+    padding: 0.1rem 0.25rem;
+}
+
+.games-result--win  { color: var(--tone-positive, #48a36c); background: rgba(72,163,108,0.12); }
+.games-result--loss { color: var(--tone-danger, #b9635a);   background: rgba(185,99,90,0.12); }
+.games-result--draw { color: var(--text-muted, #888);        background: rgba(255,255,255,0.06); }
+.games-result--unknown { color: var(--text-muted, #888);     background: rgba(255,255,255,0.04); }
+
+.games-val {
+    display: block;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.games-rate-evidence {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--text-muted, #888);
+    font-variant-numeric: tabular-nums;
+}
+
+.games-delta {
+    display: block;
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted, #888);
+}
+
+.games-delta--pos { color: var(--tone-positive, #48a36c); }
+.games-delta--neg { color: var(--tone-danger, #b9635a); }
+
+.games-na { color: var(--text-muted, #888); }
+.games-partial { color: var(--tone-warning, #f0ca91); font-size: 0.7rem; }
+
+.games-expand-icon { font-size: 0.6rem; color: var(--text-muted, #888); }
+
+/* Détail inline */
+.games-detail-row td { background: rgba(79,195,247,0.04); }
+.games-detail-cell { padding: 0.75rem 1rem; }
+.games-detail { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.games-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.games-detail-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary, #e8e8e8);
+    margin: 0;
+}
+
+.games-detail-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted, #888);
+    margin: 0;
+}
+
+.games-detail-time {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #ccc);
+    margin: 0;
+}
+
+.games-detail-sections {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.games-detail-section {
+    flex: 1 1 8rem;
+}
+
+.games-detail-section p {
+    margin: 0.1rem 0;
+    font-size: 0.8rem;
+    color: var(--text-primary, #e8e8e8);
+}
+
+.games-open-match-btn,
+.gcc-open-btn {
+    display: inline-block;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid var(--accent, #4fc3f7);
+    border-radius: 6px;
+    color: var(--accent, #4fc3f7);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.games-open-match-btn:hover,
+.gcc-open-btn:hover { background: rgba(79,195,247,0.1); }
+
+/* Cartes mobile */
+.games-cards-mobile { display: none; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .games-table-wrap { display: none; }
+    .games-cards-mobile { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .games-card-compact {
+        border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .games-card-compact__head {
+        display: grid;
+        grid-template-columns: 3rem 1fr auto auto;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.6rem 0.75rem;
+        cursor: pointer;
+    }
+
+    .gcc-date { font-size: 0.72rem; color: var(--text-muted, #888); }
+    .gcc-opponent { font-size: 0.85rem; font-weight: 500; }
+    .gcc-time { font-size: 0.72rem; color: var(--text-muted, #888); font-variant-numeric: tabular-nums; }
+
+    .gcc-detail {
+        padding: 0.5rem 0.75rem 0.75rem;
+        border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .gcc-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 1rem;
+        font-size: 0.78rem;
+        color: var(--text-primary, #e8e8e8);
+    }
+
+    .games-toolbar { gap: 0.5rem 1rem; }
+    .games-search-wrap { flex: 1 1 100%; }
+}
+
+@media (max-width: 480px) {
+    .games-win-btn,
+    .games-result-btn,
+    .games-mode-btn { padding: 0.25rem 0.5rem; font-size: 0.72rem; }
+}
+
+/* Accessibilité sr-only (si pas déjà défini) */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+}

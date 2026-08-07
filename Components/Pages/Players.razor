@@ -212,7 +212,7 @@
                             <button type="button" class="tab-button @(ActiveSection == "analysis" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("analysis")'>Performance</button>
                             <button type="button" class="tab-button @(ActiveSection == "graphs" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("graphs")'>Évolution</button>
                             <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Court</button>
-                            <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Games</button>
+                            <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Matchs</button>
                         </div>
 
                         @if (ActiveSection == "overview")
@@ -1026,74 +1026,309 @@
                                 </div>
                             }
                         }
-                        else
+                        else if (ActiveSection == "matches")
                         {
-                            <section class="page-panel">
-                                <div class="panel-head">
-                                    <div>
-                                        <p class="section-kicker">Feuilles de match</p>
-                                        <h4>@PlayerMatches.Count matchs pour la joueuse</h4>
+                            var isGk = profile.IsGoalkeeper;
+                            var rows = FilteredGameRows;
+                            var baseline = GameBaseline;
+                            var total = rows.Count;
+                            var eligibleTime = rows.Count(r =>
+                                r.PlayingTime.Availability != PlayingTimeAvailability.DataMissing &&
+                                r.PlayingTime.Availability != PlayingTimeAvailability.IdentityConflict &&
+                                r.PlayingTime.Minutes.HasValue);
+                            var avgTime = eligibleTime > 0
+                                ? rows.Where(r => r.PlayingTime.Minutes.HasValue).Average(r => r.PlayingTime.Minutes!.Value)
+                                : (double?)null;
+
+                            @* Toolbar *@
+                            <div class="games-toolbar">
+                                <div class="games-search-wrap">
+                                    <input type="search" class="games-search" placeholder="Adversaire, compétition…"
+                                           value="@GamesSearch"
+                                           @oninput="e => GamesSearch = e.Value?.ToString() ?? string.Empty"
+                                           aria-label="Rechercher un match" />
+                                </div>
+                                <div class="games-filter-group">
+                                    <span class="games-filter-label">Période</span>
+                                    <div class="games-win-btns" role="group" aria-label="Fenêtre temporelle">
+                                        <button type="button" class="games-win-btn @(GamesWindow == PlayerGamesWindow.Last5 ? "is-active" : "")"
+                                                @onclick='() => GamesWindow = PlayerGamesWindow.Last5'>5 derniers</button>
+                                        <button type="button" class="games-win-btn @(GamesWindow == PlayerGamesWindow.Last10 ? "is-active" : "")"
+                                                @onclick='() => GamesWindow = PlayerGamesWindow.Last10'>10 derniers</button>
+                                        <button type="button" class="games-win-btn @(GamesWindow == PlayerGamesWindow.Season ? "is-active" : "")"
+                                                @onclick='() => GamesWindow = PlayerGamesWindow.Season'>Saison</button>
                                     </div>
                                 </div>
-
-                                <div class="table-toolbar">
-                                    <label class="filter-field table-search">
-                                        <span>Filtrer le tableau</span>
-                                        <input value="@PlayerMatchSearch" @oninput="OnPlayerMatchSearchChanged" placeholder="Equipe, competition ou saison" />
-                                    </label>
-                                </div>
-
-                                <div class="table-toolbar">
-                                    @TableHeader("match", "Match", SetPlayerMatchSort)
-                                    @TableHeader("date", "Saison/J", SetPlayerMatchSort)
-                                    @TableHeader("score", "Score", SetPlayerMatchSort)
-                                    @TableHeader("goals", "Buts", SetPlayerMatchSort)
-                                    @TableHeader("assists", "Passes", SetPlayerMatchSort)
-                                    @TableHeader("interceptions", "Interceptions", SetPlayerMatchSort)
-                                    @TableHeader("saves", "Arrets", SetPlayerMatchSort)
-                                    @TableHeader("turnovers", "Pertes", SetPlayerMatchSort)
-                                    @TableHeader("sanctions", "Sanctions", SetPlayerMatchSort)
-                                </div>
-
-                                @{
-                                    var playerMatchRows = FilteredPlayerMatches.ToArray();
-                                }
-
-                                @if (playerMatchRows.Length == 0)
-                                {
-                                    <StateCard Kicker="Aucune feuille"
-                                               Title="Le filtre courant ne retourne aucune rencontre pour cette joueuse"
-                                               Message="Essayez un autre contexte ou retirez un filtre trop restrictif."
-                                               Tone="empty"
-                                               CssClass="empty-card-inline" />
-                                }
-                                else
-                                {
-                                    <div class="match-mosaic">
-                                        @foreach (var match in playerMatchRows)
-                                        {
-                                        <MatchCard @key="match.MatchId"
-                                                   Title="@($"{match.Team1Name ?? "Equipe A"} vs {match.Team2Name ?? "Equipe B"}")"
-                                                   Score="@($"{match.Team1Score ?? 0} - {match.Team2Score ?? 0}")"
-                                                   Teams="@ReferenceData.Teams"
-                                                   Season="@Season"
-                                                   HomeTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team1Name, Season)"
-                                                   AwayTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team2Name, Season)"
-                                                   Meta="@(match.CompetitionName ?? "Competition")"
-                                                   SecondaryMeta="@MatchFilterCatalog.FormatSeasonDay(match)"
-                                                   DetailsHref="@($"/matches?matchId={match.MatchId}")"
-                                                   DetailsLabel="Voir plus">
-                                                <span class="match-card-chip is-positive">Buts @match.Goals</span>
-                                                <span class="match-card-chip is-good">Passes @match.Assists</span>
-                                                <span class="match-card-chip">Interceptions @match.Interceptions</span>
-                                                <span class="match-card-chip">Arrets @match.Saves</span>
-                                                <span class="match-card-chip is-warning">Pertes @match.Turnovers</span>
-                                                <span class="match-card-chip is-danger">Sanctions @match.Sanctions</span>
-                                            </MatchCard>
-                                        }
+                                <div class="games-filter-group">
+                                    <span class="games-filter-label">Résultat</span>
+                                    <div class="games-result-btns" role="group" aria-label="Filtre résultat">
+                                        <button type="button" class="games-result-btn @(GamesResultFilter == PlayerGamesResultFilter.All ? "is-active" : "")"
+                                                @onclick='() => GamesResultFilter = PlayerGamesResultFilter.All'>Tous</button>
+                                        <button type="button" class="games-result-btn @(GamesResultFilter == PlayerGamesResultFilter.Win ? "is-active" : "")"
+                                                @onclick='() => GamesResultFilter = PlayerGamesResultFilter.Win'>V</button>
+                                        <button type="button" class="games-result-btn @(GamesResultFilter == PlayerGamesResultFilter.Draw ? "is-active" : "")"
+                                                @onclick='() => GamesResultFilter = PlayerGamesResultFilter.Draw'>N</button>
+                                        <button type="button" class="games-result-btn @(GamesResultFilter == PlayerGamesResultFilter.Loss ? "is-active" : "")"
+                                                @onclick='() => GamesResultFilter = PlayerGamesResultFilter.Loss'>D</button>
                                     </div>
-                                }
-                            </section>
+                                </div>
+                                <div class="games-filter-group">
+                                    <span class="games-filter-label">Mode</span>
+                                    <div class="games-mode-btns" role="group" aria-label="Mode d'affichage">
+                                        <button type="button" class="games-mode-btn @(GamesDisplayMode == PlayerGamesDisplayMode.Values ? "is-active" : "")"
+                                                @onclick='() => GamesDisplayMode = PlayerGamesDisplayMode.Values'>Valeurs</button>
+                                        <button type="button" class="games-mode-btn @(GamesDisplayMode == PlayerGamesDisplayMode.DeltaVsSeason ? "is-active" : "")"
+                                                @onclick='() => GamesDisplayMode = PlayerGamesDisplayMode.DeltaVsSeason'>Écart saison</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* Synthèse compacte *@
+                            @if (total > 0)
+                            {
+                                <div class="games-summary-bar">
+                                    <span>@total match@(total > 1 ? "s" : "")</span>
+                                    @if (avgTime.HasValue)
+                                    {
+                                        <span>@avgTime.Value.ToString("0.0") min / match</span>
+                                    }
+                                    @if (eligibleTime < total)
+                                    {
+                                        <span class="games-summary-warn">Temps disponible @eligibleTime / @total</span>
+                                    }
+                                </div>
+                            }
+
+                            @* État vide *@
+                            @if (total == 0)
+                            {
+                                <div class="games-empty">
+                                    @if (!string.IsNullOrWhiteSpace(GamesSearch) || GamesResultFilter != PlayerGamesResultFilter.All)
+                                    {
+                                        <p>Aucun match ne correspond aux filtres.</p>
+                                    }
+                                    else
+                                    {
+                                        <p>Aucun match disponible pour cette joueuse.</p>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                @* Desktop : tableau analytique *@
+                                <div class="games-table-wrap">
+                                    <table class="games-table" aria-label="Historique des matchs">
+                                        <caption class="sr-only">Matchs de @profile.FullName — @total résultats</caption>
+                                        <thead>
+                                            <tr>
+                                                <th scope="col" class="games-th games-th--date">
+                                                    <button type="button" class="games-sort-btn"
+                                                            @onclick='() => GamesSort = GamesSort == "date_desc" ? "date_asc" : "date_desc"'
+                                                            aria-sort="@(GamesSort.StartsWith("date") ? (GamesSort == "date_desc" ? "descending" : "ascending") : "none")">
+                                                        Date
+                                                    </button>
+                                                </th>
+                                                <th scope="col" class="games-th games-th--match">Match</th>
+                                                <th scope="col" class="games-th games-th--result">Rés.</th>
+                                                <th scope="col" class="games-th games-th--time">
+                                                    <button type="button" class="games-sort-btn"
+                                                            @onclick='() => GamesSort = "time_desc"'
+                                                            aria-sort="@(GamesSort == "time_desc" ? "descending" : "none")">Min</button>
+                                                </th>
+                                                @if (!isGk)
+                                                {
+                                                    <th scope="col" class="games-th games-th--num">Buts</th>
+                                                    <th scope="col" class="games-th games-th--num">PD</th>
+                                                    <th scope="col" class="games-th games-th--num">INT</th>
+                                                    <th scope="col" class="games-th games-th--num">Pertes</th>
+                                                }
+                                                else
+                                                {
+                                                    <th scope="col" class="games-th games-th--num">Arrêts</th>
+                                                    <th scope="col" class="games-th games-th--num">PD</th>
+                                                    <th scope="col" class="games-th games-th--num">Pertes</th>
+                                                }
+                                                <th scope="col" class="games-th games-th--detail"><span class="sr-only">Détail</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var row in rows)
+                                            {
+                                                var isSelected = row.Identity.MatchId == GamesSelectedMatchId;
+                                                var resultClass = row.Identity.Result switch
+                                                {
+                                                    PlayerMatchResult.Win => "games-result--win",
+                                                    PlayerMatchResult.Loss => "games-result--loss",
+                                                    PlayerMatchResult.Draw => "games-result--draw",
+                                                    _ => ""
+                                                };
+                                                var colSpan = isGk ? 8 : 8;
+                                                <tr class="games-row @(isSelected ? "games-row--selected" : "")"
+                                                    @onclick='() => GamesSelectedMatchId = isSelected ? null : row.Identity.MatchId'
+                                                    role="button" tabindex="0"
+                                                    aria-expanded="@isSelected.ToString().ToLowerInvariant()"
+                                                    @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") GamesSelectedMatchId = isSelected ? null : row.Identity.MatchId; }'>
+                                                    <td class="games-td games-td--date">@row.Identity.Date.ToString("dd/MM")</td>
+                                                    <td class="games-td games-td--match">
+                                                        <span class="games-match-opponent">@(row.Identity.OpponentName.Length > 0 ? row.Identity.OpponentName : "—")</span>
+                                                        @if (row.Identity.Team1Score.HasValue && row.Identity.Team2Score.HasValue)
+                                                        {
+                                                            <span class="games-match-score">@PlayerMatchResultResolver.FormatScore(row.Identity.PlayerTeamId, null, row.Identity.Team1Score, row.Identity.Team2Score)</span>
+                                                        }
+                                                    </td>
+                                                    <td class="games-td games-td--result">
+                                                        <span class="games-result @resultClass" title="@PlayerMatchResultResolver.GetResultAccessibleLabel(row.Identity.Result)">
+                                                            @PlayerMatchResultResolver.GetResultLabel(row.Identity.Result)
+                                                        </span>
+                                                    </td>
+                                                    <td class="games-td games-td--time">
+                                                        @if (row.PlayingTime.Availability == PlayingTimeAvailability.DataMissing || row.PlayingTime.Availability == PlayingTimeAvailability.IdentityConflict)
+                                                        {
+                                                            <span class="games-na">—</span>
+                                                        }
+                                                        else if (row.PlayingTime.Minutes.HasValue)
+                                                        {
+                                                            @row.PlayingTime.Minutes.Value.ToString("0")
+                                                            @if (row.PlayingTime.Availability == PlayingTimeAvailability.PartialData)
+                                                            {
+                                                                <span class="games-partial" title="Temps partiel">~</span>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="games-na">—</span>
+                                                        }
+                                                    </td>
+                                                    @if (!isGk)
+                                                    {
+                                                        <td class="games-td games-td--num">@RenderCountCell(row.FieldMetrics?.Goals, baseline?.GoalsPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                        <td class="games-td games-td--num">@RenderCountCell(row.FieldMetrics?.Assists, baseline?.AssistsPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                        <td class="games-td games-td--num">@RenderCountCell(row.FieldMetrics?.Interceptions, baseline?.InterceptionsPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                        <td class="games-td games-td--num">@RenderCountCell(row.FieldMetrics?.Turnovers, baseline?.TurnoversPerMatch, TrajectoryMetricDirection.LowerIsBetter)</td>
+                                                    }
+                                                    else
+                                                    {
+                                                        <td class="games-td games-td--num">@RenderCountCell(row.GkMetrics?.Saves, baseline?.SavesPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                        <td class="games-td games-td--num">@RenderCountCell(row.GkMetrics?.Assists, baseline?.AssistsPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                        <td class="games-td games-td--num">@RenderCountCell(row.GkMetrics?.Turnovers, baseline?.TurnoversPerMatch, TrajectoryMetricDirection.LowerIsBetter)</td>
+                                                    }
+                                                    <td class="games-td games-td--detail">
+                                                        <span class="games-expand-icon" aria-hidden="true">@(isSelected ? "▲" : "▼")</span>
+                                                    </td>
+                                                </tr>
+                                                @* Ligne de détail *@
+                                                @if (isSelected)
+                                                {
+                                                    <tr class="games-detail-row" role="region" aria-label="Détail du match">
+                                                        <td colspan="@(isGk ? 8 : 8)" class="games-detail-cell">
+                                                            <div class="games-detail">
+                                                                <div class="games-detail-header">
+                                                                    <div>
+                                                                        <p class="games-detail-title">@row.Identity.PlayerTeamName vs @(row.Identity.OpponentName.Length > 0 ? row.Identity.OpponentName : "—")</p>
+                                                                        <p class="games-detail-meta">@row.Identity.Date.ToString("dd MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) · J@row.Identity.Day · @row.Identity.CompetitionName</p>
+                                                                    </div>
+                                                                    <a href="/matches?matchId=@row.Identity.MatchId" class="games-open-match-btn">Ouvrir le match</a>
+                                                                </div>
+                                                                @if (row.PlayingTime.Minutes.HasValue)
+                                                                {
+                                                                    <p class="games-detail-time">@row.PlayingTime.Minutes.Value.ToString("0") min</p>
+                                                                }
+                                                                @if (!isGk && row.FieldMetrics is not null)
+                                                                {
+                                                                    <div class="games-detail-sections">
+                                                                        <div class="games-detail-section">
+                                                                            <p class="section-kicker">Attaque</p>
+                                                                            <p>@(row.FieldMetrics.Goals?.ToString() ?? "—") buts</p>
+                                                                            <p>@(row.FieldMetrics.Assists?.ToString() ?? "—") passes déc.</p>
+                                                                        </div>
+                                                                        <div class="games-detail-section">
+                                                                            <p class="section-kicker">Défense</p>
+                                                                            <p>@(row.FieldMetrics.Interceptions?.ToString() ?? "—") interceptions</p>
+                                                                        </div>
+                                                                        <div class="games-detail-section">
+                                                                            <p class="section-kicker">Maîtrise</p>
+                                                                            <p>@(row.FieldMetrics.Turnovers?.ToString() ?? "—") perte@(row.FieldMetrics.Turnovers > 1 ? "s" : "")</p>
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                                else if (isGk && row.GkMetrics is not null)
+                                                                {
+                                                                    <div class="games-detail-sections">
+                                                                        <div class="games-detail-section">
+                                                                            <p class="section-kicker">Arrêts</p>
+                                                                            <p>@(row.GkMetrics.Saves?.ToString() ?? "—") arrêts</p>
+                                                                        </div>
+                                                                        <div class="games-detail-section">
+                                                                            <p class="section-kicker">Avec ballon</p>
+                                                                            <p>@(row.GkMetrics.Assists?.ToString() ?? "—") passes déc.</p>
+                                                                            <p>@(row.GkMetrics.Turnovers?.ToString() ?? "—") perte@(row.GkMetrics.Turnovers > 1 ? "s" : "")</p>
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                @* Mobile : cartes compactes *@
+                                <div class="games-cards-mobile">
+                                    @foreach (var row in rows)
+                                    {
+                                        var isSelectedMobile = row.Identity.MatchId == GamesSelectedMatchId;
+                                        <div class="games-card-compact @(isSelectedMobile ? "is-expanded" : "")">
+                                            <div class="games-card-compact__head"
+                                                 @onclick='() => GamesSelectedMatchId = isSelectedMobile ? null : row.Identity.MatchId'
+                                                 role="button" tabindex="0"
+                                                 @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") GamesSelectedMatchId = isSelectedMobile ? null : row.Identity.MatchId; }'>
+                                                <span class="gcc-date">@row.Identity.Date.ToString("dd/MM")</span>
+                                                <span class="gcc-opponent">@(row.Identity.OpponentName.Length > 0 ? row.Identity.OpponentName : "—")</span>
+                                                <span class="games-result games-result--@row.Identity.Result.ToString().ToLowerInvariant()">
+                                                    @PlayerMatchResultResolver.GetResultLabel(row.Identity.Result)
+                                                    @if (row.Identity.Team1Score.HasValue)
+                                                    {
+                                                        @(" " + PlayerMatchResultResolver.FormatScore(row.Identity.PlayerTeamId, null, row.Identity.Team1Score, row.Identity.Team2Score))
+                                                    }
+                                                </span>
+                                                <span class="gcc-time">
+                                                    @if (row.PlayingTime.Minutes.HasValue && row.PlayingTime.Availability != PlayingTimeAvailability.DataMissing)
+                                                    {
+                                                        @(row.PlayingTime.Minutes.Value.ToString("0") + " min")
+                                                    }
+                                                    else
+                                                    {
+                                                        <text>—</text>
+                                                    }
+                                                </span>
+                                            </div>
+                                            @if (isSelectedMobile)
+                                            {
+                                                <div class="gcc-detail">
+                                                    @if (!isGk && row.FieldMetrics is not null)
+                                                    {
+                                                        <div class="gcc-metrics">
+                                                            <span>@(row.FieldMetrics.Goals?.ToString() ?? "—") buts</span>
+                                                            <span>@(row.FieldMetrics.Assists?.ToString() ?? "—") passes</span>
+                                                            <span>@(row.FieldMetrics.Turnovers?.ToString() ?? "—") perte@(row.FieldMetrics.Turnovers > 1 ? "s" : "")</span>
+                                                        </div>
+                                                    }
+                                                    else if (isGk && row.GkMetrics is not null)
+                                                    {
+                                                        <div class="gcc-metrics">
+                                                            <span>@(row.GkMetrics.Saves?.ToString() ?? "—") arrêts</span>
+                                                            <span>@(row.GkMetrics.Turnovers?.ToString() ?? "—") perte@(row.GkMetrics.Turnovers > 1 ? "s" : "")</span>
+                                                        </div>
+                                                    }
+                                                    <a href="/matches?matchId=@row.Identity.MatchId" class="gcc-open-btn">Détails</a>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
                         }
                     }
                 </article>
@@ -1203,6 +1438,16 @@
     private long _trajectoryLoadToken;
     private IReadOnlyList<PlayerTrajectoryPoint> TrajectoryPoints { get; set; } = Array.Empty<PlayerTrajectoryPoint>();
 
+    // Games V2 state
+    private PlayerGamesWindow GamesWindow { get; set; } = PlayerGamesWindow.Season;
+    private PlayerGamesResultFilter GamesResultFilter { get; set; } = PlayerGamesResultFilter.All;
+    private PlayerGamesDisplayMode GamesDisplayMode { get; set; } = PlayerGamesDisplayMode.Values;
+    private string GamesSearch { get; set; } = "";
+    private string? GamesSelectedMatchId { get; set; } = null;
+    private string GamesSort { get; set; } = "date_desc";
+    private IReadOnlyList<PlayerGameAnalysisRow> AllGameRows { get; set; } = Array.Empty<PlayerGameAnalysisRow>();
+    private GameSeasonBaseline? GameBaseline { get; set; }
+
     [Parameter, SupplyParameterFromQuery(Name = "playerId")]
     public int? PlayerIdFromQuery { get; set; }
     private int? Year { get; set; }
@@ -1309,6 +1554,64 @@
     private IReadOnlyList<MatchTrendPoint> PlayerTrendSeries => BuildPlayerTrendSeries();
     private IReadOnlyList<MatchTrendPoint> PlayerScatterSeries => BuildPlayerScatterSeries();
     private IReadOnlyList<PlayerMatchItemDto> FilteredPlayerMatches => GetFilteredPlayerMatches();
+
+    private IReadOnlyList<PlayerGameAnalysisRow> FilteredGameRows
+    {
+        get
+        {
+            var rows = AllGameRows.AsEnumerable();
+
+            // Fenêtre
+            var sorted = rows.OrderBy(r => r.Identity.Date).ThenBy(r => r.Identity.MatchId).ToList();
+            rows = GamesWindow switch
+            {
+                PlayerGamesWindow.Last5 => sorted.TakeLast(5),
+                PlayerGamesWindow.Last10 => sorted.TakeLast(10),
+                _ => sorted
+            };
+
+            // Résultat
+            if (GamesResultFilter != PlayerGamesResultFilter.All)
+            {
+                var targetResult = GamesResultFilter switch
+                {
+                    PlayerGamesResultFilter.Win => PlayerMatchResult.Win,
+                    PlayerGamesResultFilter.Draw => PlayerMatchResult.Draw,
+                    PlayerGamesResultFilter.Loss => PlayerMatchResult.Loss,
+                    _ => PlayerMatchResult.Unknown
+                };
+                rows = rows.Where(r => r.Identity.Result == targetResult);
+            }
+
+            // Recherche
+            if (!string.IsNullOrWhiteSpace(GamesSearch))
+            {
+                var q = GamesSearch.Trim().ToLowerInvariant();
+                rows = rows.Where(r =>
+                    (r.Identity.OpponentName?.ToLowerInvariant().Contains(q) ?? false) ||
+                    (r.Identity.CompetitionName?.ToLowerInvariant().Contains(q) ?? false) ||
+                    (r.Identity.Season?.ToLowerInvariant().Contains(q) ?? false) ||
+                    r.Identity.Day.ToString().Contains(q));
+            }
+
+            // Tri
+            rows = GamesSort switch
+            {
+                "date_asc" => rows.OrderBy(r => r.Identity.Date),
+                "date_desc" => rows.OrderByDescending(r => r.Identity.Date),
+                "goals_desc" => rows.OrderByDescending(r => r.FieldMetrics?.Goals ?? r.GkMetrics?.Saves ?? 0),
+                "time_desc" => rows.OrderByDescending(r => r.PlayingTime.Minutes ?? -1),
+                _ => rows.OrderByDescending(r => r.Identity.Date)
+            };
+
+            return rows.ToList();
+        }
+    }
+
+    private PlayerGameAnalysisRow? SelectedGameRow =>
+        GamesSelectedMatchId is not null
+            ? AllGameRows.FirstOrDefault(r => r.Identity.MatchId == GamesSelectedMatchId)
+            : null;
     private CourtZoneStat? CurrentZone => GoalZones.Concat(TriggerZones).FirstOrDefault(zone => zone.Key == ActiveZoneKey)
         ?? GoalZones.FirstOrDefault(zone => zone.Attempts > 0)
         ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)
@@ -1681,6 +1984,82 @@
         return InvokeAsync(StateHasChanged);
     }
 
+    private RenderFragment RenderCountCell(int? value, double? seasonBaseline, TrajectoryMetricDirection direction)
+    {
+        return builder =>
+        {
+            if (value == null)
+            {
+                builder.OpenElement(0, "span");
+                builder.AddAttribute(1, "class", "games-na");
+                builder.AddContent(2, "—");
+                builder.CloseElement();
+                return;
+            }
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "games-val");
+            builder.AddContent(2, value.ToString());
+            builder.CloseElement();
+
+            if (GamesDisplayMode == PlayerGamesDisplayMode.DeltaVsSeason && seasonBaseline.HasValue)
+            {
+                var delta = value.Value - seasonBaseline.Value;
+                var isGood = direction == TrajectoryMetricDirection.LowerIsBetter ? delta < -0.1 : delta > 0.1;
+                var isBad = direction == TrajectoryMetricDirection.LowerIsBetter ? delta > 0.1 : delta < -0.1;
+                var cls = isGood ? "games-delta--pos" : isBad ? "games-delta--neg" : "";
+                builder.OpenElement(3, "span");
+                builder.AddAttribute(4, "class", $"games-delta {cls}");
+                builder.AddContent(5, $"{(delta >= 0 ? "+" : "")}{delta:F1}");
+                builder.CloseElement();
+            }
+        };
+    }
+
+    private RenderFragment RenderRateCell(double? rate, int? num, int? den, double? seasonBaseline, TrajectoryMetricDirection direction)
+    {
+        return builder =>
+        {
+            if (den == 0 || (rate == null && den == null))
+            {
+                builder.OpenElement(0, "span");
+                builder.AddAttribute(1, "class", "games-na");
+                builder.AddContent(2, den == 0 ? "Aucun tir" : "—");
+                builder.CloseElement();
+                return;
+            }
+            if (rate == null)
+            {
+                builder.OpenElement(0, "span");
+                builder.AddAttribute(1, "class", "games-na");
+                builder.AddContent(2, "—");
+                builder.CloseElement();
+                return;
+            }
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "games-val");
+            builder.AddContent(2, $"{rate:F1}%");
+            builder.CloseElement();
+            if (num.HasValue && den.HasValue && den > 0)
+            {
+                builder.OpenElement(3, "span");
+                builder.AddAttribute(4, "class", "games-rate-evidence");
+                builder.AddContent(5, $"{num}/{den}");
+                builder.CloseElement();
+            }
+            if (GamesDisplayMode == PlayerGamesDisplayMode.DeltaVsSeason && seasonBaseline.HasValue)
+            {
+                var delta = rate.Value - seasonBaseline.Value;
+                var isGood = direction == TrajectoryMetricDirection.LowerIsBetter ? delta < -0.5 : delta > 0.5;
+                var isBad = direction == TrajectoryMetricDirection.LowerIsBetter ? delta > 0.5 : delta < -0.5;
+                var cls = isGood ? "games-delta--pos" : isBad ? "games-delta--neg" : "";
+                builder.OpenElement(6, "span");
+                builder.AddAttribute(7, "class", $"games-delta {cls}");
+                builder.AddContent(8, $"{(delta >= 0 ? "+" : "")}{delta:F1} pts");
+                builder.CloseElement();
+            }
+        };
+    }
+
     private bool CanExportPlayerSheet =>
         Profile is not null
         && Global is not null
@@ -1915,6 +2294,14 @@
             TrajectoryPoints = Array.Empty<PlayerTrajectoryPoint>();
             ActiveTrajectoryMetric = "SHOT_SUCCESS_RATE";
             TrajectoryWindow = TrajectoryWindow.Last10;
+            GamesWindow = PlayerGamesWindow.Season;
+            GamesResultFilter = PlayerGamesResultFilter.All;
+            GamesDisplayMode = PlayerGamesDisplayMode.Values;
+            GamesSearch = "";
+            GamesSelectedMatchId = null;
+            GamesSort = "date_desc";
+            AllGameRows = Array.Empty<PlayerGameAnalysisRow>();
+            GameBaseline = null;
             return;
         }
 
@@ -1978,6 +2365,22 @@
             TrajectoryPoints = Array.Empty<PlayerTrajectoryPoint>();
             ActiveTrajectoryMetric = Profile?.IsGoalkeeper == true ? "SAVE_RATE" : "SHOT_SUCCESS_RATE";
             TrajectoryWindow = TrajectoryWindow.Last10;
+
+            // Games V2 — build rows from already-loaded PlayerMatches
+            var isGkForGames = Profile?.IsGoalkeeper ?? false;
+            var playerTeamIdStr = Profile?.TeamId?.ToString();
+            AllGameRows = PlayerMatches
+                .Select(m => PlayerGameRowBuilder.Build(m, playerTeamIdStr, isGkForGames))
+                .ToList();
+            GameBaseline = AllGameRows.Count > 0
+                ? GameSeasonBaselineCalculator.Build(AllGameRows, isGkForGames)
+                : null;
+            GamesWindow = PlayerGamesWindow.Season;
+            GamesResultFilter = PlayerGamesResultFilter.All;
+            GamesDisplayMode = PlayerGamesDisplayMode.Values;
+            GamesSearch = "";
+            GamesSelectedMatchId = null;
+            GamesSort = "date_desc";
         }
         catch (Exception ex)
         {
