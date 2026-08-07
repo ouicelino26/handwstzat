@@ -728,37 +728,74 @@ else if (Snapshot is not null)
                             <p class="section-kicker">Classements globaux</p>
                         </div>
 
-                        <div class="toolbar">
-                            <label class="filter-field compact-select">
-                                <span>Poste</span>
-                                <select @bind="GlobalRankingPositionId">
-                                    <option value="">Tous les postes</option>
-                                    @foreach (var position in GlobalRankingPositionOptions)
-                                    {
-                                        <option value="@position.Id">@position.Name</option>
-                                    }
-                                </select>
-                            </label>
+                        <div class="board-group-tabs">
+                            <button type="button"
+                                    class="board-group-tab @(GlobalRankingPlayerGroup == "field" ? "is-active" : string.Empty)"
+                                    @onclick='() => SetGlobalRankingPlayerGroup("field")'>
+                                Joueuses de champ
+                                @{
+                                    var fieldCount = FilteredGlobalFieldRows.Count;
+                                }
+                                <span class="board-tab-count">@fieldCount</span>
+                            </button>
+                            <button type="button"
+                                    class="board-group-tab @(GlobalRankingPlayerGroup == "goalkeepers" ? "is-active" : string.Empty)"
+                                    @onclick='() => SetGlobalRankingPlayerGroup("goalkeepers")'>
+                                Gardiennes
+                                @{
+                                    var gkCount = SortedGlobalGoalkeeperRows.Count;
+                                }
+                                <span class="board-tab-count">@gkCount</span>
+                            </button>
                         </div>
                     </div>
 
-                    @{
-                        var fieldRows = FilteredGlobalFieldRows.ToArray();
-                        var goalkeeperRows = SortedGlobalGoalkeeperRows.ToArray();
-                    }
+                    <div class="board-with-sidebar">
 
-                    <div class="list-stack">
-                        <details class="dashboard-board-drawer" open>
-                            <summary>
-                                <div>
-                                    <p class="section-kicker">Joueuses de champ</p>
-                                    <strong>@fieldRows.Length profils actifs dans la selection</strong>
-                                </div>
-                                <span class="panel-pill">Saison @(string.IsNullOrWhiteSpace(Filters.Season) ? "toutes" : Filters.Season)</span>
-                            </summary>
+                        @if (GlobalRankingPlayerGroup == "field")
+                        {
+                            <aside class="pos-filter-sidebar">
+                                <p class="sidebar-label">Poste</p>
+                                <button type="button"
+                                        class="pos-chip @(GlobalRankingPositionId is null ? "is-active" : string.Empty)"
+                                        @onclick="() => SetGlobalRankingPosition(null)">
+                                    Tous
+                                </button>
+                                @foreach (var position in GlobalRankingPositionOptions)
+                                {
+                                    <button type="button"
+                                            class="pos-chip @(GlobalRankingPositionId == position.Id ? "is-active" : string.Empty)"
+                                            @onclick="() => SetGlobalRankingPosition(position.Id)">
+                                        @position.Name
+                                    </button>
+                                }
+                            </aside>
+                        }
 
-                            <section class="page-panel dashboard-nested-panel">
-                                @if (fieldRows.Length == 0)
+                        <div class="board-main">
+                            <div class="stat-cat-tabs">
+                                <button type="button"
+                                        class="stat-cat-tab @(GlobalRankingStatCategory == "global" ? "is-active" : string.Empty)"
+                                        @onclick='() => SetGlobalRankingCategory("global")'>
+                                    Global
+                                </button>
+                                <button type="button"
+                                        class="stat-cat-tab @(GlobalRankingStatCategory == "offense" ? "is-active" : string.Empty)"
+                                        @onclick='() => SetGlobalRankingCategory("offense")'>
+                                    Offensif
+                                </button>
+                                <button type="button"
+                                        class="stat-cat-tab @(GlobalRankingStatCategory == "defense" ? "is-active" : string.Empty)"
+                                        @onclick='() => SetGlobalRankingCategory("defense")'>
+                                    Defensif
+                                </button>
+                            </div>
+
+                            @if (GlobalRankingPlayerGroup == "field")
+                            {
+                                var fieldRows = FilteredGlobalFieldRows.ToArray();
+
+                                if (fieldRows.Length == 0)
                                 {
                                     <StateCard Kicker="Aucune joueuse"
                                                Title="Aucune joueuse de champ pour ce filtre poste"
@@ -777,15 +814,35 @@ else if (Snapshot is not null)
                                                     <th scope="col">@DashboardTableHeader("field-team", "Equipe", SetFieldBoardSort)</th>
                                                     <th scope="col">@DashboardTableHeader("field-position", "Poste", SetFieldBoardSort)</th>
                                                     <th scope="col">@DashboardTableHeader("field-matches", "Matchs", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-goals", "Buts", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-penalty-goals", "Buts 7m", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-assists", "Passes", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-interceptions", "Interceptions", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-blocks", "Contres", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-neutralisations", "Neutralisations", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-turnovers", "Pertes", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-penalties-conceded", "Penalty c.", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-shot-rate", "Taux tir", SetFieldBoardSort)</th>
+                                                    @if (GlobalRankingStatCategory == "offense")
+                                                    {
+                                                        <th scope="col">@DashboardTableHeader("field-goals", "Buts", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-penalty-goals", "Buts 7m", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-assists", "Passes", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-open-shots", "Tirs", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-penalty-attempts", "7m tent.", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-shot-rate", "Taux tir", SetFieldBoardSort)</th>
+                                                    }
+                                                    else if (GlobalRankingStatCategory == "defense")
+                                                    {
+                                                        <th scope="col">@DashboardTableHeader("field-interceptions", "Interceptions", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-blocks", "Contres", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-neutralisations", "Neutralisations", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-turnovers", "Pertes", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-penalties-conceded", "Penalty c.", SetFieldBoardSort)</th>
+                                                    }
+                                                    else
+                                                    {
+                                                        <th scope="col">@DashboardTableHeader("field-goals", "Buts", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-penalty-goals", "Buts 7m", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-assists", "Passes", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-interceptions", "Interceptions", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-blocks", "Contres", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-neutralisations", "Neutralisations", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-turnovers", "Pertes", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-penalties-conceded", "Penalty c.", SetFieldBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("field-shot-rate", "Taux tir", SetFieldBoardSort)</th>
+                                                    }
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -796,38 +853,53 @@ else if (Snapshot is not null)
                                                         <td>@player.TeamName</td>
                                                         <td>@player.PositionLabel</td>
                                                         <td>@player.MatchesPlayed</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Goals, player)">@player.Goals</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltyGoals, player)">@player.PenaltyGoals</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Assists, player)">@player.Assists</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Interceptions, player)">@player.Interceptions</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Blocks, player)">@player.Blocks</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Neutralisations, player)">@player.Neutralisations</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Turnovers, player, higherIsBetter: false)">@player.Turnovers</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltiesConceded, player, higherIsBetter: false)">@player.PenaltiesConceded</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.ShotSuccessRate, player)">
-                                                            @FormatRate(player.ShotSuccessRate)%
-                                                            <small class="rate-sample">@player.OpenShotAttempts tirs</small>
-                                                        </td>
+                                                        @if (GlobalRankingStatCategory == "offense")
+                                                        {
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Goals, player)">@player.Goals</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltyGoals, player)">@player.PenaltyGoals</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Assists, player)">@player.Assists</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.OpenShotAttempts, player)">@player.OpenShotAttempts</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltyAttempts, player)">@player.PenaltyAttempts</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.ShotSuccessRate, player)">
+                                                                @FormatRate(player.ShotSuccessRate)%
+                                                                <small class="rate-sample">@player.OpenShotAttempts tirs</small>
+                                                            </td>
+                                                        }
+                                                        else if (GlobalRankingStatCategory == "defense")
+                                                        {
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Interceptions, player)">@player.Interceptions</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Blocks, player)">@player.Blocks</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Neutralisations, player)">@player.Neutralisations</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Turnovers, player, higherIsBetter: false)">@player.Turnovers</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltiesConceded, player, higherIsBetter: false)">@player.PenaltiesConceded</td>
+                                                        }
+                                                        else
+                                                        {
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Goals, player)">@player.Goals</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltyGoals, player)">@player.PenaltyGoals</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Assists, player)">@player.Assists</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Interceptions, player)">@player.Interceptions</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Blocks, player)">@player.Blocks</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Neutralisations, player)">@player.Neutralisations</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Turnovers, player, higherIsBetter: false)">@player.Turnovers</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltiesConceded, player, higherIsBetter: false)">@player.PenaltiesConceded</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.ShotSuccessRate, player)">
+                                                                @FormatRate(player.ShotSuccessRate)%
+                                                                <small class="rate-sample">@player.OpenShotAttempts tirs</small>
+                                                            </td>
+                                                        }
                                                     </tr>
                                                 }
                                             </tbody>
                                         </table>
                                     </div>
                                 }
-                            </section>
-                        </details>
+                            }
+                            else
+                            {
+                                var goalkeeperRows = SortedGlobalGoalkeeperRows.ToArray();
 
-                        <details class="dashboard-board-drawer">
-                            <summary>
-                                <div>
-                                    <p class="section-kicker">Gardiennes</p>
-                                    <strong>@goalkeeperRows.Length profils gardiennes dans la selection</strong>
-                                </div>
-                                <span class="panel-pill">Lecture specifique GB</span>
-                            </summary>
-
-                            <section class="page-panel dashboard-nested-panel">
-                                @if (goalkeeperRows.Length == 0)
+                                if (goalkeeperRows.Length == 0)
                                 {
                                     <StateCard Kicker="Aucune gardienne"
                                                Title="Aucune gardienne dans ce perimetre"
@@ -845,15 +917,33 @@ else if (Snapshot is not null)
                                                     <th scope="col">@DashboardTableHeader("keeper-name", "Gardienne", SetGoalkeeperBoardSort)</th>
                                                     <th scope="col">@DashboardTableHeader("keeper-team", "Equipe", SetGoalkeeperBoardSort)</th>
                                                     <th scope="col">@DashboardTableHeader("keeper-matches", "Matchs", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-goals", "Buts", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-assists", "Passes", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-saves", "Arrets", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-penalty-saves", "Arrets 7m", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-save-rate", "Taux arret", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-goals-conceded", "Buts pris", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-shots-faced", "Tirs subis", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-turnovers", "Pertes", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-shot-rate", "Taux tir", SetGoalkeeperBoardSort)</th>
+                                                    @if (GlobalRankingStatCategory == "offense")
+                                                    {
+                                                        <th scope="col">@DashboardTableHeader("keeper-goals", "Buts", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-assists", "Passes", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-shot-rate", "Taux tir", SetGoalkeeperBoardSort)</th>
+                                                    }
+                                                    else if (GlobalRankingStatCategory == "defense")
+                                                    {
+                                                        <th scope="col">@DashboardTableHeader("keeper-saves", "Arrets", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-penalty-saves", "Arrets 7m", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-save-rate", "Taux arret", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-goals-conceded", "Buts pris", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-shots-faced", "Tirs subis", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-turnovers", "Pertes", SetGoalkeeperBoardSort)</th>
+                                                    }
+                                                    else
+                                                    {
+                                                        <th scope="col">@DashboardTableHeader("keeper-goals", "Buts", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-assists", "Passes", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-saves", "Arrets", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-penalty-saves", "Arrets 7m", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-save-rate", "Taux arret", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-goals-conceded", "Buts pris", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-shots-faced", "Tirs subis", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-turnovers", "Pertes", SetGoalkeeperBoardSort)</th>
+                                                        <th scope="col">@DashboardTableHeader("keeper-shot-rate", "Taux tir", SetGoalkeeperBoardSort)</th>
+                                                    }
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -863,29 +953,53 @@ else if (Snapshot is not null)
                                                         <td>@goalkeeper.FullName</td>
                                                         <td>@goalkeeper.TeamName</td>
                                                         <td>@goalkeeper.MatchesPlayed</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Goals, goalkeeper)">@goalkeeper.Goals</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Assists, goalkeeper)">@goalkeeper.Assists</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Saves, goalkeeper)">@goalkeeper.Saves</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.PenaltySaves, goalkeeper)">@goalkeeper.PenaltySaves</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.SaveRate, goalkeeper)">
-                                                            @FormatRate(goalkeeper.SaveRate)%
-                                                            <small class="rate-sample">@goalkeeper.ShotsFaced subis</small>
-                                                        </td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.GoalsConceded, goalkeeper, higherIsBetter: false)">@goalkeeper.GoalsConceded</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotsFaced, goalkeeper, higherIsBetter: false)">@goalkeeper.ShotsFaced</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Turnovers, goalkeeper, higherIsBetter: false)">@goalkeeper.Turnovers</td>
-                                                        <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotSuccessRate, goalkeeper)">
-                                                            @FormatRate(goalkeeper.ShotSuccessRate)%
-                                                            <small class="rate-sample">@goalkeeper.OpenShotAttempts tirs</small>
-                                                        </td>
+                                                        @if (GlobalRankingStatCategory == "offense")
+                                                        {
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Goals, goalkeeper)">@goalkeeper.Goals</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Assists, goalkeeper)">@goalkeeper.Assists</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotSuccessRate, goalkeeper)">
+                                                                @FormatRate(goalkeeper.ShotSuccessRate)%
+                                                                <small class="rate-sample">@goalkeeper.OpenShotAttempts tirs</small>
+                                                            </td>
+                                                        }
+                                                        else if (GlobalRankingStatCategory == "defense")
+                                                        {
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Saves, goalkeeper)">@goalkeeper.Saves</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.PenaltySaves, goalkeeper)">@goalkeeper.PenaltySaves</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.SaveRate, goalkeeper)">
+                                                                @FormatRate(goalkeeper.SaveRate)%
+                                                                <small class="rate-sample">@goalkeeper.ShotsFaced subis</small>
+                                                            </td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.GoalsConceded, goalkeeper, higherIsBetter: false)">@goalkeeper.GoalsConceded</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotsFaced, goalkeeper, higherIsBetter: false)">@goalkeeper.ShotsFaced</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Turnovers, goalkeeper, higherIsBetter: false)">@goalkeeper.Turnovers</td>
+                                                        }
+                                                        else
+                                                        {
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Goals, goalkeeper)">@goalkeeper.Goals</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Assists, goalkeeper)">@goalkeeper.Assists</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Saves, goalkeeper)">@goalkeeper.Saves</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.PenaltySaves, goalkeeper)">@goalkeeper.PenaltySaves</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.SaveRate, goalkeeper)">
+                                                                @FormatRate(goalkeeper.SaveRate)%
+                                                                <small class="rate-sample">@goalkeeper.ShotsFaced subis</small>
+                                                            </td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.GoalsConceded, goalkeeper, higherIsBetter: false)">@goalkeeper.GoalsConceded</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotsFaced, goalkeeper, higherIsBetter: false)">@goalkeeper.ShotsFaced</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Turnovers, goalkeeper, higherIsBetter: false)">@goalkeeper.Turnovers</td>
+                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotSuccessRate, goalkeeper)">
+                                                                @FormatRate(goalkeeper.ShotSuccessRate)%
+                                                                <small class="rate-sample">@goalkeeper.OpenShotAttempts tirs</small>
+                                                            </td>
+                                                        }
                                                     </tr>
                                                 }
                                             </tbody>
                                         </table>
                                     </div>
                                 }
-                            </section>
-                        </details>
+                            }
+                        </div>
                     </div>
                 </section>
             }
@@ -977,6 +1091,8 @@ else if (Snapshot is not null)
     private double? TeamOfTheDayMinimumPie { get; set; }
     private int? TeamOfTheDayMinimumActions { get; set; }
     private int? GlobalRankingPositionId { get; set; }
+    private string GlobalRankingStatCategory { get; set; } = "global";
+    private string GlobalRankingPlayerGroup { get; set; } = "field";
     private TableSortState FieldBoardSort { get; set; } = new("field-goals", SortDirection.Desc);
     private TableSortState GoalkeeperBoardSort { get; set; } = new("keeper-saves", SortDirection.Desc);
 
@@ -1338,6 +1454,8 @@ else if (Snapshot is not null)
             "field-neutralisations" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Neutralisations) : filtered.OrderBy(item => item.Neutralisations),
             "field-turnovers" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Turnovers) : filtered.OrderBy(item => item.Turnovers),
             "field-penalties-conceded" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.PenaltiesConceded) : filtered.OrderBy(item => item.PenaltiesConceded),
+            "field-open-shots" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.OpenShotAttempts) : filtered.OrderBy(item => item.OpenShotAttempts),
+            "field-penalty-attempts" => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.PenaltyAttempts) : filtered.OrderBy(item => item.PenaltyAttempts),
             "field-shot-rate" => SortFieldShotRate(filtered, FieldBoardSort.IsDescending),
             _ => FieldBoardSort.IsDescending ? filtered.OrderByDescending(item => item.Goals) : filtered.OrderBy(item => item.Goals)
         };
@@ -1441,6 +1559,21 @@ else if (Snapshot is not null)
     private void SetGoalkeeperBoardSort(string column)
     {
         GoalkeeperBoardSort = GoalkeeperBoardSort.Toggle(column, column is "keeper-name" or "keeper-team" ? SortDirection.Asc : SortDirection.Desc);
+    }
+
+    private void SetGlobalRankingPosition(int? positionId)
+    {
+        GlobalRankingPositionId = positionId;
+    }
+
+    private void SetGlobalRankingCategory(string category)
+    {
+        GlobalRankingStatCategory = category;
+    }
+
+    private void SetGlobalRankingPlayerGroup(string group)
+    {
+        GlobalRankingPlayerGroup = group;
     }
 
     private RenderFragment DashboardTableHeader(string column, string label, Action<string> onSort) => builder =>

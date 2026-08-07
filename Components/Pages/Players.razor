@@ -217,6 +217,8 @@
                         @if (ActiveSection == "overview")
                         {
                             <div class="player-stat-board">
+
+                                @* ── Bloc global ── *@
                                 <section class="player-stat-block player-stat-block--global">
                                     <header class="player-stat-block__head">
                                         <div>
@@ -236,10 +238,11 @@
                                     <BarGaugeKpiGrid Items="@PlayerGaugeKpis" CssClass="player-gauge-strip" />
                                 </section>
 
+                                @* ── Bloc offensif ── *@
                                 <section class="player-stat-block player-stat-block--offense">
                                     <header class="player-stat-block__head">
                                         <div>
-                                            <p class="section-kicker">Stat offensif</p>
+                                            <p class="section-kicker">Stats offensif</p>
                                             <h4>Production et creation</h4>
                                         </div>
                                     </header>
@@ -249,31 +252,36 @@
                                         <div class="mini-card"><span>Buts jeu</span><strong>@offense.Buts</strong></div>
                                         <div class="mini-card"><span>7m marques</span><strong>@offense.Buts7m</strong></div>
                                         <div class="mini-card"><span>Passes decisives</span><strong>@passing.PasseDecisive</strong></div>
-                                        <div class="mini-card"><span>Penalty rates</span><strong>@offense.PenaltyRate</strong></div>
                                         <div class="mini-card"><span>Tirs rates</span><strong>@offense.TirsRates</strong></div>
                                         <div class="mini-card"><span>Tirs contres</span><strong>@offense.TirContre</strong></div>
-                                        <div class="mini-card"><span>Taux tir</span><strong>@FormatRate(offense.TauxReussiteTir)%</strong></div>
+                                        <div class="mini-card"><span>7m tentes</span><strong>@(offense.Buts7m + offense.PenaltyRate)</strong></div>
+                                        <div class="mini-card"><span>7m rates</span><strong>@offense.PenaltyRate</strong></div>
                                     </div>
+
+                                    <BarGaugeKpiGrid Items="@PlayerOffenseGaugeKpis" CssClass="player-gauge-strip" />
                                 </section>
 
+                                @* ── Bloc defensif ── *@
                                 <section class="player-stat-block player-stat-block--defense">
                                     <header class="player-stat-block__head">
                                         <div>
-                                            <p class="section-kicker">Stat defensif</p>
+                                            <p class="section-kicker">Stats defensif</p>
                                             <h4>Recuperation et protection</h4>
                                         </div>
                                     </header>
 
                                     <div class="stats-grid player-stat-grid">
                                         <div class="mini-card"><span>Interceptions</span><strong>@defense.Interceptions</strong></div>
-                                        <div class="mini-card"><span>Contres / Blc</span><strong>@defense.Contres</strong></div>
+                                        <div class="mini-card"><span>Contres</span><strong>@defense.Contres</strong></div>
                                         <div class="mini-card"><span>Neutralisations</span><strong>@defense.Neutralisations</strong></div>
                                         <div class="mini-card"><span>PF provoque</span><strong>@defense.PassageForce</strong></div>
-                                        <div class="mini-card"><span>Impact def.</span><strong>@technical.DefensiveImpact</strong></div>
-                                        <div class="mini-card"><span>Sanctions</span><strong>@(sanctions.Exclusions + sanctions.Avertissements + sanctions.DeuxMinutes)</strong></div>
+                                        <div class="mini-card"><span>Pen. concede</span><strong>@sanctions.PenaltyConcede</strong></div>
                                     </div>
+
+                                    <BarGaugeKpiGrid Items="@PlayerDefenseGaugeKpis" CssClass="player-gauge-strip" />
                                 </section>
 
+                                @* ── Bloc maitrise technique ── *@
                                 <section class="player-stat-block player-stat-block--control">
                                     <header class="player-stat-block__head">
                                         <div>
@@ -283,21 +291,25 @@
                                     </header>
 
                                     <div class="stats-grid player-stat-grid">
-                                        <div class="mini-card"><span>Pert / PdB</span><strong>@passing.TotalPertes</strong></div>
+                                        <div class="mini-card"><span>Pertes balle</span><strong>@passing.TotalPertes</strong></div>
                                         <div class="mini-card"><span>Mauvaises passes</span><strong>@passing.MauvaisePasse</strong></div>
                                         <div class="mini-card"><span>Fautes techniques</span><strong>@passing.FauteTechnique</strong></div>
                                         <div class="mini-card"><span>Passages en force</span><strong>@passing.PassageEnForce</strong></div>
-                                        <div class="mini-card"><span>Pen. concede</span><strong>@sanctions.PenaltyConcede</strong></div>
-                                        <div class="mini-card"><span>Ballons valorises</span><strong>@FormatRate(PlayerBallValueRate)%</strong></div>
+                                        <div class="mini-card"><span>2 min.</span><strong>@sanctions.DeuxMinutes</strong></div>
+                                        <div class="mini-card"><span>Avert.</span><strong>@sanctions.Avertissements</strong></div>
+                                        <div class="mini-card"><span>Exclusions</span><strong>@sanctions.Exclusions</strong></div>
                                     </div>
+
+                                    <BarGaugeKpiGrid Items="@PlayerControlGaugeKpis" CssClass="player-gauge-strip" />
                                 </section>
 
+                                @* ── Bloc gardienne (conditionnel) ── *@
                                 @if (profile.IsGoalkeeper)
                                 {
                                     <section class="player-stat-block player-stat-block--goalkeeper">
                                         <header class="player-stat-block__head">
                                             <div>
-                                                <p class="section-kicker">Stat gardienne</p>
+                                                <p class="section-kicker">Stats gardienne</p>
                                                 <h4>Arrets et tirs subis</h4>
                                             </div>
                                         </header>
@@ -307,9 +319,11 @@
                                             <div class="mini-card"><span>7m arretes</span><strong>@goalkeeper.ArretsPenalty</strong></div>
                                             <div class="mini-card"><span>Arrets totaux</span><strong>@(goalkeeper.Arrets + goalkeeper.ArretsPenalty)</strong></div>
                                             <div class="mini-card"><span>Buts encaisses</span><strong>@technical.GoalkeeperConcededGoals</strong></div>
+                                            <div class="mini-card"><span>7m encaisses</span><strong>@goalkeeper.ButsPenalty</strong></div>
                                             <div class="mini-card"><span>Tirs subis</span><strong>@goalkeeper.TirsSubis</strong></div>
-                                            <div class="mini-card"><span>Taux d'arret</span><strong>@FormatRate(goalkeeper.TauxArret)%</strong></div>
                                         </div>
+
+                                        <BarGaugeKpiGrid Items="@PlayerGoalkeeperGaugeKpis" CssClass="player-gauge-strip" />
                                     </section>
                                 }
                             </div>
@@ -872,6 +886,10 @@
             new("Zones actives", GoalZones.Count(zone => zone.Attempts > 0).ToString())
         ];
     private IReadOnlyList<BarGaugeKpiItem> PlayerGaugeKpis => BuildPlayerGaugeKpis();
+    private IReadOnlyList<BarGaugeKpiItem> PlayerOffenseGaugeKpis => BuildPlayerOffenseGaugeKpis();
+    private IReadOnlyList<BarGaugeKpiItem> PlayerDefenseGaugeKpis => BuildPlayerDefenseGaugeKpis();
+    private IReadOnlyList<BarGaugeKpiItem> PlayerControlGaugeKpis => BuildPlayerControlGaugeKpis();
+    private IReadOnlyList<BarGaugeKpiItem> PlayerGoalkeeperGaugeKpis => BuildPlayerGoalkeeperGaugeKpis();
     private IReadOnlyList<KpiTile> PlayerKpis => BuildPlayerKpis();
     private IReadOnlyList<MetricPlotPoint> PlayerActionProfile => BuildPlayerActionProfile();
     private IReadOnlyList<MetricPlotPoint> PlayerRateProfile => BuildPlayerRateProfile();
@@ -1815,6 +1833,229 @@
                 isGoalkeeper
                     ? HandballKpiHelper.FormatBase(Goalkeeper.ArretsPenalty, Math.Max(Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty, 1), "penalties arretes")
                     : HandballKpiHelper.FormatBase(Offense.Buts, Math.Max(Offense.Buts + Offense.TirsRates, 1), "tirs ouverts"))
+        ];
+    }
+
+    // Calcule le rang depuis PlayerDirectory en castant vers PlayerGlobalStatsDto (covariance).
+    // Retourne "#rang_poste/total_poste · #rang_global/total_global"
+    private string RankContext(Func<PlayerGlobalStatsDto, double> selector, bool higherIsBetter = true)
+    {
+        if (Profile is null || PlayerDirectory.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var all = PlayerDirectory
+            .OfType<PlayerGlobalStatsDto>()
+            .Where(p => p.MatchesPlayed > 0)
+            .ToList();
+
+        if (all.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var byPosition = all
+            .Where(p => p.PositionId == Profile.PositionId)
+            .ToList();
+
+        int globalRank = RankOf(Profile.PlayerId, all, selector, higherIsBetter);
+        int globalTotal = all.Count;
+        int posRank = RankOf(Profile.PlayerId, byPosition, selector, higherIsBetter);
+        int posTotal = byPosition.Count;
+
+        var posCode = Profile.PositionCode ?? Profile.PositionName ?? "Poste";
+
+        if (posTotal <= 1)
+        {
+            return $"#{globalRank}/{globalTotal} global";
+        }
+
+        return $"#{posRank}/{posTotal} {posCode} · #{globalRank}/{globalTotal} global";
+    }
+
+    private static int RankOf(int playerId, List<PlayerGlobalStatsDto> pool, Func<PlayerGlobalStatsDto, double> selector, bool higherIsBetter)
+    {
+        if (pool.Count == 0)
+        {
+            return 1;
+        }
+
+        var sorted = higherIsBetter
+            ? pool.OrderByDescending(selector).ToList()
+            : pool.OrderBy(selector).ToList();
+
+        var idx = sorted.FindIndex(p => p.PlayerId == playerId);
+        return idx < 0 ? pool.Count : idx + 1;
+    }
+
+    private IReadOnlyList<BarGaugeKpiItem> BuildPlayerOffenseGaugeKpis()
+    {
+        if (Offense is null || Technical is null || Profile is null)
+        {
+            return [];
+        }
+
+        var openShotRate = Technical.OpenShotSuccessRate;
+        var overallRate = Technical.OverallShotSuccessRate;
+        var penaltyRate = Technical.PenaltySuccessRate;
+        var matches = Profile.MatchesPlayed;
+
+        return
+        [
+            new BarGaugeKpiItem(
+                "Taux tir ouvert",
+                FormatRate(openShotRate) + "%",
+                openShotRate,
+                "Finition sur tirs ouverts hors 7m. Mediane ligue: 52%",
+                HandballKpiHelper.FieldSuccessRateTone(openShotRate),
+                RankContext(p => p.ShotSuccessRate) + " · " + HandballKpiHelper.FormatBase(Offense.Buts, Math.Max(Offense.Buts + Offense.TirsRates, 1), "tirs ouverts"),
+                Max: 100),
+            new BarGaugeKpiItem(
+                "Conversion globale",
+                FormatRate(overallRate) + "%",
+                overallRate,
+                "Buts sur l'ensemble des tirs engages (ouvert + 7m). Mediane ligue: 52%",
+                HandballKpiHelper.FieldSuccessRateTone(overallRate),
+                RankContext(p => p.ShotSuccessRate) + " · " + HandballKpiHelper.FormatBase(Global?.TotalGoals ?? 0, Math.Max(Technical.ShotAttempts, 1), "tirs engages"),
+                Max: 100),
+            new BarGaugeKpiItem(
+                "Reussite 7m",
+                FormatRate(penaltyRate) + "%",
+                penaltyRate,
+                "Reussite sur les penalties tires. Mediane ligue: 39%",
+                HandballKpiHelper.FieldPenaltyRateTone(penaltyRate),
+                RankContext(p => p.PenaltySuccessRate) + " · " + HandballKpiHelper.FormatBase(Offense.Buts7m, Math.Max(Offense.Buts7m + Offense.PenaltyRate, 1), "7m marques"),
+                Max: 100),
+            new BarGaugeKpiItem(
+                "Buts + Passes / match",
+                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch((Global?.TotalGoals ?? 0) + (Global?.AssistCount ?? 0), matches)),
+                HandballKpiHelper.PerMatch((Global?.TotalGoals ?? 0) + (Global?.AssistCount ?? 0), matches),
+                "Contributions offensives directes ramenees au match.",
+                HandballKpiHelper.DirectActionsTone(HandballKpiHelper.PerMatch((Global?.TotalGoals ?? 0) + (Global?.AssistCount ?? 0), matches), false),
+                RankContext(p => p.TotalGoals + p.AssistCount) + " · " + HandballKpiHelper.FormatPerMatchContext((Global?.TotalGoals ?? 0) + (Global?.AssistCount ?? 0), matches, "actions"),
+                Max: 12)
+        ];
+    }
+
+    private IReadOnlyList<BarGaugeKpiItem> BuildPlayerDefenseGaugeKpis()
+    {
+        if (Defense is null || Technical is null || Profile is null)
+        {
+            return [];
+        }
+
+        var matches = Profile.MatchesPlayed;
+        var defensiveImpact = Technical.DefensiveImpact;
+        var defensivePerMatch = HandballKpiHelper.PerMatch(defensiveImpact, matches);
+
+        return
+        [
+            new BarGaugeKpiItem(
+                "Impact def. / match",
+                HandballKpiHelper.FormatNumber(defensivePerMatch),
+                defensivePerMatch,
+                "Interceptions + contres + neutralisations + PF provoques.",
+                HandballKpiHelper.DefensiveImpactTone(defensivePerMatch, false),
+                RankContext(p => p.InterceptionCount) + " · " + HandballKpiHelper.FormatPerMatchContext(defensiveImpact, matches, "actions def."),
+                Max: 10),
+            new BarGaugeKpiItem(
+                "Interceptions / match",
+                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(Defense.Interceptions, matches)),
+                HandballKpiHelper.PerMatch(Defense.Interceptions, matches),
+                "Volume de balles recuperees directement.",
+                HandballKpiHelper.DefensiveImpactTone(HandballKpiHelper.PerMatch(Defense.Interceptions, matches), false),
+                RankContext(p => p.InterceptionCount) + " · " + HandballKpiHelper.FormatPerMatchContext(Defense.Interceptions, matches, "interceptions"),
+                Max: 5),
+            new BarGaugeKpiItem(
+                "Contres + Neutralisations",
+                (Defense.Contres + Defense.Neutralisations).ToString(),
+                Defense.Contres + Defense.Neutralisations,
+                "Tirs bloques et tirs neutralises sur la saison.",
+                HandballKpiHelper.DefensiveImpactTone(HandballKpiHelper.PerMatch(Defense.Contres + Defense.Neutralisations, matches), false),
+                $"{Defense.Contres} contres, {Defense.Neutralisations} neutralisations",
+                Max: Math.Max(40, Defense.Contres + Defense.Neutralisations + 5))
+        ];
+    }
+
+    private IReadOnlyList<BarGaugeKpiItem> BuildPlayerControlGaugeKpis()
+    {
+        if (Passing is null || Sanctions is null || Technical is null || Profile is null)
+        {
+            return [];
+        }
+
+        var matches = Profile.MatchesPlayed;
+        var ballRetention = PlayerBallValueRate;
+        var technicalLosses = HandballKpiHelper.TechnicalLosses(Passing);
+        var totalSanctions = HandballKpiHelper.TotalSanctions(Sanctions);
+
+        return
+        [
+            new BarGaugeKpiItem(
+                "Ballons valorises",
+                FormatRate(ballRetention) + "%",
+                ballRetention,
+                "Passes decisives sur total passes + pertes.",
+                HandballKpiHelper.BallRetentionTone(ballRetention, false),
+                RankContext(p => HandballKpiHelper.SuccessVsWasteShare(p.AssistCount, p.TurnoverCount)) + " · " + $"{Passing.PasseDecisive} passes / {Passing.TotalPertes} pertes",
+                Max: 100),
+            new BarGaugeKpiItem(
+                "Pertes techniques / match",
+                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(technicalLosses, matches)),
+                HandballKpiHelper.PerMatch(technicalLosses, matches),
+                "Mauvaises passes, PdB, fautes techniques, passages en force.",
+                HandballKpiHelper.FieldWasteTone(HandballKpiHelper.PerMatch(technicalLosses, matches)),
+                RankContext(p => p.TurnoverCount, higherIsBetter: false) + " · " + HandballKpiHelper.FormatPerMatchContext(technicalLosses, matches, "pertes techniques"),
+                Min: 0, Max: 8),
+            new BarGaugeKpiItem(
+                "Sanctions / match",
+                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalSanctions, matches)),
+                HandballKpiHelper.PerMatch(totalSanctions, matches),
+                "2 min + avertissements + exclusions.",
+                HandballKpiHelper.SanctionsTone(HandballKpiHelper.PerMatch(totalSanctions, matches), false),
+                RankContext(p => p.SanctionCount, higherIsBetter: false) + " · " + $"{Sanctions.DeuxMinutes} x 2min, {Sanctions.Avertissements} avert., {Sanctions.Exclusions} excl.",
+                Min: 0, Max: 3)
+        ];
+    }
+
+    private IReadOnlyList<BarGaugeKpiItem> BuildPlayerGoalkeeperGaugeKpis()
+    {
+        if (Profile is null || !Profile.IsGoalkeeper || Goalkeeper is null || Technical is null)
+        {
+            return [];
+        }
+
+        var saveRate = Technical.GoalkeeperSaveRate;
+        var penaltyStopRate = Technical.GoalkeeperPenaltyStopRate;
+        var matches = Profile.MatchesPlayed;
+
+        return
+        [
+            new BarGaugeKpiItem(
+                "Taux d'arret",
+                FormatRate(saveRate) + "%",
+                saveRate,
+                "Arrets sur l'ensemble des tirs subis. Mediane ligue: 26%",
+                HandballKpiHelper.GoalkeeperSaveRateTone(saveRate),
+                RankContext(p => p.GoalkeeperSaveRate) + " · " + HandballKpiHelper.FormatBase(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty, Math.Max(Goalkeeper.TirsSubis, 1), "arrets"),
+                Max: 60),
+            new BarGaugeKpiItem(
+                "Stop 7m",
+                FormatRate(penaltyStopRate) + "%",
+                penaltyStopRate,
+                "Arrets sur penalties. Mediane ligue: 39%",
+                HandballKpiHelper.GoalkeeperPenaltyStopRateTone(penaltyStopRate),
+                RankContext(p => p.GoalkeeperSaveRate) + " · " + HandballKpiHelper.FormatBase(Goalkeeper.ArretsPenalty, Math.Max(Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty, 1), "penalties arretes"),
+                Max: 80),
+            new BarGaugeKpiItem(
+                "Arrets / match",
+                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty, matches)),
+                HandballKpiHelper.PerMatch(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty, matches),
+                "Volume d'arrets rapporte aux matchs joues.",
+                HandballKpiHelper.GoalkeeperStopsPerMatchTone(HandballKpiHelper.PerMatch(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty, matches)),
+                RankContext(p => p.SaveCount) + " · " + HandballKpiHelper.FormatPerMatchContext(Goalkeeper.Arrets + Goalkeeper.ArretsPenalty, matches, "arrets"),
+                Max: 25)
         ];
     }
 

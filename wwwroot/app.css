@@ -5387,3 +5387,161 @@ html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
     from { transform: translateX(-100%); }
     to { transform: translateX(260%); }
 }
+
+/* ── Classements globaux — group tabs (Joueuses de champ / Gardiennes) ── */
+
+.board-group-tabs {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.board-group-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-size: 0.75rem;
+    font-weight: 750;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.board-group-tab:hover {
+    color: var(--text);
+    background: var(--surface-2);
+}
+
+.board-group-tab.is-active {
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--signal-500) 42%, var(--line));
+    background: var(--signal-soft);
+}
+
+.board-tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.3rem;
+    border-radius: 99px;
+    background: var(--surface-3);
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--text-muted);
+}
+
+.board-group-tab.is-active .board-tab-count {
+    background: color-mix(in srgb, var(--signal-500) 18%, var(--surface-2));
+    color: var(--text);
+}
+
+/* ── Classements globaux — layout sidebar + category tabs ── */
+
+.board-with-sidebar {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+}
+
+.pos-filter-sidebar {
+    flex: 0 0 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-top: 0.25rem;
+}
+
+.sidebar-label {
+    font-size: 0.65rem;
+    font-weight: 750;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+}
+
+.pos-chip {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.pos-chip:hover {
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--signal-500) 30%, var(--line));
+    background: var(--surface-2);
+}
+
+.pos-chip.is-active {
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--signal-500) 42%, var(--line));
+    background: var(--signal-soft);
+}
+
+.board-main {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.stat-cat-tabs {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.6rem;
+}
+
+.stat-cat-tab {
+    padding: 0.3rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-size: 0.72rem;
+    font-weight: 750;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.stat-cat-tab:hover {
+    color: var(--text);
+    border-color: var(--line);
+    background: var(--surface-2);
+}
+
+.stat-cat-tab.is-active {
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--signal-500) 42%, var(--line));
+    background: var(--signal-soft);
+}
+
+@media (max-width: 700px) {
+    .board-with-sidebar {
+        flex-direction: column;
+    }
+
+    .pos-filter-sidebar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        flex: unset;
+        width: 100%;
+    }
+
+    .pos-chip {
+        width: auto;
+    }
+}

@@ -251,17 +251,26 @@ public static class HandballKpiHelper
 
     public static string FieldSuccessRateTone(double value)
     {
-        return HigherIsBetterTone(value, 70d, 55d, 45d);
+        // Médiane ligue : 52% — seuils calés sur la distribution réelle
+        return HigherIsBetterTone(value, 65d, 52d, 40d);
+    }
+
+    public static string FieldPenaltyRateTone(double value)
+    {
+        // Médiane ligue : 39%
+        return HigherIsBetterTone(value, 52d, 39d, 28d);
     }
 
     public static string GoalkeeperSaveRateTone(double value)
     {
-        return HigherIsBetterTone(value, 40d, 34d, 28d);
+        // Médiane ligue : 26% — seuils calés sur la distribution réelle
+        return HigherIsBetterTone(value, 34d, 26d, 20d);
     }
 
     public static string GoalkeeperPenaltyStopRateTone(double value)
     {
-        return HigherIsBetterTone(value, 35d, 25d, 15d);
+        // Médiane ligue : 39%
+        return HigherIsBetterTone(value, 52d, 39d, 28d);
     }
 
     public static string BallRetentionTone(double value, bool isGoalkeeper)
