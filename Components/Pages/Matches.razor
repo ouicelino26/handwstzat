@@ -7,7 +7,7 @@
 @inject AnalysisScopeService ScopeService
 @implements IDisposable
 
-<PageTitle>Games</PageTitle>
+<PageTitle>Matchs</PageTitle>
 
 <div class="games-workspace" data-workspace="games">
     @if (!AuthService.Session.IsAuthenticated)
@@ -28,7 +28,7 @@
         <section class="directory-command @(IsBusy ? "is-loading" : string.Empty)">
             <div class="panel-head panel-head-wrap">
                 <div>
-                    <p class="section-kicker">Game directory</p>
+                    <p class="section-kicker">Répertoire des matchs</p>
                     <h3>@(ShowMatchDetailView ? "Contexte de la rencontre" : "Trouver une rencontre")</h3>
                     <p class="page-subtitle">Le scope, la recherche et le retour a la liste restent memorises.</p>
                 </div>
@@ -36,7 +36,7 @@
                 <div class="toolbar">
                     @if (ShowMatchDetailView)
                     {
-                        <a class="ghost-button filter-ghost" href="/matches">Retour aux cartes</a>
+                        <a class="ghost-button filter-ghost match-back-btn" href="/matches">← Retour aux matchs</a>
                     }
                     else
                     {
@@ -143,6 +143,9 @@
                                     <h3>@FilteredMatchList.Count matchs</h3>
                                 </div>
                             </div>
+                    <div class="matches-scope-bar">
+                        <span class="msb-scope">@FormatActiveScopeLabel()</span>
+                    </div>
 
                     @if (FilteredMatchList.Count == 0)
                     {
@@ -154,20 +157,85 @@
                     }
                     else
                     {
-                        <div class="match-mosaic">
+                        @* ── Répertoire desktop : tableau analytique ── *@
+                        <div class="matches-dir-table-wrap">
+                            <table class="matches-dir-table" aria-label="Répertoire des matchs">
+                                <caption class="sr-only">@FilteredMatchList.Count résultat@(FilteredMatchList.Count > 1 ? "s" : "")</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col" class="mdt-th mdt-th--date">Date</th>
+                                        <th scope="col" class="mdt-th mdt-th--team1">Équipe 1</th>
+                                        <th scope="col" class="mdt-th mdt-th--score">Score</th>
+                                        <th scope="col" class="mdt-th mdt-th--team2">Équipe 2</th>
+                                        <th scope="col" class="mdt-th mdt-th--comp">Compétition</th>
+                                        <th scope="col" class="mdt-th mdt-th--day">Journée</th>
+                                        <th scope="col"><span class="sr-only">Ouvrir</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var match in FilteredMatchList)
+                                    {
+                                        var scoreStr = MatchScoreFormatter.Format(match.Team1Score, match.Team2Score);
+                                        var scoreAccessible = MatchScoreFormatter.FormatAccessible(match.Team1Name, match.Team1Score, match.Team2Name, match.Team2Score);
+                                        var team1Logo = TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team1Name, Season);
+                                        var team2Logo = TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team2Name, Season);
+                                        <tr class="mdt-row"
+                                            @onclick='() => SelectMatchAsync(match.MatchId)'
+                                            role="button" tabindex="0"
+                                            aria-label="@($"Ouvrir {match.Team1Name ?? "Équipe 1"} contre {match.Team2Name ?? "Équipe 2"}")"
+                                            @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") _ = SelectMatchAsync(match.MatchId); }'>
+                                            <td class="mdt-td mdt-td--date">
+                                                @if (match.Date.HasValue) { @match.Date.Value.ToString("dd/MM/yy") }
+                                                else { <span class="mdt-na">—</span> }
+                                            </td>
+                                            <td class="mdt-td mdt-td--team">
+                                                @if (!string.IsNullOrEmpty(team1Logo))
+                                                {
+                                                    <img src="@team1Logo" alt="" class="mdt-logo" aria-hidden="true" />
+                                                }
+                                                <span>@(match.Team1Name ?? "—")</span>
+                                            </td>
+                                            <td class="mdt-td mdt-td--score" aria-label="@scoreAccessible">
+                                                <span class="mdt-score @(match.Team1Score == null || match.Team2Score == null ? "mdt-score--na" : "")">
+                                                    @scoreStr
+                                                </span>
+                                            </td>
+                                            <td class="mdt-td mdt-td--team">
+                                                <span>@(match.Team2Name ?? "—")</span>
+                                                @if (!string.IsNullOrEmpty(team2Logo))
+                                                {
+                                                    <img src="@team2Logo" alt="" class="mdt-logo" aria-hidden="true" />
+                                                }
+                                            </td>
+                                            <td class="mdt-td mdt-td--comp">@(match.CompetitionName ?? "—")</td>
+                                            <td class="mdt-td mdt-td--day">@(string.IsNullOrWhiteSpace(match.Day) ? "—" : match.Day)</td>
+                                            <td class="mdt-td mdt-td--action">
+                                                <button type="button" class="mdt-open-btn" @onclick:stopPropagation="true"
+                                                        @onclick='() => SelectMatchAsync(match.MatchId)'
+                                                        aria-label="@($"Ouvrir {match.Team1Name ?? ""} – {match.Team2Name ?? ""}")">
+                                                    Ouvrir
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        @* ── Répertoire mobile : lignes compactes ── *@
+                        <div class="matches-dir-cards-mobile">
                             @foreach (var match in FilteredMatchList)
                             {
-                                <MatchCard @key="match.MatchId"
-                                           Title="@($"{match.Team1Name ?? "Equipe A"} vs {match.Team2Name ?? "Equipe B"}")"
-                                           Score="@($"{match.Team1Score ?? 0} - {match.Team2Score ?? 0}")"
-                                           Teams="@ReferenceData.Teams"
-                                           Season="@Season"
-                                           HomeTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team1Name, Season)"
-                                           AwayTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team2Name, Season)"
-                                           Meta="@(match.CompetitionName ?? "Competition")"
-                                           SecondaryMeta="@MatchFilterCatalog.FormatSeasonDay(match)"
-                                           DetailsHref="@($"/matches?matchId={match.MatchId}")"
-                                           DetailsLabel="Voir plus" />
+                                var scoreStrMobile = MatchScoreFormatter.Format(match.Team1Score, match.Team2Score);
+                                <div class="mdc-row" @onclick='() => SelectMatchAsync(match.MatchId)' role="button" tabindex="0"
+                                     @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") SelectMatchAsync(match.MatchId); }'>
+                                    <div class="mdc-date">@(match.Date.HasValue ? match.Date.Value.ToString("dd/MM") : "—") · @(string.IsNullOrWhiteSpace(match.Day) ? "" : match.Day)</div>
+                                    <div class="mdc-match">
+                                        <span class="mdc-team">@(match.Team1Name ?? "—")</span>
+                                        <span class="mdc-score">@scoreStrMobile</span>
+                                        <span class="mdc-team">@(match.Team2Name ?? "—")</span>
+                                    </div>
+                                    <div class="mdc-comp">@(match.CompetitionName ?? "—")</div>
+                                </div>
                             }
                         </div>
                     }
@@ -194,20 +262,61 @@
                     }
                     else
                     {
-                        <header class="game-scoreboard">
-                            <div class="game-scoreboard__team">
-                                <span>Home</span>
-                                <strong>@(SelectedMatch.Team1Name ?? "Equipe A")</strong>
+                        <div class="match-room-header">
+                            <div class="mrh-meta">
+                                @if (!string.IsNullOrEmpty(SelectedMatch.CompetitionName))
+                                {
+                                    <span>@SelectedMatch.CompetitionName</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(SelectedMatch.Day))
+                                {
+                                    <span>@SelectedMatch.Day</span>
+                                }
+                                @if (SelectedMatch.Date.HasValue)
+                                {
+                                    <span>@SelectedMatch.Date.Value.ToString("d MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"))</span>
+                                }
                             </div>
-                            <div class="game-scoreboard__score">
-                                <span>@(SelectedMatch.CompetitionName ?? "Competition") · @MatchFilterCatalog.FormatSeasonDay(SelectedMatch)</span>
-                                <strong>@(SelectedMatch.Team1Score ?? 0)<i>:</i>@(SelectedMatch.Team2Score ?? 0)</strong>
+                            <div class="mrh-scoreboard" role="region"
+                                 aria-label="@MatchScoreFormatter.FormatAccessible(SelectedMatch.Team1Name, SelectedMatch.Team1Score, SelectedMatch.Team2Name, SelectedMatch.Team2Score)">
+                                <div class="mrh-team mrh-team--1">
+                                    @{
+                                        var room1Logo = TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, SelectedMatch.Team1Name, Season);
+                                    }
+                                    @if (!string.IsNullOrEmpty(room1Logo))
+                                    {
+                                        <img src="@room1Logo" alt="" class="mrh-logo" aria-hidden="true" />
+                                    }
+                                    <span class="mrh-team-name">@(SelectedMatch.Team1Name ?? "Équipe 1")</span>
+                                </div>
+                                <div class="mrh-score-block">
+                                    @{
+                                        var s1 = SelectedMatch.Team1Score;
+                                        var s2 = SelectedMatch.Team2Score;
+                                    }
+                                    @if (s1 != null && s2 != null)
+                                    {
+                                        <span class="mrh-score-val">@s1</span>
+                                        <span class="mrh-score-sep">–</span>
+                                        <span class="mrh-score-val">@s2</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="mrh-score-na">—</span>
+                                    }
+                                </div>
+                                <div class="mrh-team mrh-team--2">
+                                    <span class="mrh-team-name">@(SelectedMatch.Team2Name ?? "Équipe 2")</span>
+                                    @{
+                                        var room2Logo = TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, SelectedMatch.Team2Name, Season);
+                                    }
+                                    @if (!string.IsNullOrEmpty(room2Logo))
+                                    {
+                                        <img src="@room2Logo" alt="" class="mrh-logo" aria-hidden="true" />
+                                    }
+                                </div>
                             </div>
-                            <div class="game-scoreboard__team game-scoreboard__team--away">
-                                <span>Away</span>
-                                <strong>@(SelectedMatch.Team2Name ?? "Equipe B")</strong>
-                            </div>
-                        </header>
+                        </div>
 
                         <div class="match-scope-toolbar">
                             <div class="match-scope-copy">
@@ -238,9 +347,9 @@
                         </div>
 
                         <div class="scene-switcher" role="tablist" aria-label="Scenes du match">
-                            <button type="button" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Story</button>
-                            <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Court</button>
-                            <button type="button" class="tab-button @(ActiveSection == "players" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("players")'>Players</button>
+                            <button type="button" role="tab" aria-selected="@(ActiveSection == "summary")" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Résumé</button>
+                            <button type="button" role="tab" aria-selected="@(ActiveSection == "zones")" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Terrain</button>
+                            <button type="button" role="tab" aria-selected="@(ActiveSection == "players")" class="tab-button @(ActiveSection == "players" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("players")'>Joueuses</button>
                         </div>
 
                         @if (ActiveSection == "summary")
@@ -270,7 +379,7 @@
                                             <p class="page-subtitle">Une lecture directe du scenario, des runs et des bascules de leader.</p>
                                         </div>
 
-                                        <span class="hero-badge">Score final @((SelectedMatch.Team1Score ?? 0) + " - " + (SelectedMatch.Team2Score ?? 0))</span>
+                                        <span class="hero-badge">Score final @MatchScoreFormatter.Format(SelectedMatch.Team1Score, SelectedMatch.Team2Score)</span>
                                     </div>
 
                                         <ApexChart @key="SelectedMatchLoadToken" TItem="ScoreTimelinePoint" Height="320" Options="@GetScoreTimelineChartOptions()">
@@ -749,13 +858,13 @@
             new("Saison", string.IsNullOrWhiteSpace(SelectedMatch.Season) ? "Non renseignee" : SelectedMatch.Season),
             new("Journee", string.IsNullOrWhiteSpace(SelectedMatch.Day) ? "Non renseignee" : SelectedMatch.Day),
             new("Equipe", MatchTeamScopeLabel),
-            new("Score", $"{SelectedMatch.Team1Score ?? SelectedMatchTimeline.LastOrDefault()?.Team1Score ?? 0} - {SelectedMatch.Team2Score ?? SelectedMatchTimeline.LastOrDefault()?.Team2Score ?? 0}"),
+            new("Score", MatchScoreFormatter.Format(SelectedMatch.Team1Score ?? SelectedMatchTimeline.LastOrDefault()?.Team1Score, SelectedMatch.Team2Score ?? SelectedMatchTimeline.LastOrDefault()?.Team2Score)),
             new("Evenements", MatchSummary.EventCount.ToString()),
             new("Buts", (MatchSummary.GoalCount + MatchSummary.PenaltyGoalCount).ToString())
         ];
     private string FinalScoreLabel => SelectedMatch is null
         ? "-"
-        : $"{SelectedMatch.Team1Score ?? SelectedMatchTimeline.LastOrDefault()?.Team1Score ?? 0} - {SelectedMatch.Team2Score ?? SelectedMatchTimeline.LastOrDefault()?.Team2Score ?? 0}";
+        : MatchScoreFormatter.Format(SelectedMatch.Team1Score ?? SelectedMatchTimeline.LastOrDefault()?.Team1Score, SelectedMatch.Team2Score ?? SelectedMatchTimeline.LastOrDefault()?.Team2Score);
     private bool ShowMatchSummaryKpis => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
     private bool ShowMatchScenarioInsights => ActiveLens == AudienceLens.Analyst;
     private bool ShowMatchTimelineKpis => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
@@ -1737,21 +1846,24 @@
     {
         var scopedMatches = MatchFilterCatalog.ApplySeasonAndDay(MatchList, Season, Day);
 
-        if (string.IsNullOrWhiteSpace(MatchSearch))
+        IEnumerable<MatchListItemDto> result = scopedMatches;
+
+        if (!string.IsNullOrWhiteSpace(MatchSearch))
         {
-            return scopedMatches;
-        }
-
-        var query = MatchSearch.Trim();
-
-        return scopedMatches
-            .Where(match =>
+            var query = MatchSearch.Trim();
+            result = result.Where(match =>
                 TextSearchHelper.Contains(match.Team1Name, query)
                 || TextSearchHelper.Contains(match.Team2Name, query)
                 || TextSearchHelper.Contains(match.CompetitionName, query)
                 || TextSearchHelper.Contains(match.Season, query)
                 || TextSearchHelper.Contains(match.Day, query)
-                || TextSearchHelper.Contains(MatchFilterCatalog.FormatSeasonDay(match), query))
+                || TextSearchHelper.Contains(MatchFilterCatalog.FormatSeasonDay(match), query));
+        }
+
+        // Tri par date décroissante — plus récent en premier
+        return result
+            .OrderByDescending(match => match.Date ?? DateTime.MinValue)
+            .ThenBy(match => match.MatchId)
             .ToList();
     }
 
@@ -1766,6 +1878,30 @@
     }
 
     private static string FormatRate(double value) => value.ToString("0.#");
+
+    private string FormatActiveScopeLabel()
+    {
+        var parts = new List<string>();
+
+        if (CompetitionId.HasValue)
+        {
+            var name = AvailableCompetitions.FirstOrDefault(c => c.CompetitionId == CompetitionId.Value)?.CompetitionName;
+            if (!string.IsNullOrWhiteSpace(name)) parts.Add(name);
+        }
+
+        if (TeamId.HasValue)
+        {
+            var name = AvailableTeams.FirstOrDefault(t => t.TeamId == TeamId.Value)?.TeamName;
+            if (!string.IsNullOrWhiteSpace(name)) parts.Add(name);
+        }
+
+        if (!string.IsNullOrWhiteSpace(Season)) parts.Add(Season);
+        if (!string.IsNullOrWhiteSpace(Day)) parts.Add(Day);
+
+        return parts.Count > 0
+            ? string.Join(" · ", parts)
+            : "Tous les matchs";
+    }
 
     private sealed class MatchDetailCacheItem
     {
