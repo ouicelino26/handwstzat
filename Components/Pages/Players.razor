@@ -9,6 +9,7 @@
 @inject IApiAuthService AuthService
 @inject IJSRuntime JS
 @inject AnalysisScopeService ScopeService
+@inject NavigationManager NavigationManager
 @implements IDisposable
 
 <PageTitle>Athletes</PageTitle>
@@ -209,7 +210,7 @@
                         <div class="scene-switcher" role="tablist" aria-label="Scenes de la joueuse">
                             <button type="button" class="tab-button @(ActiveSection == "overview" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("overview")'>Brief</button>
                             <button type="button" class="tab-button @(ActiveSection == "analysis" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("analysis")'>Performance</button>
-                            <button type="button" class="tab-button @(ActiveSection == "graphs" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("graphs")'>Trajectory</button>
+                            <button type="button" class="tab-button @(ActiveSection == "graphs" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("graphs")'>Évolution</button>
                             <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Court</button>
                             <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Games</button>
                         </div>
@@ -672,165 +673,193 @@
                         }
                         else if (ActiveSection == "graphs")
                         {
-                            <div class="dual-grid">
-                                <section class="page-panel">
-                                    <p class="section-kicker">Profil technique</p>
-                                    <h4>Volumes qui structurent le role</h4>
-                                    <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetPlayerProfileChartOptions()">
-                                        <ApexPointSeries TItem="MetricPlotPoint"
-                                                         Items="@PlayerActionProfile"
-                                                         Name="@Profile.FullName"
-                                                         SeriesType="SeriesType.Bar"
-                                                         XValue="point => point.Label"
-                                                         YValue="point => (decimal?)point.Value" />
-                                    </ApexChart>
-                                </section>
+                            var _trajMetricDefs = PlayerTrajectoryMetricCatalog.GetFor(profile.IsGoalkeeper);
+                            var _trajActiveDef = ActiveMetricDef;
+                            var _trajSorted = ActiveTrajectoryPoints.OrderBy(p => p.Date).ThenBy(p => p.MatchId).ToList();
+                            var _trajSeasonRef = SeasonSummary?.AggregatedValue;
 
-                                <section class="page-panel">
-                                    <p class="section-kicker">Rendement</p>
-                                    <h4>Pourcentages et ratios clefs</h4>
-                                    <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetPlayerRateChartOptions()">
-                                        <ApexPointSeries TItem="MetricPlotPoint"
-                                                         Items="@PlayerRateProfile"
-                                                         Name="Niveau"
-                                                         SeriesType="SeriesType.Bar"
-                                                         XValue="point => point.Label"
-                                                         YValue="point => (decimal?)point.Value" />
-                                    </ApexChart>
-                                </section>
+                            @* ── Contrôles ── *@
+                            <div class="traj-controls">
+                                <div class="traj-control-group">
+                                    <label class="traj-ctrl-label">Métrique</label>
+                                    <select class="traj-metric-select" value="@ActiveTrajectoryMetric"
+                                            @onchange="OnTrajectoryMetricChangedAsync">
+                                        @foreach (var m in _trajMetricDefs)
+                                        {
+                                            <option value="@m.Code" selected="@(m.Code == ActiveTrajectoryMetric)">@m.Label</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="traj-control-group">
+                                    <label class="traj-ctrl-label">Période</label>
+                                    <div class="traj-window-btns" role="group" aria-label="Fenêtre temporelle">
+                                        <button type="button" class="traj-win-btn @(TrajectoryWindow == TrajectoryWindow.Last5 ? "is-active" : "")"
+                                                @onclick='() => TrajectoryWindow = TrajectoryWindow.Last5'>5 derniers</button>
+                                        <button type="button" class="traj-win-btn @(TrajectoryWindow == TrajectoryWindow.Last10 ? "is-active" : "")"
+                                                @onclick='() => TrajectoryWindow = TrajectoryWindow.Last10'>10 derniers</button>
+                                        <button type="button" class="traj-win-btn @(TrajectoryWindow == TrajectoryWindow.Season ? "is-active" : "")"
+                                                @onclick='() => TrajectoryWindow = TrajectoryWindow.Season'>Saison</button>
+                                    </div>
+                                </div>
+                                @if (IsTrajectoryLoading)
+                                {
+                                    <span class="traj-loading-note">Chargement…</span>
+                                }
                             </div>
 
-                            <div class="dual-grid">
-                                <section class="page-panel">
-                                    <p class="section-kicker">Tendance recente</p>
-                                    <h4>Lecture match apres match</h4>
+                            @if (!IsTrajectoryLoaded && !IsTrajectoryLoading)
+                            {
+                                <div class="traj-empty">
+                                    <p>Aucune donnée de trajectoire disponible.</p>
+                                </div>
+                            }
+                            else if (_trajSorted.Count == 0)
+                            {
+                                <div class="traj-empty">
+                                    <p>Aucun match dans cette fenêtre.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                @* ── Graphique principal ── *@
+                                <div class="traj-chart-wrap" role="region" aria-label="@($"Évolution {_trajActiveDef?.Label ?? ""} — {_trajSorted.Count} matchs")">
+                                    <div class="traj-chart-header">
+                                        <span class="traj-chart-title">@(_trajActiveDef?.Label ?? "Métrique")</span>
+                                        <span class="traj-chart-unit">@(_trajActiveDef?.Unit ?? "")</span>
+                                        <span class="traj-chart-scope">@_trajSorted.Count matchs</span>
+                                    </div>
 
-                                    @if (PlayerTrendSeries.Count == 0)
-                                    {
-                                        <p class="empty-hint">Aucun historique detaille disponible pour tracer la tendance recente.</p>
-                                    }
-                                    else
-                                    {
-                                        <ApexChart @key="SelectedPlayerId" TItem="MatchTrendPoint" Height="320" Options="@GetPlayerTrendChartOptions()">
-                                            <ApexPointSeries TItem="MatchTrendPoint"
-                                                             Items="@PlayerTrendSeries"
-                                                             Name="Actions directes"
+                                    <ApexChart TItem="PlayerTrajectoryPoint"
+                                               @key="@($"{SelectedPlayerId}_{ActiveTrajectoryMetric}_{TrajectoryWindow}")"
+                                               Options="@GetTrajectoryChartOptions(_trajActiveDef, _trajSorted, _trajSeasonRef)">
+                                        <ApexPointSeries TItem="PlayerTrajectoryPoint"
+                                                         Items="_trajSorted"
+                                                         Name="@(_trajActiveDef?.Label ?? "Valeur")"
+                                                         SeriesType="SeriesType.Line"
+                                                         XValue="@(p => p.Date.ToString("dd/MM"))"
+                                                         YValue="@(p => (decimal?)(p.Availability != "DATA_MISSING" ? p.MetricValue : null))" />
+                                        @if (_trajSeasonRef.HasValue)
+                                        {
+                                            <ApexPointSeries TItem="PlayerTrajectoryPoint"
+                                                             Items="_trajSorted"
+                                                             Name="Moy. saison"
                                                              SeriesType="SeriesType.Line"
-                                                             XValue="point => point.Label"
-                                                             YValue="point => (decimal?)point.DirectContributions" />
-                                            <ApexPointSeries TItem="MatchTrendPoint"
-                                                             Items="@PlayerTrendSeries"
-                                                             Name="Impact def."
-                                                             SeriesType="SeriesType.Line"
-                                                             XValue="point => point.Label"
-                                                             YValue="point => (decimal?)point.DefensiveImpact" />
-                                            <ApexPointSeries TItem="MatchTrendPoint"
-                                                             Items="@PlayerTrendSeries"
-                                                             Name="Pertes"
-                                                             SeriesType="SeriesType.Line"
-                                                             XValue="point => point.Label"
-                                                             YValue="point => (decimal?)point.Turnovers" />
-                                            @if (Profile.IsGoalkeeper)
-                                            {
-                                                <ApexPointSeries TItem="MatchTrendPoint"
-                                                                 Items="@PlayerTrendSeries"
-                                                                 Name="Arrets"
-                                                                 SeriesType="SeriesType.Line"
-                                                                 XValue="point => point.Label"
-                                                                 YValue="point => (decimal?)point.Saves" />
-                                            }
-                                        </ApexChart>
-                                    }
-                                </section>
+                                                             XValue="@(p => p.Date.ToString("dd/MM"))"
+                                                             YValue="@(_ => (decimal?)_trajSeasonRef.Value)" />
+                                        }
+                                    </ApexChart>
+                                </div>
 
-                                <section class="page-panel">
-                                    <p class="section-kicker">Nuage de points</p>
-                                    <h4>Pertes vs impact global</h4>
-                                    <p class="page-subtitle">Chaque point represente un match. Plus il monte, plus l'impact global est fort. Plus il part a droite, plus les pertes augmentent.</p>
-
-                                    @if (!ShowPlayerScatterChart)
+                                @* ── Résumé 3 fenêtres ── *@
+                                <div class="traj-summaries" role="region" aria-label="Résumé par fenêtre">
+                                    @foreach (var summaryItem in new (TrajectoryWindowSummary? Summary, string Label)[] {
+                                        (Last5Summary, "5 derniers"),
+                                        (Last10Summary, "10 derniers"),
+                                        (SeasonSummary, "Saison")
+                                    })
                                     {
-                                        <p class="empty-hint">Aucune serie assez complete pour tracer le nuage de points.</p>
-                                    }
-                                    else
-                                    {
-                                        <ApexChart @key="SelectedPlayerId" TItem="MatchTrendPoint" Height="320" Options="@GetPlayerScatterChartOptions()">
-                                            <ApexPointTooltip>
-                                                @{
-                                                    var datapoint = context.DataPoint as IDataPoint<MatchTrendPoint>;
-                                                    var point = datapoint?.Items?.FirstOrDefault();
-                                                }
-
-                                                @if (point is not null)
+                                        @if (summaryItem.Summary is not null)
+                                        {
+                                            <div class="traj-summary-card">
+                                                <p class="tsc-window">@summaryItem.Label</p>
+                                                @if (summaryItem.Summary.AggregatedValue.HasValue)
                                                 {
-                                                    var impact = point.DirectContributions + point.DefensiveImpact;
-                                                    var insight = GetScatterInsightLabel(point);
-
-                                                    <div class="chart-tooltip-card player-scatter-tooltip">
-                                                        <div class="chart-tooltip-head">
-                                                            <div>
-                                                                <p class="chart-tooltip-kicker">Lecture analytique</p>
-                                                                <h5>@(point.MatchLabel ?? point.Label)</h5>
-                                                            </div>
-
-                                                            <span class="chart-tooltip-badge">@insight</span>
-                                                        </div>
-
-                                                        <p class="chart-tooltip-meta">
-                                                            @if (!string.IsNullOrWhiteSpace(point.SeasonDayLabel))
-                                                            {
-                                                                <span>@point.SeasonDayLabel</span>
-                                                            }
-
-                                                            @if (!string.IsNullOrWhiteSpace(point.TeamLabel))
-                                                            {
-                                                                <span>@point.TeamLabel</span>
-                                                            }
-
-                                                            @if (!string.IsNullOrWhiteSpace(point.OpponentLabel))
-                                                            {
-                                                                <span>vs @point.OpponentLabel</span>
-                                                            }
-                                                        </p>
-
-                                                        @if (!string.IsNullOrWhiteSpace(point.CompetitionLabel))
-                                                        {
-                                                            <p class="chart-tooltip-competition">@point.CompetitionLabel</p>
-                                                        }
-
-                                                        <div class="chart-tooltip-grid">
-                                                            <div>
-                                                                <span>Pertes</span>
-                                                                <strong>@FormatRate(point.Turnovers)</strong>
-                                                            </div>
-                                                            <div>
-                                                                <span>Impact</span>
-                                                                <strong>@FormatRate(impact)</strong>
-                                                            </div>
-                                                            <div>
-                                                                <span>Directes</span>
-                                                                <strong>@FormatRate(point.DirectContributions)</strong>
-                                                            </div>
-                                                            <div>
-                                                                <span>Defense</span>
-                                                                <strong>@FormatRate(point.DefensiveImpact)</strong>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    <p class="tsc-value">@FormatTrajectoryValue(summaryItem.Summary.AggregatedValue.Value, _trajActiveDef)</p>
+                                                    @if (summaryItem.Summary.DeltaVsSeason.HasValue && summaryItem.Summary.Window != TrajectoryWindow.Season)
+                                                    {
+                                                        var isPositive = (_trajActiveDef?.Direction == TrajectoryMetricDirection.LowerIsBetter)
+                                                            ? summaryItem.Summary.DeltaVsSeason.Value < 0
+                                                            : summaryItem.Summary.DeltaVsSeason.Value > 0;
+                                                        <p class="tsc-delta @(isPositive ? "tsc-delta--pos" : "tsc-delta--neg")">@summaryItem.Summary.DeltaLabel vs saison</p>
+                                                    }
                                                 }
-                                            </ApexPointTooltip>
-                                            <ChildContent>
-                                                <ApexPointSeries TItem="MatchTrendPoint"
-                                                                 Items="@PlayerScatterSeries"
-                                                                 Name="Matchs"
-                                                                 SeriesType="SeriesType.Scatter"
-                                                                 XValue="point => (decimal?)point.Turnovers"
-                                                                 YValue="point => (decimal?)(point.DirectContributions + point.DefensiveImpact)" />
-                                            </ChildContent>
-                                        </ApexChart>
+                                                else
+                                                {
+                                                    <p class="tsc-value tsc-value--na">—</p>
+                                                }
+                                                @if (summaryItem.Summary.EligibleMatches < summaryItem.Summary.TotalMatchesInWindow)
+                                                {
+                                                    <p class="tsc-note">@summaryItem.Summary.EligibleMatches renseignés sur @summaryItem.Summary.TotalMatchesInWindow</p>
+                                                }
+                                            </div>
+                                        }
                                     }
+                                </div>
+
+                                @* ── Tendance ── *@
+                                @if ((Last5Summary?.AggregatedValue).HasValue && (Last5Summary?.Trend ?? TrendState.InsufficientData) != TrendState.InsufficientData)
+                                {
+                                    var _trendState = Last5Summary!.Trend;
+                                    <div class="traj-trend @($"traj-trend--{_trendState.ToString().ToLowerInvariant()}")">
+                                        <span class="traj-trend-icon">@(_trendState == TrendState.Progressing ? "↗" : _trendState == TrendState.Declining ? "↘" : "→")</span>
+                                        <span class="traj-trend-label">@(_trendState switch {
+                                            TrendState.Progressing => "En progression",
+                                            TrendState.Declining => "En baisse",
+                                            TrendState.Stable => "Stable",
+                                            _ => "Données insuffisantes"
+                                        })</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="traj-trend traj-trend--insufficient">
+                                        <span class="traj-trend-label">Données insuffisantes pour conclure sur la tendance</span>
+                                    </div>
+                                }
+
+                                @* ── Tableau historique compact ── *@
+                                <section class="traj-history" aria-label="Historique des matchs">
+                                    <p class="section-kicker">Historique</p>
+                                    <table class="traj-history-table" role="grid">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Date</th>
+                                                <th scope="col">Adversaire</th>
+                                                <th scope="col">Résultat</th>
+                                                <th scope="col">Min.</th>
+                                                <th scope="col">@(_trajActiveDef?.Label ?? "Valeur")</th>
+                                                <th scope="col">vs saison</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var pt in _trajSorted.OrderByDescending(p => p.Date))
+                                            {
+                                                var delta = (pt.MetricValue.HasValue && _trajSeasonRef.HasValue)
+                                                    ? pt.MetricValue.Value - _trajSeasonRef.Value
+                                                    : (double?)null;
+                                                var isPositiveDelta = delta.HasValue && (_trajActiveDef?.Direction == TrajectoryMetricDirection.LowerIsBetter ? delta < 0 : delta > 0);
+                                                <tr class="traj-history-row @(string.IsNullOrEmpty(pt.MatchId) ? "" : "traj-history-row--clickable")"
+                                                    @onclick="() => NavigateToMatch(pt.MatchId)"
+                                                    role="@(string.IsNullOrEmpty(pt.MatchId) ? "row" : "button")"
+                                                    tabindex="@(string.IsNullOrEmpty(pt.MatchId) ? "-1" : "0")"
+                                                    @onkeydown="e => HandleHistoryRowKeyDown(e, pt.MatchId)">
+                                                    <td>@pt.Date.ToString("dd/MM")</td>
+                                                    <td class="traj-opponent">@pt.OpponentName</td>
+                                                    <td>@(pt.ResultLabel ?? "—")</td>
+                                                    <td>@(pt.PlayingTimeStatus == PlayingTimeAvailability.DataMissing ? "—" : pt.MinutesPlayed?.ToString("0") ?? "—")</td>
+                                                    <td class="traj-metric-val">
+                                                        @if (pt.Availability == "DATA_MISSING" || pt.MetricValue == null)
+                                                        {
+                                                            <span class="traj-val--na">—</span>
+                                                        }
+                                                        else if (_trajActiveDef?.Type == TrajectoryMetricType.Rate && pt.Denominator is 0)
+                                                        {
+                                                            <span class="traj-val--na">—</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>@FormatTrajectoryValue(pt.MetricValue.Value, _trajActiveDef)</span>
+                                                        }
+                                                    </td>
+                                                    <td class="traj-delta @(delta.HasValue ? (isPositiveDelta ? "traj-delta--pos" : "traj-delta--neg") : "")">
+                                                        @(delta.HasValue ? FormatDelta(delta.Value, _trajActiveDef) : "—")
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
                                 </section>
-                            </div>
+                            }
                         }
                         else if (ActiveSection == "zones")
                         {
@@ -1166,6 +1195,13 @@
     private PlayerCourtScene CourtScene { get; set; } = PlayerCourtScene.ShotZones;
     private bool IsCourtLoaded { get; set; }
     private string PerformanceSection { get; set; } = "attack";
+    private string ActiveTrajectoryMetric { get; set; } = "SHOT_SUCCESS_RATE";
+    private TrajectoryWindow TrajectoryWindow { get; set; } = TrajectoryWindow.Last10;
+    private TrajectoryScene TrajectoryScene { get; set; } = TrajectoryScene.Curve;
+    private bool IsTrajectoryLoaded { get; set; } = false;
+    private bool IsTrajectoryLoading { get; set; } = false;
+    private long _trajectoryLoadToken;
+    private IReadOnlyList<PlayerTrajectoryPoint> TrajectoryPoints { get; set; } = Array.Empty<PlayerTrajectoryPoint>();
 
     [Parameter, SupplyParameterFromQuery(Name = "playerId")]
     public int? PlayerIdFromQuery { get; set; }
@@ -1384,6 +1420,8 @@
         ActiveSection = section;
         if (section == "zones")
             await EnsureCourtLoadedAsync();
+        if (section == "graphs")
+            await EnsureTrajectoryLoadedAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -1393,6 +1431,114 @@
             return;
         await LoadSpatialForFocusAsync(null);
         IsCourtLoaded = true;
+    }
+
+    private async Task EnsureTrajectoryLoadedAsync()
+    {
+        if (IsTrajectoryLoaded || IsTrajectoryLoading) return;
+        IsTrajectoryLoading = true;
+        var myToken = System.Threading.Interlocked.Increment(ref _trajectoryLoadToken);
+        try
+        {
+            TrajectoryPoints = BuildTrajectoryPoints();
+            if (_trajectoryLoadToken != myToken) return;
+            IsTrajectoryLoaded = true;
+        }
+        finally
+        {
+            if (_trajectoryLoadToken == myToken)
+                IsTrajectoryLoading = false;
+            StateHasChanged();
+        }
+        await Task.CompletedTask;
+    }
+
+    private IReadOnlyList<PlayerTrajectoryPoint> BuildTrajectoryPoints()
+    {
+        if (PlayerMatches.Count == 0) return Array.Empty<PlayerTrajectoryPoint>();
+        var teamName = Profile?.TeamName ?? string.Empty;
+        var isGoalkeeper = Profile?.IsGoalkeeper == true;
+        return TrajectoryPointBuilder.BuildPoints(PlayerMatches, teamName, ActiveTrajectoryMetric, isGoalkeeper);
+    }
+
+    private IReadOnlyList<PlayerTrajectoryPoint> ActiveTrajectoryPoints =>
+        TrajectoryAggregator.ApplyWindow(TrajectoryPoints, TrajectoryWindow);
+
+    private TrajectoryMetricDefinition? ActiveMetricDef =>
+        PlayerTrajectoryMetricCatalog.Find(ActiveTrajectoryMetric);
+
+    private TrajectoryWindowSummary? Last5Summary =>
+        ActiveMetricDef is not null
+            ? TrajectoryAggregator.BuildWindowSummary(
+                TrajectoryAggregator.ApplyWindow(TrajectoryPoints, TrajectoryWindow.Last5),
+                TrajectoryPoints, ActiveMetricDef, TrajectoryWindow.Last5)
+            : null;
+
+    private TrajectoryWindowSummary? Last10Summary =>
+        ActiveMetricDef is not null
+            ? TrajectoryAggregator.BuildWindowSummary(
+                TrajectoryAggregator.ApplyWindow(TrajectoryPoints, TrajectoryWindow.Last10),
+                TrajectoryPoints, ActiveMetricDef, TrajectoryWindow.Last10)
+            : null;
+
+    private TrajectoryWindowSummary? SeasonSummary =>
+        ActiveMetricDef is not null
+            ? TrajectoryAggregator.BuildWindowSummary(TrajectoryPoints, TrajectoryPoints, ActiveMetricDef, TrajectoryWindow.Season)
+            : null;
+
+    private async Task OnTrajectoryMetricChangedAsync(ChangeEventArgs e)
+    {
+        var newMetric = e.Value?.ToString() ?? ActiveTrajectoryMetric;
+        if (newMetric == ActiveTrajectoryMetric) return;
+        ActiveTrajectoryMetric = newMetric;
+        // Rebuild points for new metric (no API call — all data is local)
+        IsTrajectoryLoaded = false;
+        await EnsureTrajectoryLoadedAsync();
+    }
+
+    private static string FormatTrajectoryValue(double value, TrajectoryMetricDefinition? def) =>
+        def?.Type == TrajectoryMetricType.Rate
+            ? $"{value:F1} %"
+            : def?.Type == TrajectoryMetricType.Minutes
+                ? $"{value:F0} min"
+                : $"{value:F1}";
+
+    private static string FormatDelta(double delta, TrajectoryMetricDefinition? def)
+    {
+        var sign = delta >= 0 ? "+" : "";
+        return def?.Type == TrajectoryMetricType.Rate
+            ? $"{sign}{delta:F1} pts"
+            : $"{sign}{delta:F1}";
+    }
+
+    private ApexChartOptions<PlayerTrajectoryPoint> GetTrajectoryChartOptions(
+        TrajectoryMetricDefinition? def,
+        IReadOnlyList<PlayerTrajectoryPoint> points,
+        double? seasonRef)
+    {
+        var isRate = def?.Type == TrajectoryMetricType.Rate;
+        return new ApexChartOptions<PlayerTrajectoryPoint>
+        {
+            Chart = new Chart
+            {
+                Type = ChartType.Line,
+                Toolbar = new Toolbar { Show = false }
+            },
+            Stroke = new Stroke { Width = 2 },
+            Markers = new Markers { Size = 5 },
+            Xaxis = new XAxis
+            {
+                Type = XAxisType.Category,
+                Labels = new XAxisLabels { Rotate = -30 }
+            },
+            Yaxis =
+            [
+                new YAxis { Min = 0, Max = isRate ? 100 : null }
+            ],
+            Legend = new Legend { Show = true, Position = LegendPosition.Bottom },
+            Tooltip = new Tooltip { Enabled = true, Shared = false },
+            Colors = ["#4fc3f7", "#888888"]
+        };
     }
 
     private async Task SetCourtAttackTypeAsync(PlayerCourtAttackType type)
@@ -1765,6 +1911,10 @@
             CourtDisplayMode = PlayerCourtDisplayMode.Volume;
             CourtScene = PlayerCourtScene.ShotZones;
             PerformanceSection = "attack";
+            IsTrajectoryLoaded = false;
+            TrajectoryPoints = Array.Empty<PlayerTrajectoryPoint>();
+            ActiveTrajectoryMetric = "SHOT_SUCCESS_RATE";
+            TrajectoryWindow = TrajectoryWindow.Last10;
             return;
         }
 
@@ -1824,6 +1974,10 @@
             CourtScene = PlayerCourtScene.ShotZones;
             ActiveZoneKey = null;
             PerformanceSection = Profile?.IsGoalkeeper == true ? "saves" : "attack";
+            IsTrajectoryLoaded = false;
+            TrajectoryPoints = Array.Empty<PlayerTrajectoryPoint>();
+            ActiveTrajectoryMetric = Profile?.IsGoalkeeper == true ? "SAVE_RATE" : "SHOT_SUCCESS_RATE";
+            TrajectoryWindow = TrajectoryWindow.Last10;
         }
         catch (Exception ex)
         {
@@ -2581,6 +2735,18 @@
     private void SetPlayerMatchSort(string column)
     {
         PlayerMatchSort = PlayerMatchSort.Toggle(column, column is "match" ? SortDirection.Asc : SortDirection.Desc);
+    }
+
+    private void NavigateToMatch(string matchId)
+    {
+        if (!string.IsNullOrEmpty(matchId))
+            NavigationManager.NavigateTo($"/matches?matchId={matchId}");
+    }
+
+    private void HandleHistoryRowKeyDown(KeyboardEventArgs e, string matchId)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+            NavigateToMatch(matchId);
     }
 
     private ApexChartOptions<MatchTrendPoint> GetPlayerScatterChartOptions()
