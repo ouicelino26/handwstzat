@@ -5861,3 +5861,64 @@ html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
         display: none;
     }
 }
+
+/* ── Player Brief Board ───────────────────────────────────────────────── */
+
+.player-brief-board {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem 0.5rem;
+}
+
+.brief-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.brief-section__head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+}
+
+.brief-section__head .section-kicker {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted, #888);
+}
+
+.brief-section__head h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary, #e8e8e8);
+}
+
+.brief-section--global .brief-section__head h4 {
+    color: var(--text-primary, #e8e8e8);
+}
+
+.brief-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    .brief-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 380px) {
+    .brief-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+}
