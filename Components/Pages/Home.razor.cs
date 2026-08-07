@@ -209,6 +209,9 @@ public class HomeBase : ComponentBase, IDisposable
         CancelAndDispose(ref _teamOfTheDayLoadCts);
     }
 
+    /// <summary>Called at the beginning of each dashboard reload, before clearing TeamOfTheDay state.</summary>
+    protected virtual void OnDashboardRefreshing() { }
+
     protected CancellationToken BeginRankingLoad()
     {
         var next = new CancellationTokenSource();
@@ -485,6 +488,7 @@ public class HomeBase : ComponentBase, IDisposable
         previous?.Cancel();
         CancelAndDispose(ref _teamOfTheDayLoadCts);
         IsTeamOfTheDayLoaded = false;
+        OnDashboardRefreshing();
         var loadStartedAt = DateTimeOffset.UtcNow;
         var timestamp = Stopwatch.GetTimestamp();
         var acquired = false;

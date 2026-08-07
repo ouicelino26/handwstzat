@@ -19,6 +19,8 @@
     <Compile Include="..\Models\Contracts\ReleaseArtifactValidator.cs" Link="Models\Contracts\ReleaseArtifactValidator.cs" />
     <Compile Include="..\Configuration\UpdateSettings.cs" Link="Configuration\UpdateSettings.cs" />
     <Compile Include="..\Models\Analytics\DashboardFoundationModels.cs" Link="Models\Analytics\DashboardFoundationModels.cs" />
+    <Compile Include="..\Models\Analytics\DashboardModels.cs" Link="Models\Analytics\DashboardModels.cs" />
+    <Compile Include="..\Services\PlayerTableMapper.cs" Link="Services\PlayerTableMapper.cs" />
     <Compile Include="..\Models\Analytics\KpiModels.cs" Link="Models\Analytics\KpiModels.cs" />
     <Compile Include="..\Models\Analytics\MetricDisplayModels.cs" Link="Models\Analytics\MetricDisplayModels.cs" />
     <Compile Include="..\Models\Analytics\LeagueAnalyticsModels.cs" Link="Models\Analytics\LeagueAnalyticsModels.cs" />

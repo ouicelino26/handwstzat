@@ -224,6 +224,61 @@ public sealed class StatsDashboardService
         }
     }
 
+    public async Task<DashboardPlayerTable> LoadPlayerTableAsync(
+        DashboardFilterState filters,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_authService.Session.IsAuthenticated)
+        {
+            throw new InvalidOperationException("Connexion requise pour ouvrir l'interface live.");
+        }
+
+        try
+        {
+            var queryOptions = filters.ToStatsQueryOptions();
+            var playerStats = await _analyticsGateway.GetPlayersAsync(queryOptions, cancellationToken);
+
+            if (playerStats.Count == 0)
+            {
+                return DashboardPlayerTable.Empty;
+            }
+
+            var response = await _analyticsGateway.ComparePlayersAsync(new ComparePlayersRequestDto
+            {
+                PlayerIds = playerStats
+                    .Select(player => player.PlayerId)
+                    .Distinct()
+                    .ToList(),
+                CompetitionId = queryOptions.CompetitionId,
+                TeamId = queryOptions.TeamId,
+                PositionId = queryOptions.PositionId,
+                MatchId = queryOptions.MatchId,
+                From = queryOptions.From,
+                To = queryOptions.To,
+                Year = queryOptions.Year,
+                Season = queryOptions.Season,
+                Day = queryOptions.Day
+            }, cancellationToken) ?? new ComparePlayersResponseDto();
+
+            return BuildPlayerTable(response);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ApiRequestException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Impossible de charger le tableau analytique joueuses.", ex);
+        }
+    }
+
+    public static DashboardPlayerTable BuildPlayerTable(ComparePlayersResponseDto response) =>
+        PlayerTableMapper.Build(response);
+
     private async Task<DashboardGlobalBoards> LoadGlobalBoardsAsync(
         StatsQueryOptionsDto queryOptions,
         IReadOnlyList<PlayerGlobalStatsDto> playerStats,

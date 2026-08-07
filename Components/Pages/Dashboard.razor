@@ -722,285 +722,459 @@ else if (Snapshot is not null)
             }
             else if (ActiveDashboardSection == "global-rankings")
             {
-                <section class="page-panel">
+                @if (IsPlayerTableLoading)
+                {
+                    <PageLoader Kicker="Chargement a la demande"
+                                Title="Chargement du tableau analytique"
+                                Message="Cette section est chargee uniquement lorsque vous l'ouvrez." />
+                }
+
+                <section class="page-panel pt-panel">
                     <div class="panel-head panel-head-wrap">
                         <div>
                             <p class="section-kicker">Classements globaux</p>
-                        </div>
-
-                        <div class="board-group-tabs">
-                            <button type="button"
-                                    class="board-group-tab @(GlobalRankingPlayerGroup == "field" ? "is-active" : string.Empty)"
-                                    @onclick='() => SetGlobalRankingPlayerGroup("field")'>
-                                Joueuses de champ
-                                @{
-                                    var fieldCount = FilteredGlobalFieldRows.Count;
-                                }
-                                <span class="board-tab-count">@fieldCount</span>
-                            </button>
-                            <button type="button"
-                                    class="board-group-tab @(GlobalRankingPlayerGroup == "goalkeepers" ? "is-active" : string.Empty)"
-                                    @onclick='() => SetGlobalRankingPlayerGroup("goalkeepers")'>
-                                Gardiennes
-                                @{
-                                    var gkCount = SortedGlobalGoalkeeperRows.Count;
-                                }
-                                <span class="board-tab-count">@gkCount</span>
-                            </button>
+                            <h3>Tableau analytique joueuses</h3>
                         </div>
                     </div>
 
-                    <div class="board-with-sidebar">
+                    <!-- Groupe joueuses de champ / gardiennes -->
+                    <div class="player-table-group-tabs">
+                        <button type="button"
+                                class="ptg-tab @(PlayerTableGroup == "field" ? "active" : string.Empty)"
+                                @onclick='() => SetPlayerTableGroup("field")'>
+                            Joueuses de champ
+                            <span class="ptg-count">@PlayerTable.FieldPlayers.Count</span>
+                        </button>
+                        <button type="button"
+                                class="ptg-tab @(PlayerTableGroup == "goalkeeper" ? "active" : string.Empty)"
+                                @onclick='() => SetPlayerTableGroup("goalkeeper")'>
+                            Gardiennes
+                            <span class="ptg-count">@PlayerTable.Goalkeepers.Count</span>
+                        </button>
+                    </div>
 
-                        @if (GlobalRankingPlayerGroup == "field")
+                    <!-- Barre de filtres locaux -->
+                    <div class="player-table-local-filters">
+                        <input type="search"
+                               placeholder="Rechercher une joueuse&hellip;"
+                               value="@PlayerTableSearch"
+                               @oninput="e => PlayerTableSearch = e.Value?.ToString() ?? string.Empty"
+                               class="pt-search"
+                               aria-label="Rechercher une joueuse" />
+
+                        @if (PlayerTableGroup == "field")
                         {
-                            <aside class="pos-filter-sidebar">
-                                <p class="sidebar-label">Poste</p>
+                            <div class="pt-pos-chips" role="group" aria-label="Filtrer par poste">
                                 <button type="button"
-                                        class="pos-chip @(GlobalRankingPositionId is null ? "is-active" : string.Empty)"
-                                        @onclick="() => SetGlobalRankingPosition(null)">
-                                    Tous
+                                        class="pt-pos-chip @(PlayerTablePositionId is null ? "active" : string.Empty)"
+                                        @onclick="() => SetPlayerTablePosition(null)">
+                                    Tout
                                 </button>
-                                @foreach (var position in GlobalRankingPositionOptions)
+                                @foreach (var pos in PlayerTableFieldPositions)
                                 {
                                     <button type="button"
-                                            class="pos-chip @(GlobalRankingPositionId == position.Id ? "is-active" : string.Empty)"
-                                            @onclick="() => SetGlobalRankingPosition(position.Id)">
-                                        @position.Name
+                                            class="pt-pos-chip @(PlayerTablePositionId == pos.Id ? "active" : string.Empty)"
+                                            @onclick="() => SetPlayerTablePosition(pos.Id)">
+                                        @pos.Code
                                     </button>
                                 }
-                            </aside>
-                        }
-
-                        <div class="board-main">
-                            <div class="stat-cat-tabs">
-                                <button type="button"
-                                        class="stat-cat-tab @(GlobalRankingStatCategory == "global" ? "is-active" : string.Empty)"
-                                        @onclick='() => SetGlobalRankingCategory("global")'>
-                                    Global
-                                </button>
-                                <button type="button"
-                                        class="stat-cat-tab @(GlobalRankingStatCategory == "offense" ? "is-active" : string.Empty)"
-                                        @onclick='() => SetGlobalRankingCategory("offense")'>
-                                    Offensif
-                                </button>
-                                <button type="button"
-                                        class="stat-cat-tab @(GlobalRankingStatCategory == "defense" ? "is-active" : string.Empty)"
-                                        @onclick='() => SetGlobalRankingCategory("defense")'>
-                                    Defensif
-                                </button>
                             </div>
-
-                            @if (GlobalRankingPlayerGroup == "field")
-                            {
-                                var fieldRows = FilteredGlobalFieldRows.ToArray();
-
-                                if (fieldRows.Length == 0)
-                                {
-                                    <StateCard Kicker="Aucune joueuse"
-                                               Title="Aucune joueuse de champ pour ce filtre poste"
-                                               Message="Changez le poste ou elargissez la selection pour recharger le tableau."
-                                               Tone="empty"
-                                               CssClass="empty-card-inline" />
-                                }
-                                else
-                                {
-                                    <div class="table-wrap">
-                                        <table class="stat-table">
-                                            <caption class="visually-hidden">Classement global des joueuses de champ</caption>
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col">@DashboardTableHeader("field-name", "Joueuse", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-team", "Equipe", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-position", "Poste", SetFieldBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("field-matches", "Matchs", SetFieldBoardSort)</th>
-                                                    @if (GlobalRankingStatCategory == "offense")
-                                                    {
-                                                        <th scope="col">@DashboardTableHeader("field-goals", "Buts", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-penalty-goals", "Buts 7m", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-assists", "Passes", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-open-shots", "Tirs", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-penalty-attempts", "7m tent.", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-shot-rate", "Taux tir", SetFieldBoardSort)</th>
-                                                    }
-                                                    else if (GlobalRankingStatCategory == "defense")
-                                                    {
-                                                        <th scope="col">@DashboardTableHeader("field-interceptions", "Interceptions", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-blocks", "Contres", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-neutralisations", "Neutralisations", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-turnovers", "Pertes", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-penalties-conceded", "Penalty c.", SetFieldBoardSort)</th>
-                                                    }
-                                                    else
-                                                    {
-                                                        <th scope="col">@DashboardTableHeader("field-goals", "Buts", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-penalty-goals", "Buts 7m", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-assists", "Passes", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-interceptions", "Interceptions", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-blocks", "Contres", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-neutralisations", "Neutralisations", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-turnovers", "Pertes", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-penalties-conceded", "Penalty c.", SetFieldBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("field-shot-rate", "Taux tir", SetFieldBoardSort)</th>
-                                                    }
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach (var player in fieldRows)
-                                                {
-                                                    <tr>
-                                                        <td>@player.FullName</td>
-                                                        <td>@player.TeamName</td>
-                                                        <td>@player.PositionLabel</td>
-                                                        <td>@player.MatchesPlayed</td>
-                                                        @if (GlobalRankingStatCategory == "offense")
-                                                        {
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Goals, player)">@player.Goals</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltyGoals, player)">@player.PenaltyGoals</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Assists, player)">@player.Assists</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.OpenShotAttempts, player)">@player.OpenShotAttempts</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltyAttempts, player)">@player.PenaltyAttempts</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.ShotSuccessRate, player)">
-                                                                @FormatRate(player.ShotSuccessRate)%
-                                                                <small class="rate-sample">@player.OpenShotAttempts tirs</small>
-                                                            </td>
-                                                        }
-                                                        else if (GlobalRankingStatCategory == "defense")
-                                                        {
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Interceptions, player)">@player.Interceptions</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Blocks, player)">@player.Blocks</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Neutralisations, player)">@player.Neutralisations</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Turnovers, player, higherIsBetter: false)">@player.Turnovers</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltiesConceded, player, higherIsBetter: false)">@player.PenaltiesConceded</td>
-                                                        }
-                                                        else
-                                                        {
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Goals, player)">@player.Goals</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltyGoals, player)">@player.PenaltyGoals</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Assists, player)">@player.Assists</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Interceptions, player)">@player.Interceptions</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Blocks, player)">@player.Blocks</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Neutralisations, player)">@player.Neutralisations</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.Turnovers, player, higherIsBetter: false)">@player.Turnovers</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.PenaltiesConceded, player, higherIsBetter: false)">@player.PenaltiesConceded</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(fieldRows, row => (double?)row.ShotSuccessRate, player)">
-                                                                @FormatRate(player.ShotSuccessRate)%
-                                                                <small class="rate-sample">@player.OpenShotAttempts tirs</small>
-                                                            </td>
-                                                        }
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                var goalkeeperRows = SortedGlobalGoalkeeperRows.ToArray();
-
-                                if (goalkeeperRows.Length == 0)
-                                {
-                                    <StateCard Kicker="Aucune gardienne"
-                                               Title="Aucune gardienne dans ce perimetre"
-                                               Message="La selection courante ne retourne pas de profil gardienne."
-                                               Tone="empty"
-                                               CssClass="empty-card-inline" />
-                                }
-                                else
-                                {
-                                    <div class="table-wrap">
-                                        <table class="stat-table">
-                                            <caption class="visually-hidden">Classement global des gardiennes</caption>
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col">@DashboardTableHeader("keeper-name", "Gardienne", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-team", "Equipe", SetGoalkeeperBoardSort)</th>
-                                                    <th scope="col">@DashboardTableHeader("keeper-matches", "Matchs", SetGoalkeeperBoardSort)</th>
-                                                    @if (GlobalRankingStatCategory == "offense")
-                                                    {
-                                                        <th scope="col">@DashboardTableHeader("keeper-goals", "Buts", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-assists", "Passes", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-shot-rate", "Taux tir", SetGoalkeeperBoardSort)</th>
-                                                    }
-                                                    else if (GlobalRankingStatCategory == "defense")
-                                                    {
-                                                        <th scope="col">@DashboardTableHeader("keeper-saves", "Arrets", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-penalty-saves", "Arrets 7m", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-save-rate", "Taux arret", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-goals-conceded", "Buts pris", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-shots-faced", "Tirs subis", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-turnovers", "Pertes", SetGoalkeeperBoardSort)</th>
-                                                    }
-                                                    else
-                                                    {
-                                                        <th scope="col">@DashboardTableHeader("keeper-goals", "Buts", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-assists", "Passes", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-saves", "Arrets", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-penalty-saves", "Arrets 7m", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-save-rate", "Taux arret", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-goals-conceded", "Buts pris", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-shots-faced", "Tirs subis", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-turnovers", "Pertes", SetGoalkeeperBoardSort)</th>
-                                                        <th scope="col">@DashboardTableHeader("keeper-shot-rate", "Taux tir", SetGoalkeeperBoardSort)</th>
-                                                    }
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach (var goalkeeper in goalkeeperRows)
-                                                {
-                                                    <tr>
-                                                        <td>@goalkeeper.FullName</td>
-                                                        <td>@goalkeeper.TeamName</td>
-                                                        <td>@goalkeeper.MatchesPlayed</td>
-                                                        @if (GlobalRankingStatCategory == "offense")
-                                                        {
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Goals, goalkeeper)">@goalkeeper.Goals</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Assists, goalkeeper)">@goalkeeper.Assists</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotSuccessRate, goalkeeper)">
-                                                                @FormatRate(goalkeeper.ShotSuccessRate)%
-                                                                <small class="rate-sample">@goalkeeper.OpenShotAttempts tirs</small>
-                                                            </td>
-                                                        }
-                                                        else if (GlobalRankingStatCategory == "defense")
-                                                        {
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Saves, goalkeeper)">@goalkeeper.Saves</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.PenaltySaves, goalkeeper)">@goalkeeper.PenaltySaves</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.SaveRate, goalkeeper)">
-                                                                @FormatRate(goalkeeper.SaveRate)%
-                                                                <small class="rate-sample">@goalkeeper.ShotsFaced subis</small>
-                                                            </td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.GoalsConceded, goalkeeper, higherIsBetter: false)">@goalkeeper.GoalsConceded</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotsFaced, goalkeeper, higherIsBetter: false)">@goalkeeper.ShotsFaced</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Turnovers, goalkeeper, higherIsBetter: false)">@goalkeeper.Turnovers</td>
-                                                        }
-                                                        else
-                                                        {
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Goals, goalkeeper)">@goalkeeper.Goals</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Assists, goalkeeper)">@goalkeeper.Assists</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Saves, goalkeeper)">@goalkeeper.Saves</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.PenaltySaves, goalkeeper)">@goalkeeper.PenaltySaves</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.SaveRate, goalkeeper)">
-                                                                @FormatRate(goalkeeper.SaveRate)%
-                                                                <small class="rate-sample">@goalkeeper.ShotsFaced subis</small>
-                                                            </td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.GoalsConceded, goalkeeper, higherIsBetter: false)">@goalkeeper.GoalsConceded</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotsFaced, goalkeeper, higherIsBetter: false)">@goalkeeper.ShotsFaced</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.Turnovers, goalkeeper, higherIsBetter: false)">@goalkeeper.Turnovers</td>
-                                                            <td class="@TableHeatToneHelper.HeatClass(goalkeeperRows, row => (double?)row.ShotSuccessRate, goalkeeper)">
-                                                                @FormatRate(goalkeeper.ShotSuccessRate)%
-                                                                <small class="rate-sample">@goalkeeper.OpenShotAttempts tirs</small>
-                                                            </td>
-                                                        }
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                }
-                            }
-                        </div>
+                        }
                     </div>
+
+                    @if (PlayerTableGroup == "field")
+                    {
+                        <!-- Sous-onglets vue joueuses de champ -->
+                        <div class="player-table-view-tabs">
+                            <button type="button"
+                                    class="ptv-tab @(FieldView == "summary" ? "active" : string.Empty)"
+                                    @onclick='() => FieldView = "summary"'>
+                                Synthèse
+                            </button>
+                            <button type="button"
+                                    class="ptv-tab @(FieldView == "attack" ? "active" : string.Empty)"
+                                    @onclick='() => FieldView = "attack"'>
+                                Attaque
+                            </button>
+                            <button type="button"
+                                    class="ptv-tab @(FieldView == "defense" ? "active" : string.Empty)"
+                                    @onclick='() => FieldView = "defense"'>
+                                Défense
+                            </button>
+                        </div>
+
+                        <!-- Tableau joueuses de champ -->
+
+                        @if (FilteredFieldRows.Count == 0)
+                        {
+                            <StateCard Kicker="Aucune joueuse"
+                                       Title="Aucune joueuse dans ce filtre"
+                                       Message="Changez le poste ou elargissez la recherche."
+                                       Tone="empty"
+                                       CssClass="empty-card-inline" />
+                        }
+                        else
+                        {
+                            <div class="pt-table-wrap" role="region" aria-label="Tableau joueuses de champ">
+                                <table class="analytics-table analytics-table--@FieldView" role="grid">
+                                    <caption class="sr-only">Tableau analytique des joueuses de champ — vue @FieldView</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" class="col-identity" aria-sort="@PtSortAria("pt-name")">
+                                                <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-name")'>
+                                                    Joueuse @PtSortGlyph("pt-name")
+                                                </button>
+                                            </th>
+                                            @if (FieldView != "defense")
+                                            {
+                                                <th scope="col" class="hide-mobile" aria-sort="@PtSortAria("pt-team")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-team")'>
+                                                        Equipe @PtSortGlyph("pt-team")
+                                                    </button>
+                                                </th>
+                                            }
+                                            <th scope="col" aria-sort="@PtSortAria("pt-matches")">
+                                                <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-matches")'>
+                                                    MJ @PtSortGlyph("pt-matches")
+                                                </button>
+                                            </th>
+                                            @if (FieldView == "summary" || FieldView == "attack")
+                                            {
+                                                <th scope="col" aria-sort="@PtSortAria("pt-goals")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-goals")'>
+                                                        Buts @PtSortGlyph("pt-goals")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-open-goals")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-open-goals")'>
+                                                        Buts jeu @PtSortGlyph("pt-open-goals")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-penalty-goals")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-penalty-goals")'>
+                                                        Buts 7m @PtSortGlyph("pt-penalty-goals")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-assists")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-assists")'>
+                                                        Passes @PtSortGlyph("pt-assists")
+                                                    </button>
+                                                </th>
+                                            }
+                                            @if (FieldView == "attack")
+                                            {
+                                                <th scope="col" aria-sort="none" title="Non disponible en V1">
+                                                    7m obtenus
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-turnovers")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-turnovers")'>
+                                                        Pertes @PtSortGlyph("pt-turnovers")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-bad-passes")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-bad-passes")'>
+                                                        Mauvaises passes @PtSortGlyph("pt-bad-passes")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="none" title="Donnee non disponible en V1">
+                                                    PivotPF
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-open-shot-rate")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-open-shot-rate")'>
+                                                        Taux jeu @PtSortGlyph("pt-open-shot-rate")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-penalty-shot-rate")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-penalty-shot-rate")'>
+                                                        Taux 7m @PtSortGlyph("pt-penalty-shot-rate")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-total-shot-rate")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-total-shot-rate")'>
+                                                        Taux global @PtSortGlyph("pt-total-shot-rate")
+                                                    </button>
+                                                </th>
+                                            }
+                                            @if (FieldView == "summary")
+                                            {
+                                                <th scope="col" aria-sort="@PtSortAria("pt-total-shot-rate")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-total-shot-rate")'>
+                                                        Taux tir @PtSortGlyph("pt-total-shot-rate")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-interceptions")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-interceptions")'>
+                                                        Int. @PtSortGlyph("pt-interceptions")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-turnovers")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-turnovers")'>
+                                                        Pertes @PtSortGlyph("pt-turnovers")
+                                                    </button>
+                                                </th>
+                                            }
+                                            @if (FieldView == "defense")
+                                            {
+                                                <th scope="col" aria-sort="@PtSortAria("pt-interceptions")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-interceptions")'>
+                                                        Interceptions @PtSortGlyph("pt-interceptions")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-blocks")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-blocks")'>
+                                                        Contres @PtSortGlyph("pt-blocks")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-neutralizations")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-neutralizations")'>
+                                                        Neutral. @PtSortGlyph("pt-neutralizations")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-fouls-drawn")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-fouls-drawn")'>
+                                                        PF prov. @PtSortGlyph("pt-fouls-drawn")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-penalties-conceded")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-penalties-conceded")'>
+                                                        Pen. c. @PtSortGlyph("pt-penalties-conceded")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@PtSortAria("pt-sanctions")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetPlayerTableSort("pt-sanctions")'>
+                                                        Sanctions @PtSortGlyph("pt-sanctions")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="none" title="Non disponible en V1">
+                                                    Sanct. obtenues
+                                                </th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var (row, idx) in FilteredFieldRows.Select((r, i) => (r, i)))
+                                        {
+                                            <tr class="@(idx % 2 != 0 ? "row-alt" : string.Empty)">
+                                                <td class="col-identity">
+                                                    <span class="pt-name">@row.Identity.FullName</span>
+                                                    <span class="pt-position-badge">@row.Identity.PositionLabel</span>
+                                                </td>
+                                                @if (FieldView != "defense")
+                                                {
+                                                    <td class="hide-mobile">@row.Identity.TeamName</td>
+                                                }
+                                                <td>@row.Identity.MatchesPlayed</td>
+                                                @if (FieldView == "summary" || FieldView == "attack")
+                                                {
+                                                    <td><strong>@row.Offense.TotalGoals</strong></td>
+                                                    <td>@row.Offense.OpenPlayGoals</td>
+                                                    <td>@row.Offense.PenaltyGoals</td>
+                                                    <td>@row.Offense.Assists</td>
+                                                }
+                                                @if (FieldView == "attack")
+                                                {
+                                                    <td><span class="data-unavailable" title="Non disponible en source V1">—</span></td>
+                                                    <td>@row.Offense.TotalTurnovers</td>
+                                                    <td>@row.Offense.BadPasses</td>
+                                                    <td><span class="data-missing" title="Donnee non disponible en V1">—</span></td>
+                                                    <td>@RenderRateCell(row.Offense.OpenPlayShotRate)</td>
+                                                    <td>@RenderRateCell(row.Offense.PenaltyShotRate)</td>
+                                                    <td>@RenderRateCell(row.Offense.TotalShotRate)</td>
+                                                }
+                                                @if (FieldView == "summary")
+                                                {
+                                                    <td>@RenderRateCell(row.Offense.TotalShotRate)</td>
+                                                    <td>@row.Defense.Interceptions</td>
+                                                    <td>@row.Offense.TotalTurnovers</td>
+                                                }
+                                                @if (FieldView == "defense")
+                                                {
+                                                    <td>@row.Defense.Interceptions</td>
+                                                    <td>@row.Defense.Blocks</td>
+                                                    <td>@row.Defense.Neutralizations</td>
+                                                    <td>@row.Defense.OffensiveFoulsDrawn</td>
+                                                    <td>@row.Defense.PenaltiesConceded</td>
+                                                    <td>
+                                                        @row.Defense.SanctionsConceded.Total
+                                                        <span class="sanction-detail"
+                                                              title="Avert. @row.Defense.SanctionsConceded.Warnings · 2min @row.Defense.SanctionsConceded.TwoMinutes · DQ @row.Defense.SanctionsConceded.Disqualifications">
+                                                            &#9432;
+                                                        </span>
+                                                    </td>
+                                                    <td><span class="data-unavailable" title="Non disponible en source V1">—</span></td>
+                                                }
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <!-- Sous-onglets vue gardiennes -->
+                        <div class="player-table-view-tabs">
+                            <button type="button"
+                                    class="ptv-tab @(GoalkeeperView == "summary" ? "active" : string.Empty)"
+                                    @onclick='() => GoalkeeperView = "summary"'>
+                                Synthèse
+                            </button>
+                            <button type="button"
+                                    class="ptv-tab @(GoalkeeperView == "saves" ? "active" : string.Empty)"
+                                    @onclick='() => GoalkeeperView = "saves"'>
+                                Arrêts
+                            </button>
+                            <button type="button"
+                                    class="ptv-tab @(GoalkeeperView == "ball" ? "active" : string.Empty)"
+                                    @onclick='() => GoalkeeperView = "ball"'>
+                                Avec ballon
+                            </button>
+                        </div>
+
+                        @if (FilteredGoalkeeperRows.Count == 0)
+                        {
+                            <StateCard Kicker="Aucune gardienne"
+                                       Title="Aucune gardienne dans ce perimetre"
+                                       Message="La selection courante ne retourne pas de profil gardienne."
+                                       Tone="empty"
+                                       CssClass="empty-card-inline" />
+                        }
+                        else
+                        {
+                            <div class="pt-table-wrap" role="region" aria-label="Tableau gardiennes">
+                                <table class="analytics-table analytics-table--gk-@GoalkeeperView" role="grid">
+                                    <caption class="sr-only">Tableau analytique des gardiennes — vue @GoalkeeperView</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" class="col-identity" aria-sort="@GkSortAria("gk-name")">
+                                                <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-name")'>
+                                                    Gardienne @GkSortGlyph("gk-name")
+                                                </button>
+                                            </th>
+                                            <th scope="col" class="hide-mobile" aria-sort="@GkSortAria("gk-team")">
+                                                <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-team")'>
+                                                    Equipe @GkSortGlyph("gk-team")
+                                                </button>
+                                            </th>
+                                            <th scope="col" aria-sort="@GkSortAria("gk-matches")">
+                                                <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-matches")'>
+                                                    MJ @GkSortGlyph("gk-matches")
+                                                </button>
+                                            </th>
+                                            @if (GoalkeeperView == "summary" || GoalkeeperView == "saves")
+                                            {
+                                                <th scope="col" aria-sort="@GkSortAria("gk-total-saves")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-total-saves")'>
+                                                        Arrets @GkSortGlyph("gk-total-saves")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@GkSortAria("gk-penalty-saves")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-penalty-saves")'>
+                                                        Arrets 7m @GkSortGlyph("gk-penalty-saves")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@GkSortAria("gk-total-save-rate")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-total-save-rate")'>
+                                                        Taux arret @GkSortGlyph("gk-total-save-rate")
+                                                    </button>
+                                                </th>
+                                            }
+                                            @if (GoalkeeperView == "saves")
+                                            {
+                                                <th scope="col" aria-sort="@GkSortAria("gk-open-saves")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-open-saves")'>
+                                                        Arr. jeu @GkSortGlyph("gk-open-saves")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@GkSortAria("gk-open-save-rate")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-open-save-rate")'>
+                                                        Tx arr. jeu @GkSortGlyph("gk-open-save-rate")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@GkSortAria("gk-penalty-save-rate")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-penalty-save-rate")'>
+                                                        Tx arr. 7m @GkSortGlyph("gk-penalty-save-rate")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@GkSortAria("gk-shots-faced")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-shots-faced")'>
+                                                        Tirs subis @GkSortGlyph("gk-shots-faced")
+                                                    </button>
+                                                </th>
+                                            }
+                                            @if (GoalkeeperView == "summary")
+                                            {
+                                                <th scope="col" aria-sort="@GkSortAria("gk-shots-faced")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-shots-faced")'>
+                                                        Tirs subis @GkSortGlyph("gk-shots-faced")
+                                                    </button>
+                                                </th>
+                                            }
+                                            @if (GoalkeeperView == "ball")
+                                            {
+                                                <th scope="col" aria-sort="@GkSortAria("gk-assists")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-assists")'>
+                                                        Passes @GkSortGlyph("gk-assists")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@GkSortAria("gk-goals")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-goals")'>
+                                                        Buts @GkSortGlyph("gk-goals")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@GkSortAria("gk-turnovers")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-turnovers")'>
+                                                        Pertes @GkSortGlyph("gk-turnovers")
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort="@GkSortAria("gk-missed-shots")">
+                                                    <button type="button" class="sort-btn" @onclick='() => SetGoalkeeperTableSort("gk-missed-shots")'>
+                                                        Tirs rates @GkSortGlyph("gk-missed-shots")
+                                                    </button>
+                                                </th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var (row, idx) in FilteredGoalkeeperRows.Select((r, i) => (r, i)))
+                                        {
+                                            <tr class="@(idx % 2 != 0 ? "row-alt" : string.Empty)">
+                                                <td class="col-identity">
+                                                    <span class="pt-name">@row.Identity.FullName</span>
+                                                </td>
+                                                <td class="hide-mobile">@row.Identity.TeamName</td>
+                                                <td>@row.Identity.MatchesPlayed</td>
+                                                @if (GoalkeeperView == "summary" || GoalkeeperView == "saves")
+                                                {
+                                                    <td><strong>@row.Goalkeeper.TotalSaves</strong></td>
+                                                    <td>@row.Goalkeeper.PenaltySaves</td>
+                                                    <td>@RenderRateCell(row.Goalkeeper.TotalSaveRate)</td>
+                                                }
+                                                @if (GoalkeeperView == "saves")
+                                                {
+                                                    <td>@row.Goalkeeper.OpenPlaySaves</td>
+                                                    <td>@RenderRateCell(row.Goalkeeper.OpenPlaySaveRate)</td>
+                                                    <td>@RenderRateCell(row.Goalkeeper.PenaltySaveRate)</td>
+                                                    <td>@row.Goalkeeper.TotalShotsFaced</td>
+                                                }
+                                                @if (GoalkeeperView == "summary")
+                                                {
+                                                    <td>@row.Goalkeeper.TotalShotsFaced</td>
+                                                }
+                                                @if (GoalkeeperView == "ball")
+                                                {
+                                                    <td>@row.Goalkeeper.Assists</td>
+                                                    <td>@row.Goalkeeper.Goals</td>
+                                                    <td>@row.Goalkeeper.TotalTurnovers</td>
+                                                    <td>@row.Goalkeeper.MissedShots</td>
+                                                }
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    }
                 </section>
             }
             else
@@ -1151,6 +1325,327 @@ else if (Snapshot is not null)
         _ => "Score technique local exploratoire combinant attaque, defense, actions positives et pertes."
     };
 
+    protected override void OnDashboardRefreshing()
+    {
+        // Invalide le cache du tableau analytique quand le scope principal change.
+        var previous = Interlocked.Exchange(ref _playerTableCts, null);
+        previous?.Cancel();
+        previous?.Dispose();
+        IsPlayerTableLoaded = false;
+        IsPlayerTableLoading = false;
+        _playerTableScopeKey = null;
+    }
+
+    // ─── Player Table V2 state ─────────────────────────────────────────────────
+
+    private DashboardPlayerTable PlayerTable { get; set; } = DashboardPlayerTable.Empty;
+    private bool IsPlayerTableLoaded { get; set; }
+    private bool IsPlayerTableLoading { get; set; }
+    private CancellationTokenSource? _playerTableCts;
+    private string? _playerTableScopeKey;
+
+    private string PlayerTableGroup { get; set; } = "field";
+    private string FieldView { get; set; } = "summary";
+    private string GoalkeeperView { get; set; } = "summary";
+    private string PlayerTableSearch { get; set; } = string.Empty;
+    private int? PlayerTablePositionId { get; set; }
+    private string PlayerTableSortKey { get; set; } = "pt-goals";
+    private bool PlayerTableSortAsc { get; set; }
+    private string GoalkeeperTableSortKey { get; set; } = "gk-total-saves";
+    private bool GoalkeeperTableSortAsc { get; set; }
+
+    private IReadOnlyList<(int Id, string Code)> PlayerTableFieldPositions =>
+        PlayerTable.FieldPlayers
+            .Where(row => row.Identity.PositionId.HasValue)
+            .Select(row => (Id: row.Identity.PositionId!.Value, Code: row.Identity.PositionLabel))
+            .DistinctBy(pos => pos.Id)
+            .OrderBy(pos => pos.Code)
+            .ToList();
+
+    private IReadOnlyList<DashboardFieldPlayerRow> FilteredFieldRows => GetFilteredFieldRows();
+    private IReadOnlyList<DashboardGoalkeeperRow> FilteredGoalkeeperRows => GetFilteredGoalkeeperRows();
+
+    private IReadOnlyList<DashboardFieldPlayerRow> GetFilteredFieldRows()
+    {
+        IEnumerable<DashboardFieldPlayerRow> rows = PlayerTable.FieldPlayers;
+
+        if (!string.IsNullOrWhiteSpace(PlayerTableSearch))
+        {
+            rows = rows.Where(row =>
+                row.Identity.FullName.Contains(PlayerTableSearch, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (PlayerTablePositionId.HasValue)
+        {
+            rows = rows.Where(row => row.Identity.PositionId == PlayerTablePositionId.Value);
+        }
+
+        rows = PlayerTableSortKey switch
+        {
+            "pt-name" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Identity.FullName),
+            "pt-team" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Identity.TeamName)
+                : rows.OrderByDescending(r => r.Identity.TeamName),
+            "pt-matches" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "pt-open-goals" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Offense.OpenPlayGoals).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Offense.OpenPlayGoals).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "pt-penalty-goals" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Offense.PenaltyGoals).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Offense.PenaltyGoals).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "pt-assists" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Offense.Assists).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Offense.Assists).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "pt-turnovers" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Offense.TotalTurnovers).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Offense.TotalTurnovers).ThenBy(r => r.Identity.FullName),
+            "pt-bad-passes" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Offense.BadPasses).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Offense.BadPasses).ThenBy(r => r.Identity.FullName),
+            "pt-open-shot-rate" => SortFieldByRate(rows, r => r.Offense.OpenPlayShotRate, PlayerTableSortAsc),
+            "pt-penalty-shot-rate" => SortFieldByRate(rows, r => r.Offense.PenaltyShotRate, PlayerTableSortAsc),
+            "pt-total-shot-rate" => SortFieldByRate(rows, r => r.Offense.TotalShotRate, PlayerTableSortAsc),
+            "pt-interceptions" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Defense.Interceptions).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Defense.Interceptions).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "pt-blocks" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Defense.Blocks).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Defense.Blocks).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "pt-neutralizations" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Defense.Neutralizations).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Defense.Neutralizations).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "pt-fouls-drawn" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Defense.OffensiveFoulsDrawn).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Defense.OffensiveFoulsDrawn).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "pt-penalties-conceded" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Defense.PenaltiesConceded).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Defense.PenaltiesConceded).ThenBy(r => r.Identity.FullName),
+            "pt-sanctions" => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Defense.SanctionsConceded.Total).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Defense.SanctionsConceded.Total).ThenBy(r => r.Identity.FullName),
+            _ => PlayerTableSortAsc
+                ? rows.OrderBy(r => r.Offense.TotalGoals).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Offense.TotalGoals).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+        };
+
+        return rows.ToList();
+    }
+
+    private IReadOnlyList<DashboardGoalkeeperRow> GetFilteredGoalkeeperRows()
+    {
+        IEnumerable<DashboardGoalkeeperRow> rows = PlayerTable.Goalkeepers;
+
+        if (!string.IsNullOrWhiteSpace(PlayerTableSearch))
+        {
+            rows = rows.Where(row =>
+                row.Identity.FullName.Contains(PlayerTableSearch, StringComparison.OrdinalIgnoreCase));
+        }
+
+        rows = GoalkeeperTableSortKey switch
+        {
+            "gk-name" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Identity.FullName),
+            "gk-team" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Identity.TeamName)
+                : rows.OrderByDescending(r => r.Identity.TeamName),
+            "gk-matches" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "gk-penalty-saves" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Goalkeeper.PenaltySaves).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Goalkeeper.PenaltySaves).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "gk-total-save-rate" => SortGoalkeeperByRate(rows, r => r.Goalkeeper.TotalSaveRate, GoalkeeperTableSortAsc),
+            "gk-open-saves" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Goalkeeper.OpenPlaySaves).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Goalkeeper.OpenPlaySaves).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "gk-open-save-rate" => SortGoalkeeperByRate(rows, r => r.Goalkeeper.OpenPlaySaveRate, GoalkeeperTableSortAsc),
+            "gk-penalty-save-rate" => SortGoalkeeperByRate(rows, r => r.Goalkeeper.PenaltySaveRate, GoalkeeperTableSortAsc),
+            "gk-shots-faced" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Goalkeeper.TotalShotsFaced).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Goalkeeper.TotalShotsFaced).ThenBy(r => r.Identity.FullName),
+            "gk-assists" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Goalkeeper.Assists).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Goalkeeper.Assists).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "gk-goals" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Goalkeeper.Goals).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Goalkeeper.Goals).ThenBy(r => r.Identity.MatchesPlayed).ThenBy(r => r.Identity.FullName),
+            "gk-turnovers" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Goalkeeper.TotalTurnovers).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Goalkeeper.TotalTurnovers).ThenBy(r => r.Identity.FullName),
+            "gk-missed-shots" => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Goalkeeper.MissedShots).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Goalkeeper.MissedShots).ThenBy(r => r.Identity.FullName),
+            _ => GoalkeeperTableSortAsc
+                ? rows.OrderBy(r => r.Goalkeeper.TotalSaves).ThenBy(r => r.Identity.FullName)
+                : rows.OrderByDescending(r => r.Goalkeeper.TotalSaves).ThenBy(r => r.Identity.FullName)
+        };
+
+        return rows.ToList();
+    }
+
+    private static IEnumerable<DashboardFieldPlayerRow> SortFieldByRate(
+        IEnumerable<DashboardFieldPlayerRow> rows,
+        Func<DashboardFieldPlayerRow, TableRateValue> rateSelector,
+        bool ascending)
+    {
+        return ascending
+            ? rows.OrderBy(r => rateSelector(r).Value.HasValue)
+                .ThenBy(r => rateSelector(r).Value)
+                .ThenBy(r => rateSelector(r).Denominator)
+                .ThenBy(r => r.Identity.FullName)
+            : rows.OrderByDescending(r => rateSelector(r).Value.HasValue)
+                .ThenByDescending(r => rateSelector(r).Value)
+                .ThenByDescending(r => rateSelector(r).Denominator)
+                .ThenBy(r => r.Identity.FullName);
+    }
+
+    private static IEnumerable<DashboardGoalkeeperRow> SortGoalkeeperByRate(
+        IEnumerable<DashboardGoalkeeperRow> rows,
+        Func<DashboardGoalkeeperRow, TableRateValue> rateSelector,
+        bool ascending)
+    {
+        return ascending
+            ? rows.OrderBy(r => rateSelector(r).Value.HasValue)
+                .ThenBy(r => rateSelector(r).Value)
+                .ThenBy(r => rateSelector(r).Denominator)
+                .ThenBy(r => r.Identity.FullName)
+            : rows.OrderByDescending(r => rateSelector(r).Value.HasValue)
+                .ThenByDescending(r => rateSelector(r).Value)
+                .ThenByDescending(r => rateSelector(r).Denominator)
+                .ThenBy(r => r.Identity.FullName);
+    }
+
+    private void SetPlayerTableGroup(string group)
+    {
+        PlayerTableGroup = group;
+        PlayerTablePositionId = null;
+        PlayerTableSearch = string.Empty;
+    }
+
+    private void SetPlayerTablePosition(int? positionId)
+    {
+        PlayerTablePositionId = positionId;
+    }
+
+    private void SetPlayerTableSort(string key)
+    {
+        if (PlayerTableSortKey == key)
+        {
+            PlayerTableSortAsc = !PlayerTableSortAsc;
+        }
+        else
+        {
+            PlayerTableSortKey = key;
+            PlayerTableSortAsc = key is "pt-name" or "pt-team";
+        }
+    }
+
+    private void SetGoalkeeperTableSort(string key)
+    {
+        if (GoalkeeperTableSortKey == key)
+        {
+            GoalkeeperTableSortAsc = !GoalkeeperTableSortAsc;
+        }
+        else
+        {
+            GoalkeeperTableSortKey = key;
+            GoalkeeperTableSortAsc = key is "gk-name" or "gk-team";
+        }
+    }
+
+    private string PtSortAria(string key) =>
+        PlayerTableSortKey != key ? "none" : PlayerTableSortAsc ? "ascending" : "descending";
+
+    private string PtSortGlyph(string key) =>
+        PlayerTableSortKey != key ? "▼▲" : PlayerTableSortAsc ? "▲" : "▼";
+
+    private string GkSortAria(string key) =>
+        GoalkeeperTableSortKey != key ? "none" : GoalkeeperTableSortAsc ? "ascending" : "descending";
+
+    private string GkSortGlyph(string key) =>
+        GoalkeeperTableSortKey != key ? "▼▲" : GoalkeeperTableSortAsc ? "▲" : "▼";
+
+    private static RenderFragment RenderRateCell(TableRateValue rate) => builder =>
+    {
+        if (rate.IsUnavailable)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "rate-unavailable");
+            builder.AddAttribute(2, "title", rate.UnavailableReason ?? "Denominateur nul");
+            builder.AddContent(3, "—");
+            builder.CloseElement();
+            builder.OpenElement(4, "span");
+            builder.AddAttribute(5, "class", "rate-evidence");
+            builder.AddContent(6, $"{(int)rate.Numerator}/{(int)rate.Denominator}");
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "rate-value");
+            builder.AddContent(2, $"{rate.Value:0.##}%");
+            builder.CloseElement();
+            builder.OpenElement(3, "span");
+            builder.AddAttribute(4, "class", "rate-evidence");
+            builder.AddContent(5, $"{(int)rate.Numerator}/{(int)rate.Denominator}");
+            builder.CloseElement();
+        }
+    };
+
+    private async Task LoadPlayerTableAsync()
+    {
+        if (Snapshot is null)
+        {
+            return;
+        }
+
+        var scopeKey = $"{Filters.CompetitionId}|{Filters.TeamId}|{Filters.Season}|{Filters.Day}|{Filters.From}|{Filters.To}";
+
+        if (_playerTableScopeKey == scopeKey && IsPlayerTableLoaded)
+        {
+            return;
+        }
+
+        var next = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _playerTableCts, next);
+        previous?.Cancel();
+        previous?.Dispose();
+
+        try
+        {
+            IsPlayerTableLoading = true;
+            await InvokeAsync(StateHasChanged);
+
+            var result = await DashboardService.LoadPlayerTableAsync(Filters, next.Token);
+            next.Token.ThrowIfCancellationRequested();
+
+            PlayerTable = result;
+            IsPlayerTableLoaded = true;
+            _playerTableScopeKey = scopeKey;
+        }
+        catch (OperationCanceledException) when (next.IsCancellationRequested)
+        {
+            // Une selection plus recente a supersede ce chargement.
+        }
+        finally
+        {
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _playerTableCts, null, next), next))
+            {
+                IsPlayerTableLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+
+            next.Dispose();
+        }
+    }
+
+    // ─── SetDashboardSection + lazy loads ──────────────────────────────────────
+
     private async Task SetDashboardSection(string section)
     {
         ActiveDashboardSection = section;
@@ -1159,6 +1654,10 @@ else if (Snapshot is not null)
         if (section == "team-of-day")
         {
             await EnsureTeamOfTheDayLoadedAsync();
+        }
+        else if (section == "global-rankings")
+        {
+            await LoadPlayerTableAsync();
         }
     }
 
