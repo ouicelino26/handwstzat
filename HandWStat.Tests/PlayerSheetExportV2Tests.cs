@@ -212,7 +212,7 @@ public sealed class PlayerSheetExportV2Tests
         var labels = rows.Select(r => r.Label).ToList();
         Assert.Contains("Interceptions", labels);
         Assert.Contains("Contres", labels);
-        Assert.Contains("Sanctions", labels);
+        Assert.Contains("Sanctions concedees", labels);
         // Must not duplicate offensive metrics
         Assert.DoesNotContain("Buts", labels);
         Assert.DoesNotContain("Passes decisives", labels);
@@ -256,9 +256,10 @@ public sealed class PlayerSheetExportV2Tests
 
         var rows = PlayerSheetExportHelper.BuildOffensiveRows(profile, global, offense, passing, technical);
 
-        var shotRateRow = rows.FirstOrDefault(r => r.Label == "Taux tir jeu");
+        // The 7m shot rate row must carry the fraction (buts7m / penShots) in Evidence
+        var shotRateRow = rows.FirstOrDefault(r => r.Label == "% tir 7m");
         Assert.NotNull(shotRateRow);
-        // Evidence should be "54 / 62" (goals / openShots)
+        // Evidence should be "7 / 12" (buts7m / (buts7m + penaltyRate))
         Assert.Contains("/", shotRateRow.Evidence);
     }
 

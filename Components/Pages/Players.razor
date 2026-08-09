@@ -1168,11 +1168,26 @@
                 positionProfile = null;
             }
 
+            // Attempt to embed photo as base64 data URI so the exported SVG is self-contained.
+            string? photoDataUri = null;
+            try
+            {
+                var rawUrl = ResolvePlayerPhotoUrl(Profile!.PlayerPhoto, Profile.PlayerId, Profile.FullName, Profile.TeamName);
+                if (!string.IsNullOrWhiteSpace(rawUrl))
+                {
+                    photoDataUri = await LoadPhotoAsDataUriAsync(rawUrl);
+                }
+            }
+            catch
+            {
+                photoDataUri = null; // fallback to initials
+            }
+
             await JS.InvokeVoidAsync(
                 "handwstatExports.downloadTextFile",
                 BuildPlayerSheetFileName("svg"),
                 "image/svg+xml;charset=utf-8",
-                BuildPlayerSheetSvg(positionProfile));
+                BuildPlayerSheetSvg(positionProfile, photoDataUri));
         }
         catch (Exception ex)
         {
@@ -1182,6 +1197,53 @@
         {
             await BusyUiHelper.ExitAsync(() => IsPlayerSheetExportBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
         }
+    }
+
+    /// <summary>
+    /// Load a player photo and return a base64 data URI suitable for embedding in SVG.
+    /// Supports package-bundled assets (wwwroot relative paths) and absolute HTTPS URLs.
+    /// Returns null on failure — caller falls back to initials.
+    /// </summary>
+    private static async Task<string?> LoadPhotoAsDataUriAsync(string photoUrl)
+    {
+        byte[]? bytes = null;
+
+        if (photoUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || photoUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            // Remote URL — download via HttpClient would require injecting it here.
+            // For now, return null (initials fallback) for remote URLs in exported SVG.
+            return null;
+        }
+
+        // Local asset bundled in the MAUI package (wwwroot/* path).
+        // Strip leading slash so FileSystem.OpenAppPackageFileAsync can resolve it.
+        var packagePath = photoUrl.TrimStart('/');
+        try
+        {
+            using var stream = await FileSystem.OpenAppPackageFileAsync(packagePath);
+            using var ms = new System.IO.MemoryStream();
+            await stream.CopyToAsync(ms);
+            bytes = ms.ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+
+        if (bytes is null || bytes.Length == 0)
+        {
+            return null;
+        }
+
+        // Detect MIME type from first bytes (JPEG: FF D8 / PNG: 89 50 4E 47)
+        var mime = bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xD8
+            ? "image/jpeg"
+            : bytes.Length >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47
+                ? "image/png"
+                : "image/jpeg"; // default
+
+        return $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
     }
 
     private async Task LoadAsync(bool refreshReferenceData)
@@ -2425,21 +2487,21 @@
         return $"feuille-joueuse-{playerSlug}-{positionSlug}-{seasonSlug}.{extension}";
     }
 
-    private string BuildPlayerSheetSvg(PositionProfileResponseDto? positionProfile)
+    private string BuildPlayerSheetSvg(PositionProfileResponseDto? positionProfile, string? photoDataUri = null)
     {
         var profile = Profile!;
         var width = 1600;
         var height = 1140;
 
-        // Header zone: 0–190 px
-        var headerMarkup = BuildPlayerSheetHeaderMarkup(profile, positionProfile, width);
+        // Header zone: 0–210 px (taller to fit KPI row above name)
+        var headerMarkup = BuildPlayerSheetHeaderMarkup(profile, positionProfile, width, photoDataUri);
 
         // Separator line
-        var separatorY = 190;
+        var separatorY = 210;
 
-        // Two-column content area: y=200, h=900
-        var contentY = 200;
-        var contentH = 900;
+        // Two-column content area: y=220, h=880
+        var contentY = 220;
+        var contentH = 880;
         var tableX = 36d;
         var tableW = 720d;
         var radarX = 768d;
@@ -2470,48 +2532,106 @@
     private string BuildPlayerSheetHeaderMarkup(
         PlayerProfileDto profile,
         PositionProfileResponseDto? positionProfile,
-        int canvasWidth)
+        int canvasWidth,
+        string? photoDataUri = null)
     {
-        var photoUrl = ResolvePlayerPhotoUrl(profile.PlayerPhoto, profile.PlayerId, profile.FullName, profile.TeamName);
-        var hasPhoto = !string.IsNullOrWhiteSpace(photoUrl);
+        // Use pre-fetched base64 data URI when available; otherwise resolve URL for initials fallback.
+        string? effectivePhotoSrc = null;
+        if (!string.IsNullOrWhiteSpace(photoDataUri))
+        {
+            effectivePhotoSrc = photoDataUri;
+        }
+        else
+        {
+            var resolvedUrl = ResolvePlayerPhotoUrl(profile.PlayerPhoto, profile.PlayerId, profile.FullName, profile.TeamName);
+            // Only use the resolved URL in SVG if it's an absolute http(s) URL; relative paths don't work in exported files.
+            if (!string.IsNullOrWhiteSpace(resolvedUrl)
+                && (resolvedUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                    || resolvedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+            {
+                effectivePhotoSrc = resolvedUrl;
+            }
+        }
 
-        // Photo area: top-right, 140×160
+        // Photo area: top-right, 150×175
         var photoAreaX = canvasWidth - 190d;
         var photoAreaY = 24d;
         var photoW = 150d;
-        var photoH = 160d;
-        var photoBlock = BuildPlayerSheetPhotoMarkup(photoUrl, profile.FullName, photoAreaX, photoAreaY, photoW, photoH);
+        var photoH = 175d;
+        var photoBlock = BuildPlayerSheetPhotoMarkup(effectivePhotoSrc, profile.FullName, photoAreaX, photoAreaY, photoW, photoH);
 
-        // Identity text: top-left
+        // Layout: kicker at y=34, then 4 compact KPI badges, then player name, position, team, nationality
         var textX = 48d;
-        var nameY = 74d;
-        var positionY = 110d;
-        var teamY = 132d;
-        var nationalityY = 154d;
-        var scopeY = 174d;
+        var kickerY = 34d;
+
+        // ── 4 compact KPI badges (horizontal row above player name) ──────────────
+        var kpiRowY = 50d;
+        var kpiH = 38d;
+        var kpiW = 135d;
+        var kpiGap = 12d;
+        var kpiRx = 8d;
+
+        var matchesVal = profile.MatchesPlayed.ToString();
+        var goalsVal = profile.TotalGoals.ToString();
+
+        // Overall shot success rate — from Technical if available, or ShotSuccessRate from profile
+        var overallRate = Technical?.OverallShotSuccessRate ?? profile.ShotSuccessRate;
+        var shotAttempts = Technical?.ShotAttempts ?? 0;
+        var shotRateVal = shotAttempts > 0
+            ? PlayerSheetExportHelper.FormatRateOrDash(overallRate, shotAttempts)
+            : (overallRate > 0 ? $"{overallRate.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} %" : "—");
+
+        var avgTime = profile.AveragePlayingTimePerMatchMinutes;
+        var playTimeVal = avgTime > 0
+            ? $"{avgTime.ToString("0", System.Globalization.CultureInfo.InvariantCulture)} min/m"
+            : "—";
+
+        var kpiCards = new[] {
+            ("Matchs", matchesVal),
+            ("Buts", goalsVal),
+            ("% tir", shotRateVal),
+            ("Tps de jeu", playTimeVal),
+        };
+
+        var kpiBadges = string.Join("\n", kpiCards.Select((card, i) =>
+        {
+            var cardX = textX + i * (kpiW + kpiGap);
+            var labelY = kpiRowY + 14d;
+            var valueY = kpiRowY + 30d;
+            return $"""
+  <rect x="{FormatSvgNumber(cardX)}" y="{FormatSvgNumber(kpiRowY)}" width="{FormatSvgNumber(kpiW)}" height="{FormatSvgNumber(kpiH)}" rx="{FormatSvgNumber(kpiRx)}" fill="#eef4fb" stroke="#d8e2ef" />
+  <text x="{FormatSvgNumber(cardX + 10d)}" y="{FormatSvgNumber(labelY)}" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="0.8" fill="#94a3b8">{EscapeXml(card.Item1.ToUpperInvariant())}</text>
+  <text x="{FormatSvgNumber(cardX + 10d)}" y="{FormatSvgNumber(valueY)}" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="800" fill="#0f172a">{EscapeXml(card.Item2)}</text>
+""";
+        }));
+
+        // Player name and identity below the KPI row
+        var nameY = kpiRowY + kpiH + 24d;
+        var positionY = nameY + 38d;
+        var teamY = positionY + 22d;
+        var nationalityY = teamY + 20d;
+        var scopeY = nationalityY + 18d;
 
         var positionLabel = profile.PositionName ?? "Poste non renseigne";
         var teamLabel = profile.TeamName ?? "Equipe non renseignee";
         var nationalityLabel = !string.IsNullOrWhiteSpace(profile.Nationality) ? profile.Nationality : null;
-        var matches = profile.MatchesPlayed;
         var seasonLabel = string.IsNullOrWhiteSpace(Season) ? string.Empty : Season!;
-        var scopeLine = matches > 0
-            ? (string.IsNullOrWhiteSpace(seasonLabel) ? $"{matches} matchs" : $"{seasonLabel} · {matches} matchs")
-            : (!string.IsNullOrWhiteSpace(seasonLabel) ? seasonLabel : string.Empty);
 
         var nationalityLine = nationalityLabel is not null
-            ? $"""<text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(nationalityY)}" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#64748b">{EscapeXml(nationalityLabel)}</text>"""
+            ? $"""<text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(nationalityY)}" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">{EscapeXml(nationalityLabel)}</text>"""
             : string.Empty;
 
-        var scopeLine2 = !string.IsNullOrWhiteSpace(scopeLine)
-            ? $"""<text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(scopeY)}" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#94a3b8">{EscapeXml(scopeLine)}</text>"""
+        var scopeText = !string.IsNullOrWhiteSpace(seasonLabel) ? seasonLabel : string.Empty;
+        var scopeLine2 = !string.IsNullOrWhiteSpace(scopeText)
+            ? $"""<text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(scopeY)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#94a3b8">{EscapeXml(scopeText)}</text>"""
             : string.Empty;
 
         return $"""
-  <text x="48" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5" fill="{ChartPalette.Player}">FICHE JOUEUSE</text>
-  <text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(nameY)}" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="800" fill="#0f172a">{EscapeXml(profile.FullName)}</text>
-  <text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(positionY)}" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="600" fill="#334155">{EscapeXml(positionLabel)}</text>
-  <text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(teamY)}" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#475569">{EscapeXml(teamLabel)}</text>
+  <text x="48" y="{FormatSvgNumber(kickerY)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.5" fill="{ChartPalette.Player}">FICHE JOUEUSE</text>
+  {kpiBadges}
+  <text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(nameY)}" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="800" fill="#0f172a">{EscapeXml(profile.FullName)}</text>
+  <text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(positionY)}" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="600" fill="#334155">{EscapeXml(positionLabel)}</text>
+  <text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(teamY)}" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#475569">{EscapeXml(teamLabel)}</text>
   {nationalityLine}
   {scopeLine2}
   {photoBlock}
@@ -2849,7 +2969,20 @@
             ];
         }
 
-        return PlayerSheetExportHelper.BuildOffensiveRows(Profile, Global, Offense, Passing, Technical);
+        // Retrieve 7m obtenus and Sanctions obtenues from LeagueAnalytics V2 data.
+        var v2Offense = LeagueAnalytics?.Analytics?.Offense;
+        var penWonMetric = v2Offense?.FirstOrDefault(m => m.MetricCode == "PENALTIES_WON");
+        var sanctDrawnMetric = v2Offense?.FirstOrDefault(m => m.MetricCode == "SANCTIONS_DRAWN");
+
+        var penWonVal = penWonMetric?.CountValue ?? -1;
+        var penWonUnavail = penWonMetric?.IsUnavailable ?? true;
+        var sanctDrawnVal = sanctDrawnMetric?.CountValue ?? -1;
+        var sanctDrawnUnavail = sanctDrawnMetric?.IsUnavailable ?? true;
+
+        return PlayerSheetExportHelper.BuildOffensiveRows(
+            Profile, Global, Offense, Passing, Technical,
+            penWonVal, penWonUnavail,
+            sanctDrawnVal, sanctDrawnUnavail);
     }
 
     private IReadOnlyList<PlayerSheetRowV2> BuildPlayerSheetDefensiveRows()

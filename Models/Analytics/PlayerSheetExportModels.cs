@@ -39,7 +39,7 @@ public static class PlayerSheetExportHelper
 
         var offenseKeywords = isGoalkeeper
             ? new[] { "save", "stop", "arret", "penalty", "save_rate", "goalkeeper" }
-            : new[] { "goal", "assist", "shot", "tir", "pass", "7m", "penalty_won", "sanction_drawn", "turnover" };
+            : new[] { "goal", "but", "assist", "passe", "shot", "tir", "7m", "penalty_won", "sanction_drawn", "turnover", "perte" };
 
         return allAxes
             .Where(axis => axis is not null && !string.IsNullOrWhiteSpace(axis.Label))
@@ -83,7 +83,7 @@ public static class PlayerSheetExportHelper
                 .ToList();
         }
 
-        var defKeywords = new[] { "interception", "block", "contre", "neutral", "def", "sanction_conceded", "penalty_conceded", "7m_concede", "turnover", "perte" };
+        var defKeywords = new[] { "interception", "block", "contre", "def", "sanction_conceded", "penalty_conceded", "7m_concede", "concede", "discipline", "prise" };
         return allAxes
             .Where(axis => axis is not null && !string.IsNullOrWhiteSpace(axis.Label))
             .Where(axis => IsDefensiveAxis(axis, defKeywords))
@@ -124,28 +124,36 @@ public static class PlayerSheetExportHelper
 
     // ── Table rows ────────────────────────────────────────────────────────────
 
-    /// <summary>Build offensive table rows for a field player.</summary>
+    /// <summary>
+    /// Build offensive table rows for a field player.
+    /// <paramref name="penaltiesWon"/> and <paramref name="sanctionsDrawn"/> come from the
+    /// LeagueAnalytics V2 data (codes PENALTIES_WON / SANCTIONS_DRAWN). Pass -1 when unavailable.
+    /// </summary>
     public static IReadOnlyList<PlayerSheetRowV2> BuildOffensiveRows(
         PlayerProfileDto profile,
         PlayerGlobalStatsDto global,
         PlayerOffenseStatsDto offense,
         PlayerPassingStatsDto passing,
-        PlayerTechnicalStatsDto technical)
+        PlayerTechnicalStatsDto technical,
+        int penaltiesWon = -1,
+        bool penaltiesWonUnavailable = false,
+        int sanctionsDrawn = -1,
+        bool sanctionsDrawnUnavailable = false)
     {
-        var openShots = offense.Buts + offense.TirsRates;
         var penShots = offense.Buts7m + offense.PenaltyRate;
-        var matches = profile.MatchesPlayed;
+
+        var penWonValue = penaltiesWon >= 0 ? penaltiesWon.ToString() : (penaltiesWonUnavailable ? "N/D" : "—");
+        var sanctDrawnValue = sanctionsDrawn >= 0 ? sanctionsDrawn.ToString() : (sanctionsDrawnUnavailable ? "N/D" : "—");
 
         return
         [
-            new PlayerSheetRowV2("Matchs", profile.MatchesPlayed.ToString(), string.Empty, "info"),
             new PlayerSheetRowV2("Buts", global.TotalGoals.ToString(), $"{offense.Buts} jeu + {offense.Buts7m} sur 7m", "positive"),
-            new PlayerSheetRowV2("Buts / match", matches > 0 ? FormatNumber(global.TotalGoals / (double)matches, "0.##") : "—", string.Empty, "positive"),
-            new PlayerSheetRowV2("Passes decisives", global.AssistCount.ToString(), matches > 0 ? $"{FormatNumber(global.AssistCount / (double)matches, "0.##")} / match" : string.Empty, "good"),
-            new PlayerSheetRowV2("Taux tir jeu", FormatRateOrDash(technical.OpenShotSuccessRate, openShots), openShots > 0 ? $"{offense.Buts} / {openShots}" : string.Empty, technical.OpenShotSuccessRate >= 50 ? "positive" : "warning"),
-            new PlayerSheetRowV2("Taux tir 7m", FormatRateOrDash(technical.PenaltySuccessRate, penShots), penShots > 0 ? $"{offense.Buts7m} / {penShots}" : string.Empty, technical.PenaltySuccessRate >= 60 ? "positive" : "warning"),
-            new PlayerSheetRowV2("Tirs total", technical.ShotAttempts.ToString(), matches > 0 ? $"{FormatNumber(technical.ShotAttempts / (double)matches, "0.#")} / match" : string.Empty, "neutral"),
-            new PlayerSheetRowV2("Pertes de balle", passing.TotalPertes.ToString(), matches > 0 ? $"{FormatNumber(passing.TotalPertes / (double)matches, "0.#")} / match" : string.Empty, passing.TotalPertes > 15 ? "warning" : "neutral"),
+            new PlayerSheetRowV2("Buts sur 7m", offense.Buts7m.ToString(), string.Empty, "positive"),
+            new PlayerSheetRowV2("% tir 7m", FormatRateOrDash(technical.PenaltySuccessRate, penShots), penShots > 0 ? $"{offense.Buts7m} / {penShots}" : string.Empty, technical.PenaltySuccessRate >= 60 ? "positive" : "warning"),
+            new PlayerSheetRowV2("Passes decisives", global.AssistCount.ToString(), string.Empty, "good"),
+            new PlayerSheetRowV2("Pertes de balle", passing.TotalPertes.ToString(), string.Empty, passing.TotalPertes > 15 ? "warning" : "neutral"),
+            new PlayerSheetRowV2("7m obtenus", penWonValue, string.Empty, "positive"),
+            new PlayerSheetRowV2("Sanctions obtenues", sanctDrawnValue, string.Empty, "neutral"),
         ];
     }
 
@@ -156,15 +164,13 @@ public static class PlayerSheetExportHelper
         PlayerSanctionStatsDto sanctions)
     {
         var totalSanctions = sanctions.Avertissements + sanctions.DeuxMinutes + sanctions.Exclusions;
-        var matches = profile.MatchesPlayed;
 
         return
         [
-            new PlayerSheetRowV2("Interceptions", defense.Interceptions.ToString(), matches > 0 ? $"{FormatNumber(defense.Interceptions / (double)matches, "0.#")} / match" : string.Empty, "good"),
+            new PlayerSheetRowV2("Interceptions", defense.Interceptions.ToString(), string.Empty, "good"),
             new PlayerSheetRowV2("Contres", defense.Contres.ToString(), string.Empty, "good"),
-            new PlayerSheetRowV2("Neutralisations", defense.Neutralisations.ToString(), string.Empty, "good"),
             new PlayerSheetRowV2("7m concedes", sanctions.PenaltyConcede.ToString(), string.Empty, sanctions.PenaltyConcede > 3 ? "warning" : "neutral"),
-            new PlayerSheetRowV2("Sanctions", totalSanctions.ToString(), $"{sanctions.Avertissements} avert. · {sanctions.DeuxMinutes} x 2min · {sanctions.Exclusions} excl.", totalSanctions > 5 ? "danger" : "neutral"),
+            new PlayerSheetRowV2("Sanctions concedees", totalSanctions.ToString(), $"{sanctions.Avertissements} avert. · {sanctions.DeuxMinutes} x 2min · {sanctions.Exclusions} excl.", totalSanctions > 5 ? "danger" : "neutral"),
         ];
     }
 
