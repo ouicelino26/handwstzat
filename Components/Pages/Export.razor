@@ -3,607 +3,1194 @@
 @inject IApiAuthService AuthService
 @inject AnalysisScopeService ScopeService
 @inject ReferenceDataService RefData
-@inject CompetitionsApiClient CompetitionsClient
-@inject TeamsApiClient TeamsClient
 @inject PlayersApiClient PlayersClient
 @inject MatchesApiClient MatchesClient
-@inject IJSRuntime JS
 @implements IDisposable
 
-<PageTitle>Export</PageTitle>
+<PageTitle>Exporter les données</PageTitle>
 
 <div class="export-workspace" data-workspace="export">
     @if (!AuthService.Session.IsAuthenticated)
     {
-        <AccessRequiredCard Message="Connectez-vous pour generer un export analytique." />
+        <AccessRequiredCard Message="Connectez-vous pour générer un export analytique." />
     }
     else
     {
         <header class="lab-manifesto">
-            <span>Workspace 06 / Export</span>
-            <h2 data-page-title>Extraire la donnee brute du scope.</h2>
-            <p>Generez un classeur Excel avec les 12 feuilles analytiques du perimetre choisi.</p>
+            <div>
+                <span>Workspace 06</span>
+                <h2 data-page-title>Exporter les données</h2>
+                <p>Préparez un classeur à partir du périmètre actuellement analysé.</p>
+            </div>
         </header>
 
         <div class="export-layout">
 
-            <!-- ── Scope panel ── -->
-            <section class="export-panel">
-                <div class="panel-head">
-                    <p class="section-kicker">Perimetre</p>
-                    <h3>Definition du scope</h3>
-                </div>
+            <!-- ── Left column: configuration ── -->
+            <div class="export-config">
 
-                <div class="export-form">
-
-                    <div class="form-group">
-                        <label class="form-label">Type d'export</label>
-                        <div class="scope-pills">
-                            @foreach (var s in ScopeOptions)
-                            {
-                                <button class="scope-pill @(Scope == s.Value ? "is-active" : "")"
-                                        @onclick="() => SetScope(s.Value)">
-                                    @s.Label
+                <!-- 0. Scope summary ─────────────────────────────────────── -->
+                <section class="export-panel export-panel--scope">
+                    <div class="panel-head">
+                        <p class="section-kicker">Périmètre actuel</p>
+                    </div>
+                    <div class="scope-display">
+                        <p class="scope-display__line">@_scope.ToDisplayLine()</p>
+                        @if (!string.IsNullOrWhiteSpace(_scope.Day))
+                        {
+                            <p class="scope-display__day-note" role="note">
+                                <span class="scope-display__day-badge">@_scope.Day</span>
+                                Le filtre par journée s'applique à la sélection des matchs mais
+                                n'est pas transmis au moteur d'export.
+                            </p>
+                        }
+                    </div>
+                    @if (_refData.Competitions.Count > 0)
+                    {
+                        <details class="export-scope-edit">
+                            <summary class="export-scope-edit__toggle">Modifier le périmètre</summary>
+                            <div class="export-scope-edit__body">
+                                <div class="scope-field">
+                                    <label class="scope-field__label" for="exp-competition">Compétition</label>
+                                    <select id="exp-competition"
+                                            class="scope-field__select"
+                                            value="@_scope.CompetitionId"
+                                            @onchange="OnCompetitionChangedAsync">
+                                        <option value="">— Toutes les compétitions —</option>
+                                        @foreach (var c in _refData.Competitions)
+                                        {
+                                            <option value="@c.CompetitionId">@c.CompetitionName</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="scope-field">
+                                    <label class="scope-field__label" for="exp-team">Équipe</label>
+                                    <select id="exp-team"
+                                            class="scope-field__select"
+                                            value="@_scope.TeamId"
+                                            @onchange="OnTeamChangedAsync">
+                                        <option value="">— Toutes les équipes —</option>
+                                        @foreach (var t in _scope.GetFilteredTeams(_refData))
+                                        {
+                                            <option value="@t.TeamId">@t.TeamName</option>
+                                        }
+                                    </select>
+                                </div>
+                                @if (_availableSeasons.Count > 0)
+                                {
+                                    <div class="scope-field">
+                                        <label class="scope-field__label" for="exp-season">Saison</label>
+                                        <select id="exp-season"
+                                                class="scope-field__select"
+                                                value="@_scope.Season"
+                                                @onchange="OnSeasonChangedAsync">
+                                            <option value="">— Toutes les saisons —</option>
+                                            @foreach (var s in _availableSeasons)
+                                            {
+                                                <option value="@s">@s</option>
+                                            }
+                                        </select>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="scope-field">
+                                        <label class="scope-field__label" for="exp-season-text">Saison</label>
+                                        <input id="exp-season-text"
+                                               class="scope-field__input"
+                                               type="text"
+                                               placeholder="ex : 2025-2026"
+                                               value="@_scope.Season"
+                                               @oninput="OnSeasonInputAsync" />
+                                    </div>
+                                }
+                                @if (_availableDays.Count > 0)
+                                {
+                                    <div class="scope-field">
+                                        <label class="scope-field__label" for="exp-day">Journée</label>
+                                        <select id="exp-day"
+                                                class="scope-field__select"
+                                                value="@_scope.Day"
+                                                @onchange="OnDayChanged">
+                                            <option value="">— Toutes les journées —</option>
+                                            @foreach (var d in _availableDays)
+                                            {
+                                                <option value="@d">@d</option>
+                                            }
+                                        </select>
+                                    </div>
+                                }
+                                <button type="button" class="export-scope-edit__reset" @onclick="ResetScopeAsync">
+                                    Reprendre le périmètre actuel
                                 </button>
-                            }
-                        </div>
+                            </div>
+                        </details>
+                    }
+                </section>
+
+                <!-- 1. Target ────────────────────────────────────────────── -->
+                <section class="export-panel" aria-labelledby="target-heading">
+                    <div class="panel-head">
+                        <p class="section-kicker">Étape 1</p>
+                        <h3 id="target-heading">Cible</h3>
                     </div>
 
-                    <!-- Competition selector -->
-                    <div class="form-group">
-                        <label class="form-label">Competition</label>
-                        @if (_competitions.Count > 0)
+                    <div class="target-pills" role="radiogroup" aria-label="Cible d'export">
+                        @foreach (var t in TargetOptions)
                         {
-                            <select class="form-input form-select"
-                                    value="@_selectedCompetitionId"
-                                    @onchange="OnCompetitionChanged">
-                                <option value="">— Toutes les competitions —</option>
-                                @foreach (var c in _competitions)
+                            <button type="button"
+                                    role="radio"
+                                    aria-checked="@(_target == t.Value ? "true" : "false")"
+                                    class="target-pill @(_target == t.Value ? "is-active" : "")"
+                                    @onclick="() => SetTargetAsync(t.Value)">
+                                @t.Label
+                            </button>
+                        }
+                    </div>
+
+                    <!-- Player selector -->
+                    @if (_target is ExportTargetType.Players or ExportTargetType.Goalkeepers)
+                    {
+                        <div class="picker-container" aria-label="Sélection de joueuses">
+                            <div class="picker-search">
+                                <input type="search"
+                                       class="picker-search__input"
+                                       placeholder="Rechercher une joueuse…"
+                                       aria-label="Rechercher une joueuse"
+                                       value="@_playerSearch"
+                                       @oninput="OnPlayerSearchInput" />
+                            </div>
+                            @if (_scope.PlayersLoading)
+                            {
+                                <p class="picker-loading" aria-live="polite">Chargement…</p>
+                            }
+                            else
+                            {
+                                <div class="picker-actions">
+                                    <button type="button" class="picker-action" @onclick="SelectAllPlayersInView">Toutes</button>
+                                    <button type="button" class="picker-action" @onclick="ClearPlayerSelection">Aucune</button>
+                                </div>
+                                <ul class="picker-list" role="listbox" aria-multiselectable="true"
+                                    aria-label="Liste des joueuses">
+                                    @foreach (var p in FilteredPlayers)
+                                    {
+                                        var isSelected = _selectedPlayerIds.Contains(p.PlayerId);
+                                        <li class="picker-item @(isSelected ? "is-selected" : "")"
+                                            role="option"
+                                            aria-selected="@isSelected"
+                                            tabindex="0"
+                                            @onclick="() => TogglePlayer(p.PlayerId)"
+                                            @onkeydown="(e) => OnPickerKeyDown(e, () => TogglePlayer(p.PlayerId))">
+                                            <span class="picker-item__check" aria-hidden="true">@(isSelected ? "☑" : "☐")</span>
+                                            <span class="picker-item__name">@p.FullName</span>
+                                            <span class="picker-item__meta">
+                                                @(p.TeamName ?? "")
+                                                @if (!string.IsNullOrWhiteSpace(p.PositionCode))
+                                                {<span class="picker-item__pos"> · @p.PositionCode</span>}
+                                            </span>
+                                        </li>
+                                    }
+                                    @if (FilteredPlayers.Count == 0 && !_scope.PlayersLoading)
+                                    {
+                                        <li class="picker-empty">Aucune joueuse trouvée.</li>
+                                    }
+                                </ul>
+                                @if (_selectedPlayerIds.Count > 0)
                                 {
-                                    <option value="@c.CompetitionId">@c.CompetitionName (@c.MatchCount matchs)</option>
+                                    <p class="picker-count" aria-live="polite">@_selectedPlayerIds.Count sélectionnée(s)</p>
                                 }
-                            </select>
+                                @if (_outOfScopePlayersRemoved > 0)
+                                {
+                                    <p class="picker-notice" role="status" aria-live="polite">
+                                        @_outOfScopePlayersRemoved joueuse(s) retirée(s) car hors du périmètre.
+                                    </p>
+                                }
+                            }
+                        </div>
+                    }
+
+                    <!-- Match selector -->
+                    @if (_target == ExportTargetType.Matches)
+                    {
+                        <div class="picker-container" aria-label="Sélection de matchs">
+                            <div class="picker-search">
+                                <input type="search"
+                                       class="picker-search__input"
+                                       placeholder="Rechercher équipe ou adversaire…"
+                                       aria-label="Rechercher un match"
+                                       value="@_matchSearch"
+                                       @oninput="OnMatchSearchInput" />
+                            </div>
+                            @if (_scope.MatchesLoading)
+                            {
+                                <p class="picker-loading" aria-live="polite">Chargement…</p>
+                            }
+                            else
+                            {
+                                <div class="picker-actions">
+                                    <button type="button" class="picker-action" @onclick="SelectAllMatchesInView">Tous</button>
+                                    <button type="button" class="picker-action" @onclick="ClearMatchSelection">Aucun</button>
+                                </div>
+                                <ul class="picker-list" role="listbox" aria-multiselectable="true"
+                                    aria-label="Liste des matchs">
+                                    @foreach (var m in FilteredMatches)
+                                    {
+                                        var isSelected = _selectedMatchIds.Contains(m.MatchId);
+                                        <li class="picker-item @(isSelected ? "is-selected" : "")"
+                                            role="option"
+                                            aria-selected="@isSelected"
+                                            tabindex="0"
+                                            @onclick="() => ToggleMatch(m.MatchId)"
+                                            @onkeydown="(e) => OnPickerKeyDown(e, () => ToggleMatch(m.MatchId))">
+                                            <span class="picker-item__check" aria-hidden="true">@(isSelected ? "☑" : "☐")</span>
+                                            <span class="picker-item__name">@FormatMatchLabel(m)</span>
+                                            <span class="picker-item__meta">@(m.CompetitionName ?? "") @(m.Day ?? "")</span>
+                                        </li>
+                                    }
+                                    @if (FilteredMatches.Count == 0 && !_scope.MatchesLoading)
+                                    {
+                                        <li class="picker-empty">Aucun match trouvé.</li>
+                                    }
+                                </ul>
+                                @if (_selectedMatchIds.Count > 0)
+                                {
+                                    <p class="picker-count" aria-live="polite">@_selectedMatchIds.Count sélectionné(s)</p>
+                                }
+                                @if (_outOfScopeMatchesRemoved > 0)
+                                {
+                                    <p class="picker-notice" role="status" aria-live="polite">
+                                        @_outOfScopeMatchesRemoved match(s) retiré(s) car hors du périmètre.
+                                    </p>
+                                }
+                            }
+                        </div>
+                    }
+                </section>
+
+                <!-- 2. Content ───────────────────────────────────────────── -->
+                <section class="export-panel" aria-labelledby="content-heading">
+                    <div class="panel-head">
+                        <p class="section-kicker">Étape 2</p>
+                        <h3 id="content-heading">Contenu</h3>
+                    </div>
+
+                    <div class="preset-pills" role="radiogroup" aria-label="Profil d'export">
+                        @foreach (var p in PresetOptions)
+                        {
+                            var isActive = _preset == p.Value;
+                            <button type="button"
+                                    role="radio"
+                                    aria-checked="@(isActive ? "true" : "false")"
+                                    class="preset-pill @(isActive ? "is-active" : "")"
+                                    @onclick="() => SetPreset(p.Value)">
+                                @p.Label
+                            </button>
+                        }
+                    </div>
+
+                    @if (_preset == ExportPreset.Custom)
+                    {
+                        <fieldset class="section-checkboxes" aria-label="Feuilles à inclure">
+                            <legend class="section-checkboxes__legend">Feuilles à inclure</legend>
+                            @foreach (var sec in ExportSectionCatalog.All.Where(s => !s.IsAdvanced))
+                            {
+                                var isEnabled = _selectedSections.Contains(sec.ApiKey);
+                                <label class="section-checkbox">
+                                    <input type="checkbox"
+                                           checked="@isEnabled"
+                                           aria-label="@sec.Label"
+                                           @onchange="() => ToggleSection(sec.ApiKey)" />
+                                    <span class="section-checkbox__body">
+                                        <strong class="section-checkbox__label">@sec.Label</strong>
+                                        <em class="section-checkbox__desc">@sec.Description</em>
+                                    </span>
+                                </label>
+                            }
+                        </fieldset>
+                    }
+                    else
+                    {
+                        <ul class="preset-section-list" aria-label="Feuilles du profil sélectionné">
+                            @foreach (var key in ExportSectionCatalog.ForPreset(_preset))
+                            {
+                                if (ExportSectionCatalog.ByKey.TryGetValue(key, out var sec))
+                                {
+                                    <li class="preset-section-item">@sec.Label</li>
+                                }
+                            }
+                        </ul>
+                    }
+                </section>
+
+                <!-- 3. Advanced options ──────────────────────────────────── -->
+                <section class="export-panel">
+                    <details class="advanced-options">
+                        <summary class="advanced-options__toggle">
+                            <span class="section-kicker">Étape 3</span>
+                            <strong>Options avancées</strong>
+                            <span class="advanced-options__chevron" aria-hidden="true">▸</span>
+                        </summary>
+                        <div class="advanced-options__body">
+                            <label class="section-checkbox">
+                                <input type="checkbox" @bind="_includeDataQuality" />
+                                <span class="section-checkbox__body">
+                                    <strong class="section-checkbox__label">Qualité des données</strong>
+                                    <em class="section-checkbox__desc">Complétude et fiabilité des données par match.</em>
+                                </span>
+                            </label>
+                            <label class="section-checkbox">
+                                <input type="checkbox" @bind="_includeShotCoordinates" />
+                                <span class="section-checkbox__body">
+                                    <strong class="section-checkbox__label">Coordonnées brutes des tirs</strong>
+                                    <em class="section-checkbox__desc">Inclut les coordonnées X/Y brutes. Active automatiquement la feuille Tirs.</em>
+                                </span>
+                            </label>
+                            <label class="section-checkbox">
+                                <input type="checkbox" @bind="_includeRawEvents" />
+                                <span class="section-checkbox__body">
+                                    <strong class="section-checkbox__label">Événements bruts</strong>
+                                    <em class="section-checkbox__desc section-checkbox__desc--warn">
+                                        Log complet de chaque événement. Peut augmenter fortement la taille et le temps de génération.
+                                    </em>
+                                </span>
+                            </label>
+
+                            <div class="advanced-dates">
+                                <div class="scope-field">
+                                    <label class="scope-field__label" for="exp-date-from">Date de début</label>
+                                    <input id="exp-date-from" class="scope-field__input" type="date"
+                                           @bind="_scope.DateFrom" />
+                                </div>
+                                <div class="scope-field">
+                                    <label class="scope-field__label" for="exp-date-to">Date de fin</label>
+                                    <input id="exp-date-to" class="scope-field__input" type="date"
+                                           @bind="_scope.DateTo" />
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                </section>
+
+            </div><!-- end .export-config -->
+
+            <!-- ── Right column: summary + action ── -->
+            <aside class="export-summary" aria-label="Résumé de l'export">
+
+                <section class="export-panel export-panel--summary" aria-labelledby="summary-heading">
+                    <h3 id="summary-heading" class="export-summary__title">Résumé de l'export</h3>
+
+                    <dl class="export-summary__list">
+                        <div class="export-summary__row">
+                            <dt>Périmètre</dt>
+                            <dd>@_scope.ToDisplayLine()</dd>
+                        </div>
+                        <div class="export-summary__row">
+                            <dt>Cible</dt>
+                            <dd>@GetPreview().TargetLabel</dd>
+                        </div>
+                        @if (GetPreview().PlayerCount > 0)
+                        {
+                            <div class="export-summary__row">
+                                <dt>Joueuses</dt>
+                                <dd>@GetPreview().PlayerCount sélectionnée(s)</dd>
+                            </div>
+                        }
+                        @if (GetPreview().MatchCount > 0)
+                        {
+                            <div class="export-summary__row">
+                                <dt>Matchs</dt>
+                                <dd>@GetPreview().MatchCount sélectionné(s)</dd>
+                            </div>
+                        }
+                        <div class="export-summary__row">
+                            <dt>Contenu</dt>
+                            <dd>@GetPreview().SectionCount feuille(s)</dd>
+                        </div>
+                        <div class="export-summary__row">
+                            <dt>Options</dt>
+                            <dd>
+                                @(GetPreview().IncludeDataQuality ? "✓" : "✗") Qualité des données<br />
+                                @(GetPreview().IncludeRawEvents ? "✓" : "✗") Événements bruts<br />
+                                @(GetPreview().IncludeShotCoordinates ? "✓" : "✗") Coordonnées brutes
+                            </dd>
+                        </div>
+                        <div class="export-summary__row">
+                            <dt>Format</dt>
+                            <dd>@GetPreview().FormatLabel</dd>
+                        </div>
+                        @if (GetPreview().DayFilterIsDisplayOnly && !string.IsNullOrWhiteSpace(GetPreview().DayDisplayValue))
+                        {
+                            <div class="export-summary__row export-summary__row--note">
+                                <dt>Note</dt>
+                                <dd>
+                                    @GetPreview().DayDisplayValue — filtre non transmis au serveur (non supporté par l'API).
+                                </dd>
+                            </div>
+                        }
+                    </dl>
+
+                    <!-- Validation errors -->
+                    @if (_validationErrors.Count > 0)
+                    {
+                        <ul class="export-validation-errors" role="alert" aria-live="assertive">
+                            @foreach (var err in _validationErrors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    }
+
+                    <!-- Server warnings -->
+                    @if (_serverWarnings.Count > 0)
+                    {
+                        <div class="export-warnings export-warnings--server" role="status" aria-live="polite">
+                            <p class="export-warnings__title">Avertissements serveur</p>
+                            @foreach (var w in _serverWarnings)
+                            {
+                                <p class="export-warnings__item">⚠ @w</p>
+                            }
+                        </div>
+                    }
+
+                    <!-- Local warning: large export -->
+                    @if (_includeRawEvents)
+                    {
+                        <p class="export-warning-local" role="note">
+                            ⚠ Export volumineux probable : événements bruts activés.
+                        </p>
+                    }
+
+                    <!-- Error -->
+                    @if (_errorMessage is not null)
+                    {
+                        <div class="export-error" role="alert">
+                            <span>@_errorMessage</span>
+                            <button type="button" class="export-error__dismiss" aria-label="Fermer l'erreur" @onclick="ClearError">×</button>
+                        </div>
+                    }
+
+                    <!-- Success result -->
+                    @if (_status == ExportGenerationStatus.Completed && _generatedFileName is not null)
+                    {
+                        <div class="export-result" role="status">
+                            <p class="export-result__filename">@_generatedFileName</p>
+                            @if (FormattedFileSize is not null)
+                            {
+                                <p class="export-result__size">@FormattedFileSize</p>
+                            }
+                            @if (_generatedSchemaVersion is not null || _generatedAtUtc is not null || _generatedSha256 is not null)
+                            {
+                                <details class="export-result__details">
+                                    <summary>Détails techniques</summary>
+                                    @if (_generatedSchemaVersion is not null)
+                                    {
+                                        <p>Version du schéma : @_generatedSchemaVersion</p>
+                                    }
+                                    @if (_generatedAtUtc is not null)
+                                    {
+                                        <p>Généré le : @_generatedAtUtc</p>
+                                    }
+                                    @if (_generatedSha256 is not null)
+                                    {
+                                        <p>SHA-256 : <code>@_generatedSha256</code></p>
+                                    }
+                                </details>
+                            }
+                        </div>
+                    }
+
+                    <!-- Action button -->
+                    <div class="export-actions">
+                        @if (_status is ExportGenerationStatus.Generating or
+                                        ExportGenerationStatus.Downloading or
+                                        ExportGenerationStatus.Saving or
+                                        ExportGenerationStatus.Validating)
+                        {
+                            <button type="button"
+                                    class="export-btn export-btn--primary is-loading"
+                                    disabled
+                                    aria-busy="true">
+                                <span class="export-spinner" aria-hidden="true"></span>
+                                <span aria-live="polite">@GetStatusLabel()</span>
+                            </button>
+                            <button type="button"
+                                    class="export-btn export-btn--secondary"
+                                    @onclick="Cancel">
+                                Annuler
+                            </button>
                         }
                         else
                         {
-                            <span class="form-loading">Chargement…</span>
+                            <button type="button"
+                                    class="export-btn export-btn--primary @(HasValidationErrors ? "is-disabled" : "")"
+                                    disabled="@HasValidationErrors"
+                                    @onclick="GenerateAndDownloadAsync">
+                                Générer l'export
+                            </button>
                         }
                     </div>
 
-                    <!-- Season input -->
-                    <div class="form-group">
-                        <label class="form-label">Saison</label>
-                        <input class="form-input" type="text" placeholder="ex: 2024-2025"
-                               @bind="SeasonLabel" @bind:event="oninput" />
-                    </div>
-
-                    <!-- Year input -->
-                    <div class="form-group">
-                        <label class="form-label">Annee</label>
-                        <input class="form-input" type="number" placeholder="ex: 2025"
-                               @bind="SeasonYear" />
-                    </div>
-
-                    <!-- Team selector (Scope=TEAM) -->
-                    @if (Scope is "TEAM")
-                    {
-                        <div class="form-group">
-                            <label class="form-label">Equipe</label>
-                            @if (_teams.Count > 0)
-                            {
-                                <select class="form-input form-select"
-                                        value="@_selectedTeamId"
-                                        @onchange="OnTeamChanged">
-                                    <option value="">— Choisir une equipe —</option>
-                                    @foreach (var t in _teams)
-                                    {
-                                        <option value="@t.TeamId">@t.TeamName</option>
-                                    }
-                                </select>
-                            }
-                            else
-                            {
-                                <span class="form-loading">Chargement…</span>
-                            }
-                        </div>
-                    }
-
-                    <!-- Player selector (Scope=PLAYER or MULTIPLE_PLAYERS) -->
-                    @if (Scope is "PLAYER" or "MULTIPLE_PLAYERS")
-                    {
-                        <div class="form-group">
-                            <label class="form-label">Joueuse(s)</label>
-                            @if (_players.Count > 0)
-                            {
-                                <select class="form-input form-select" multiple="@(Scope == "MULTIPLE_PLAYERS")"
-                                        @onchange="OnPlayersChanged" size="@(Scope == "MULTIPLE_PLAYERS" ? 6 : 1)">
-                                    @if (Scope == "PLAYER")
-                                    {
-                                        <option value="">— Choisir une joueuse —</option>
-                                    }
-                                    @foreach (var p in _players)
-                                    {
-                                        <option value="@p.PlayerId"
-                                                selected="@_selectedPlayerIds.Contains(p.PlayerId)">
-                                            @p.FullName @(p.TeamName is not null ? $"({p.TeamName})" : "")
-                                        </option>
-                                    }
-                                </select>
-                                @if (Scope == "MULTIPLE_PLAYERS")
-                                {
-                                    <small class="form-hint">Maintenez Ctrl/Cmd pour selectionner plusieurs joueuses</small>
-                                }
-                            }
-                            else
-                            {
-                                <span class="form-loading">Chargement…</span>
-                            }
-                        </div>
-                    }
-
-                    <!-- Match selector (Scope=MATCH) -->
-                    @if (Scope is "MATCH")
-                    {
-                        <div class="form-group">
-                            <label class="form-label">Match(s)</label>
-                            @if (_matches.Count > 0)
-                            {
-                                <select class="form-input form-select" multiple size="6"
-                                        @onchange="OnMatchesChanged">
-                                    @foreach (var m in _matches)
-                                    {
-                                        <option value="@m.MatchId"
-                                                selected="@_selectedMatchIds.Contains(m.MatchId)">
-                                            @FormatMatchLabel(m)
-                                        </option>
-                                    }
-                                </select>
-                                <small class="form-hint">Maintenez Ctrl/Cmd pour selectionner plusieurs matchs</small>
-                            }
-                            else if (_matchesLoading)
-                            {
-                                <span class="form-loading">Chargement…</span>
-                            }
-                            else
-                            {
-                                <span class="form-hint">Selectionnez une competition ou une saison pour filtrer les matchs.</span>
-                            }
-                        </div>
-                    }
-
-                    <div class="form-group form-group--dates">
-                        <div>
-                            <label class="form-label">De</label>
-                            <input class="form-input" type="date"
-                                   @bind="DateFrom" />
-                        </div>
-                        <div>
-                            <label class="form-label">Au</label>
-                            <input class="form-input" type="date"
-                                   @bind="DateTo" />
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ── Sections panel ── -->
-            <section class="export-panel">
-                <div class="panel-head">
-                    <p class="section-kicker">Contenu</p>
-                    <h3>Feuilles a inclure</h3>
-                </div>
-
-                <div class="section-checkboxes">
-                    @foreach (var sec in AllSections)
-                    {
-                        <label class="section-checkbox">
-                            <input type="checkbox"
-                                   checked="@SelectedSections.Contains(sec.Key)"
-                                   @onchange="() => ToggleSection(sec.Key)" />
-                            <span>
-                                <strong>@sec.Key</strong>
-                                <em>@sec.Description</em>
-                            </span>
-                        </label>
-                    }
-                </div>
-
-                <div class="export-options">
-                    <label class="section-checkbox">
-                        <input type="checkbox" @bind="IncludeRawEvents" />
-                        <span><strong>09_Events</strong> <em>Evenements bruts (lent)</em></span>
-                    </label>
-                    <label class="section-checkbox">
-                        <input type="checkbox" @bind="IncludeShotCoordinates" />
-                        <span><strong>Coordonnees de tir</strong> <em>Zone + raw x/y</em></span>
-                    </label>
-                    <label class="section-checkbox">
-                        <input type="checkbox" @bind="IncludeDataQuality" />
-                        <span><strong>10_Data_Quality</strong> <em>Completude par match</em></span>
-                    </label>
-                </div>
-            </section>
-
-            <!-- ── Action panel ── -->
-            <section class="export-panel export-panel--action">
-                @if (ErrorMessage is not null)
-                {
-                    <div class="export-error">
-                        <span>@ErrorMessage</span>
-                        <button class="btn-dismiss" @onclick="ClearError">×</button>
-                    </div>
-                }
-
-                @if (Warnings.Count > 0)
-                {
-                    <div class="export-warnings">
-                        @foreach (var w in Warnings)
-                        {
-                            <p>⚠ @w</p>
-                        }
-                    </div>
-                }
-
-                @if (GeneratedFileName is not null)
-                {
-                    <div class="export-success">
-                        <p>Fichier genere : <strong>@GeneratedFileName</strong></p>
-                        <p class="export-meta">@GeneratedFileSize KB · SHA-256: @(GeneratedSha256?[..16])…</p>
-                    </div>
-                }
-
-                <div class="export-actions">
-                    <button class="btn-primary @(IsBusy ? "is-loading" : "")"
-                            disabled="@IsBusy"
-                            @onclick="GenerateAndDownload">
-                        @if (IsBusy)
-                        {
-                            <span class="spinner" aria-hidden="true"></span>
-                            <span>Generation en cours…</span>
-                        }
-                        else
-                        {
-                            <span>Generer et telecharger</span>
-                        }
+                    <button type="button" class="export-reset" @onclick="ResetExportAsync">
+                        Réinitialiser l'export
                     </button>
+                </section>
 
-                    @if (IsBusy)
-                    {
-                        <button class="btn-secondary" @onclick="Cancel">Annuler</button>
-                    }
-                </div>
-            </section>
+            </aside>
 
-        </div>
+        </div><!-- end .export-layout -->
     }
 </div>
 
 @code {
-    // ── state ──────────────────────────────────────────────────────────────────
+    // ── Static options ─────────────────────────────────────────────────────────
 
-    private string Scope { get; set; } = "SEASON";
-    private string? SeasonLabel { get; set; }
-    private int? SeasonYear { get; set; }
-    private DateTime? DateFrom { get; set; }
-    private DateTime? DateTo { get; set; }
-    private bool IncludeRawEvents { get; set; }
-    private bool IncludeShotCoordinates { get; set; }
-    private bool IncludeDataQuality { get; set; } = true;
+    private static readonly IReadOnlyList<(ExportTargetType Value, string Label)> TargetOptions =
+    [
+        (ExportTargetType.FullScope,   "Tout le périmètre"),
+        (ExportTargetType.Team,        "Équipe"),
+        (ExportTargetType.Players,     "Joueuses"),
+        (ExportTargetType.Goalkeepers, "Gardiennes"),
+        (ExportTargetType.Matches,     "Matchs"),
+    ];
 
-    private HashSet<string> SelectedSections { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "SEASON_SUMMARY", "TEAMS", "PLAYERS", "PLAYERS_PER_MATCH",
-        "GOALKEEPERS", "MATCHES", "SHOTS", "DEFENSE", "METRIC_DICTIONARY"
-    };
+    private static readonly IReadOnlyList<(ExportPreset Value, string Label)> PresetOptions =
+    [
+        (ExportPreset.FullAnalysis, "Analyse complète"),
+        (ExportPreset.Staff,        "Staff"),
+        (ExportPreset.Players,      "Joueuses"),
+        (ExportPreset.Matches,      "Matchs"),
+        (ExportPreset.Spatial,      "Spatial"),
+        (ExportPreset.Custom,       "Personnalisé"),
+    ];
 
-    // lookup selections (IDs for BuildRequest; names from selected items for display)
-    private int? _selectedCompetitionId;
-    private int? _selectedTeamId;
+    // ── State ──────────────────────────────────────────────────────────────────
+
+    private ExportScopeState _scope = new();
+    private AnalyticsReferenceData _refData = AnalyticsReferenceData.Empty;
+
+    private ExportTargetType _target = ExportTargetType.FullScope;
+    private ExportPreset _preset = ExportPreset.FullAnalysis;
+
+    private HashSet<string> _selectedSections = new(
+        ExportSectionCatalog.ForPreset(ExportPreset.FullAnalysis),
+        StringComparer.OrdinalIgnoreCase);
+
     private List<int> _selectedPlayerIds = [];
     private List<int> _selectedMatchIds = [];
 
-    // reference data
-    private List<CompetitionDto> _competitions = [];
-    private List<TeamDto> _teams = [];
-    private List<PlayerListItemDto> _players = [];
-    private List<MatchListItemDto> _matches = [];
-    private bool _matchesLoading;
+    private bool _includeRawEvents;
+    private bool _includeShotCoordinates;
+    private bool _includeDataQuality = true;
 
-    private bool IsBusy { get; set; }
-    private string? ErrorMessage { get; set; }
-    private List<string> Warnings { get; set; } = [];
-    private string? GeneratedFileName { get; set; }
-    private string? GeneratedSha256 { get; set; }
-    private long? GeneratedFileSizeRaw { get; set; }
-    private string? GeneratedFileSize => GeneratedFileSizeRaw.HasValue
-        ? ((GeneratedFileSizeRaw.Value + 512) / 1024).ToString("N0")
-        : null;
+    private string _playerSearch = "";
+    private string _matchSearch = "";
+
+    private ExportGenerationStatus _status = ExportGenerationStatus.Ready;
+    private List<string> _validationErrors = [];
+    private List<string> _serverWarnings = [];
+    private string? _errorMessage;
+
+    private string? _generatedFileName;
+    private long? _generatedFileSizeRaw;
+    private string? _generatedSha256;
+    private string? _generatedSchemaVersion;
+    private string? _generatedAtUtc;
 
     private CancellationTokenSource? _cts;
 
-    // ── static data ────────────────────────────────────────────────────────────
+    // Stale-response protection: each generation attempt gets a unique token.
+    private int _generationToken;
 
-    private static readonly IReadOnlyList<(string Value, string Label)> ScopeOptions =
-    [
-        ("SEASON", "Saison complète"),
-        ("TEAM", "Equipe"),
-        ("PLAYER", "Joueuse"),
-        ("MULTIPLE_PLAYERS", "Plusieurs joueuses"),
-        ("GOALKEEPERS", "Gardiennes"),
-        ("MATCH", "Match(s)"),
-        ("CUSTOM", "Personnalise"),
-    ];
+    // Scope change tracking
+    private int _outOfScopePlayersRemoved;
+    private int _outOfScopeMatchesRemoved;
 
-    private static readonly IReadOnlyList<(string Key, string Description)> AllSections =
-    [
-        ("SEASON_SUMMARY", "Totaux aggreges saison"),
-        ("TEAMS", "Stats par equipe"),
-        ("PLAYERS", "Stats par joueuse"),
-        ("PLAYERS_PER_MATCH", "Stats joueuse x match"),
-        ("GOALKEEPERS", "Metriques gardiennes"),
-        ("MATCHES", "Liste des matchs"),
-        ("SHOTS", "Logs de tirs"),
-        ("DEFENSE", "Stats defensives"),
-        ("METRIC_DICTIONARY", "Dictionnaire des metriques"),
-    ];
+    // Derived filter lists from available matches
+    private IReadOnlyList<string> _availableSeasons = [];
+    private IReadOnlyList<string> _availableDays = [];
 
-    // ── lifecycle ──────────────────────────────────────────────────────────────
+    // ── Computed ───────────────────────────────────────────────────────────────
+
+    private bool HasValidationErrors => _validationErrors.Count > 0;
+
+    private string? FormattedFileSize => _generatedFileSizeRaw.HasValue
+        ? $"{((_generatedFileSizeRaw.Value + 512) / 1024):N0} Ko"
+        : null;
+
+    private IReadOnlyList<PlayerListItemDto> FilteredPlayers
+    {
+        get
+        {
+            IEnumerable<PlayerListItemDto> players = _scope.AvailablePlayers;
+            if (_target == ExportTargetType.Goalkeepers)
+            {
+                players = players.Where(p => p.IsGoalkeeper);
+            }
+            if (!string.IsNullOrWhiteSpace(_playerSearch))
+            {
+                var term = _playerSearch.Trim();
+                players = players.Where(p =>
+                    (p.FullName?.Contains(term, StringComparison.OrdinalIgnoreCase) == true)
+                    || (p.TeamName?.Contains(term, StringComparison.OrdinalIgnoreCase) == true)
+                    || (p.PositionName?.Contains(term, StringComparison.OrdinalIgnoreCase) == true)
+                    || (p.PositionCode?.Contains(term, StringComparison.OrdinalIgnoreCase) == true));
+            }
+            return players.ToList();
+        }
+    }
+
+    private IReadOnlyList<MatchListItemDto> FilteredMatches
+    {
+        get
+        {
+            IEnumerable<MatchListItemDto> matches = _scope.AvailableMatches;
+
+            // Apply day filter client-side (Day is not sent to API)
+            if (!string.IsNullOrWhiteSpace(_scope.Day))
+            {
+                matches = MatchFilterCatalog.ApplySeasonAndDay(matches.ToList(), null, _scope.Day);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_matchSearch))
+            {
+                var term = _matchSearch.Trim();
+                matches = matches.Where(m =>
+                    (m.Team1Name?.Contains(term, StringComparison.OrdinalIgnoreCase) == true)
+                    || (m.Team2Name?.Contains(term, StringComparison.OrdinalIgnoreCase) == true)
+                    || (m.CompetitionName?.Contains(term, StringComparison.OrdinalIgnoreCase) == true));
+            }
+            return matches.ToList();
+        }
+    }
+
+    private ExportPreviewModel GetPreview()
+    {
+        var baseSections = _preset == ExportPreset.Custom
+            ? (IReadOnlySet<string>)_selectedSections
+            : ExportSectionCatalog.ForPreset(_preset);
+
+        var effectiveSections = new HashSet<string>(baseSections, StringComparer.OrdinalIgnoreCase);
+        if (_includeDataQuality) effectiveSections.Add("DATA_QUALITY");
+        if (_includeRawEvents) effectiveSections.Add("EVENTS");
+        if (_includeShotCoordinates) effectiveSections.Add("SHOTS");
+
+        var sectionLabels = effectiveSections
+            .Where(k => ExportSectionCatalog.ByKey.ContainsKey(k))
+            .Select(k => ExportSectionCatalog.ByKey[k].Label)
+            .ToList();
+
+        var targetLabel = _target switch
+        {
+            ExportTargetType.FullScope => "Tout le périmètre",
+            ExportTargetType.Team => string.IsNullOrWhiteSpace(_scope.TeamName) ? "Équipe" : _scope.TeamName,
+            ExportTargetType.Players => "Joueuses sélectionnées",
+            ExportTargetType.Goalkeepers => "Gardiennes",
+            ExportTargetType.Matches => "Matchs sélectionnés",
+            _ => "—",
+        };
+
+        return new ExportPreviewModel
+        {
+            ScopeDisplayLine = _scope.ToDisplayLine(),
+            TargetLabel = targetLabel,
+            PlayerCount = (_target is ExportTargetType.Players or ExportTargetType.Goalkeepers)
+                ? _selectedPlayerIds.Count : 0,
+            MatchCount = _target == ExportTargetType.Matches ? _selectedMatchIds.Count : 0,
+            SectionCount = effectiveSections.Count,
+            EnabledSectionLabels = sectionLabels,
+            IncludeRawEvents = _includeRawEvents,
+            IncludeShotCoordinates = _includeShotCoordinates,
+            IncludeDataQuality = _includeDataQuality,
+            FormatLabel = "Excel (.xlsx)",
+            DayFilterIsDisplayOnly = !string.IsNullOrWhiteSpace(_scope.Day),
+            DayDisplayValue = _scope.Day,
+        };
+    }
+
+    private IReadOnlyList<string> GetEffectiveSections()
+    {
+        var baseSections = _preset == ExportPreset.Custom
+            ? (IReadOnlySet<string>)_selectedSections
+            : ExportSectionCatalog.ForPreset(_preset);
+
+        var set = new HashSet<string>(baseSections, StringComparer.OrdinalIgnoreCase);
+        if (_includeDataQuality) set.Add("DATA_QUALITY");
+        if (_includeRawEvents) set.Add("EVENTS");
+        if (_includeShotCoordinates) set.Add("SHOTS");
+        return set.ToList();
+    }
+
+    // ── Lifecycle ──────────────────────────────────────────────────────────────
 
     protected override async Task OnInitializedAsync()
     {
-        if (!AuthService.Session.IsAuthenticated)
+        if (!AuthService.Session.IsAuthenticated) return;
+
+        ScopeService.Changed += OnGlobalScopeChanged;
+
+        _refData = await RefData.GetReferenceDataAsync();
+        _scope = ExportScopeState.FromSnapshot(ScopeService.Current);
+
+        // Derive seasons/days from initial match pool if scope has context
+        if (_scope.CompetitionId.HasValue || !string.IsNullOrWhiteSpace(_scope.Season))
         {
-            return;
+            await LoadMatchesAsync();
+            _availableSeasons = MatchFilterCatalog.GetSeasons(_scope.AvailableMatches);
+            _availableDays = MatchFilterCatalog.GetDays(_scope.AvailableMatches, _scope.Season);
         }
 
-        // Load reference data and players in parallel
-        var refTask = RefData.GetReferenceDataAsync();
-        var playersTask = PlayersClient.GetPlayersAsync(pageSize: 500, cancellationToken: CancellationToken.None);
-
-        try { await Task.WhenAll(refTask, playersTask); } catch { /* partial failures handled below */ }
-
-        var refDataResult = refTask.IsCompletedSuccessfully ? refTask.Result : null;
-        _competitions = refDataResult?.Competitions.ToList() ?? [];
-        _teams = refDataResult?.Teams.ToList() ?? [];
-
-        try
-        {
-            _players = playersTask.IsCompletedSuccessfully
-                ? playersTask.Result.OrderBy(p => p.FullName).ToList()
-                : [];
-        }
-        catch { _players = []; }
-
-        // Prefill from active scope
-        PrefillFromScope();
+        _validationErrors = RunValidation();
     }
 
-    private void PrefillFromScope()
+    public void Dispose()
     {
-        var scope = ScopeService.Current;
-        if (!scope.HasValue)
+        ScopeService.Changed -= OnGlobalScopeChanged;
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+
+    private void OnGlobalScopeChanged()
+    {
+        InvokeAsync(async () =>
         {
-            return;
+            await ApplyGlobalScopeAsync();
+            StateHasChanged();
+        });
+    }
+
+    // ── Scope handlers ─────────────────────────────────────────────────────────
+
+    private async Task ApplyGlobalScopeAsync()
+    {
+        _scope = ExportScopeState.FromSnapshot(ScopeService.Current);
+        await RefreshScopeDataAsync();
+    }
+
+    private async Task ResetScopeAsync()
+    {
+        _scope = ExportScopeState.FromSnapshot(ScopeService.Current);
+        _outOfScopePlayersRemoved = 0;
+        _outOfScopeMatchesRemoved = 0;
+        await RefreshScopeDataAsync();
+        _validationErrors = RunValidation();
+    }
+
+    private async Task ResetExportAsync()
+    {
+        _scope = ExportScopeState.FromSnapshot(ScopeService.Current);
+        _target = ExportTargetType.FullScope;
+        _preset = ExportPreset.FullAnalysis;
+        _selectedSections = new HashSet<string>(
+            ExportSectionCatalog.ForPreset(ExportPreset.FullAnalysis),
+            StringComparer.OrdinalIgnoreCase);
+        _selectedPlayerIds = [];
+        _selectedMatchIds = [];
+        _includeRawEvents = false;
+        _includeShotCoordinates = false;
+        _includeDataQuality = true;
+        _playerSearch = "";
+        _matchSearch = "";
+        _outOfScopePlayersRemoved = 0;
+        _outOfScopeMatchesRemoved = 0;
+        _errorMessage = null;
+        _serverWarnings = [];
+        _generatedFileName = null;
+        _generatedFileSizeRaw = null;
+        _generatedSha256 = null;
+        _generatedSchemaVersion = null;
+        _generatedAtUtc = null;
+        _status = ExportGenerationStatus.Ready;
+        await RefreshScopeDataAsync();
+        _validationErrors = RunValidation();
+    }
+
+    private async Task RefreshScopeDataAsync()
+    {
+        await LoadMatchesAsync();
+        _availableSeasons = MatchFilterCatalog.GetSeasons(_scope.AvailableMatches);
+        _availableDays = MatchFilterCatalog.GetDays(_scope.AvailableMatches, _scope.Season);
+
+        // Prune stale player selections
+        if (_target is ExportTargetType.Players or ExportTargetType.Goalkeepers
+            && _scope.AvailablePlayers.Count > 0)
+        {
+            var availableIds = _scope.AvailablePlayers.Select(p => p.PlayerId).ToHashSet();
+            var before = _selectedPlayerIds.Count;
+            _selectedPlayerIds = _selectedPlayerIds.Where(id => availableIds.Contains(id)).ToList();
+            _outOfScopePlayersRemoved = before - _selectedPlayerIds.Count;
         }
 
-        if (scope.CompetitionId.HasValue)
+        // Prune stale match selections
+        if (_target == ExportTargetType.Matches && _scope.AvailableMatches.Count > 0)
         {
-            _selectedCompetitionId = scope.CompetitionId;
+            var availableIds = _scope.AvailableMatches.Select(m => m.MatchId).ToHashSet();
+            var before = _selectedMatchIds.Count;
+            _selectedMatchIds = _selectedMatchIds.Where(id => availableIds.Contains(id)).ToList();
+            _outOfScopeMatchesRemoved = before - _selectedMatchIds.Count;
         }
+    }
 
-        if (scope.TeamId.HasValue)
+    private async Task OnCompetitionChangedAsync(ChangeEventArgs e)
+    {
+        _scope.CompetitionId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
+        _scope.CompetitionName = _refData.Competitions
+            .FirstOrDefault(c => c.CompetitionId == _scope.CompetitionId)?.CompetitionName;
+        _scope.TeamId = null;
+        _scope.TeamName = null;
+        await RefreshScopeDataAsync();
+        _validationErrors = RunValidation();
+    }
+
+    private async Task OnTeamChangedAsync(ChangeEventArgs e)
+    {
+        _scope.TeamId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
+        _scope.TeamName = _refData.Teams
+            .FirstOrDefault(t => t.TeamId == _scope.TeamId)?.TeamName;
+        await RefreshScopeDataAsync();
+        _validationErrors = RunValidation();
+    }
+
+    private async Task OnSeasonChangedAsync(ChangeEventArgs e)
+    {
+        _scope.Season = MatchFilterCatalog.NormalizeSelection(e.Value?.ToString());
+        _availableDays = MatchFilterCatalog.GetDays(_scope.AvailableMatches, _scope.Season);
+        await Task.CompletedTask;
+        _validationErrors = RunValidation();
+    }
+
+    private async Task OnSeasonInputAsync(ChangeEventArgs e)
+    {
+        _scope.Season = MatchFilterCatalog.NormalizeSelection(e.Value?.ToString());
+        _availableDays = MatchFilterCatalog.GetDays(_scope.AvailableMatches, _scope.Season);
+        await Task.CompletedTask;
+        _validationErrors = RunValidation();
+    }
+
+    private void OnDayChanged(ChangeEventArgs e)
+    {
+        _scope.Day = MatchFilterCatalog.NormalizeSelection(e.Value?.ToString());
+        _validationErrors = RunValidation();
+    }
+
+    // ── Target handlers ────────────────────────────────────────────────────────
+
+    private async Task SetTargetAsync(ExportTargetType target)
+    {
+        _target = target;
+        _outOfScopePlayersRemoved = 0;
+        _outOfScopeMatchesRemoved = 0;
+        _playerSearch = "";
+        _matchSearch = "";
+        _errorMessage = null;
+
+        // Lazy load players only when target requires them
+        if (target is ExportTargetType.Players or ExportTargetType.Goalkeepers)
         {
-            _selectedTeamId = scope.TeamId;
-            if (Scope == "SEASON")
+            if (_scope.AvailablePlayers.Count == 0)
             {
-                Scope = "TEAM";
+                await LoadPlayersAsync();
+            }
+        }
+        // Lazy load matches only when target requires them
+        else if (target == ExportTargetType.Matches)
+        {
+            if (_scope.AvailableMatches.Count == 0)
+            {
+                await LoadMatchesAsync();
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(scope.Season))
-        {
-            SeasonLabel = scope.Season;
-        }
+        _validationErrors = RunValidation();
     }
 
-    // ── event handlers ─────────────────────────────────────────────────────────
+    // ── Preset & section handlers ──────────────────────────────────────────────
 
-    private void SetScope(string scope)
+    private void SetPreset(ExportPreset preset)
     {
-        Scope = scope;
-        ErrorMessage = null;
-        _selectedMatchIds = [];
-        if (scope == "MATCH")
+        _preset = preset;
+        if (preset != ExportPreset.Custom)
         {
-            _ = LoadMatchesAsync();
+            _selectedSections = new HashSet<string>(
+                ExportSectionCatalog.ForPreset(preset),
+                StringComparer.OrdinalIgnoreCase);
         }
-    }
-
-    private async Task OnCompetitionChanged(ChangeEventArgs e)
-    {
-        _selectedCompetitionId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
-        if (Scope == "MATCH")
-        {
-            await LoadMatchesAsync();
-        }
-    }
-
-    private void OnTeamChanged(ChangeEventArgs e)
-    {
-        _selectedTeamId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
-    }
-
-    private void OnPlayersChanged(ChangeEventArgs e)
-    {
-        if (e.Value is string single)
-        {
-            _selectedPlayerIds = int.TryParse(single, out var id) && id > 0
-                ? [id]
-                : [];
-        }
-        else if (e.Value is string[] multiple)
-        {
-            _selectedPlayerIds = multiple
-                .Where(s => int.TryParse(s, out _))
-                .Select(int.Parse)
-                .ToList();
-        }
-    }
-
-    private void OnMatchesChanged(ChangeEventArgs e)
-    {
-        if (e.Value is string[] multiple)
-        {
-            _selectedMatchIds = multiple
-                .Where(s => int.TryParse(s, out _))
-                .Select(int.Parse)
-                .ToList();
-        }
-    }
-
-    private async Task LoadMatchesAsync()
-    {
-        _matchesLoading = true;
-        _matches = [];
-        StateHasChanged();
-
-        try
-        {
-            var result = await MatchesClient.GetMatchesAsync(
-                competitionId: _selectedCompetitionId,
-                season: SeasonLabel,
-                page: 1,
-                pageSize: 500,
-                cancellationToken: CancellationToken.None);
-
-            _matches = result.OrderByDescending(m => m.Date).ToList();
-        }
-        catch { /* non-blocking */ }
-        finally
-        {
-            _matchesLoading = false;
-            StateHasChanged();
-        }
+        _validationErrors = RunValidation();
     }
 
     private void ToggleSection(string key)
     {
-        if (!SelectedSections.Remove(key))
-            SelectedSections.Add(key);
+        if (!_selectedSections.Remove(key))
+            _selectedSections.Add(key);
+
+        // Drift from preset → Custom
+        if (_preset != ExportPreset.Custom)
+        {
+            var presetKeys = ExportSectionCatalog.ForPreset(_preset);
+            if (!_selectedSections.SetEquals(presetKeys))
+                _preset = ExportPreset.Custom;
+        }
+
+        _validationErrors = RunValidation();
     }
 
-    private void ClearError() => ErrorMessage = null;
+    // ── Player picker ──────────────────────────────────────────────────────────
 
-    private void Cancel()
+    private void TogglePlayer(int playerId)
     {
-        _cts?.Cancel();
-        _cts = null;
-        IsBusy = false;
+        if (!_selectedPlayerIds.Remove(playerId))
+            _selectedPlayerIds.Add(playerId);
+        _validationErrors = RunValidation();
     }
 
-    private async Task GenerateAndDownload()
+    private void SelectAllPlayersInView()
     {
-        ErrorMessage = null;
-        Warnings = [];
-        GeneratedFileName = null;
-        GeneratedSha256 = null;
-        GeneratedFileSizeRaw = null;
+        foreach (var p in FilteredPlayers)
+            if (!_selectedPlayerIds.Contains(p.PlayerId))
+                _selectedPlayerIds.Add(p.PlayerId);
+        _validationErrors = RunValidation();
+    }
 
-        IsBusy = true;
+    private void ClearPlayerSelection()
+    {
+        _selectedPlayerIds.Clear();
+        _validationErrors = RunValidation();
+    }
+
+    private void OnPlayerSearchInput(ChangeEventArgs e)
+    {
+        _playerSearch = e.Value?.ToString() ?? "";
+    }
+
+    // ── Match picker ───────────────────────────────────────────────────────────
+
+    private void ToggleMatch(int matchId)
+    {
+        if (!_selectedMatchIds.Remove(matchId))
+            _selectedMatchIds.Add(matchId);
+        _validationErrors = RunValidation();
+    }
+
+    private void SelectAllMatchesInView()
+    {
+        foreach (var m in FilteredMatches)
+            if (!_selectedMatchIds.Contains(m.MatchId))
+                _selectedMatchIds.Add(m.MatchId);
+        _validationErrors = RunValidation();
+    }
+
+    private void ClearMatchSelection()
+    {
+        _selectedMatchIds.Clear();
+        _validationErrors = RunValidation();
+    }
+
+    private void OnMatchSearchInput(ChangeEventArgs e)
+    {
+        _matchSearch = e.Value?.ToString() ?? "";
+    }
+
+    // ── Keyboard navigation for pickers ───────────────────────────────────────
+
+    private static void OnPickerKeyDown(KeyboardEventArgs e, Action action)
+    {
+        if (e.Key is " " or "Enter") action();
+    }
+
+    // ── Lazy loading ───────────────────────────────────────────────────────────
+
+    private async Task LoadPlayersAsync()
+    {
+        _scope.PlayersLoading = true;
+        StateHasChanged();
+        try
+        {
+            var players = await PlayersClient.GetPlayersAsync(
+                competitionId: _scope.CompetitionId,
+                teamId: _scope.TeamId,
+                season: _scope.Season,
+                pageSize: 300,
+                cancellationToken: CancellationToken.None);
+            _scope.AvailablePlayers = players.OrderBy(p => p.FullName).ToList();
+        }
+        catch { _scope.AvailablePlayers = []; }
+        finally { _scope.PlayersLoading = false; }
+    }
+
+    private async Task LoadMatchesAsync()
+    {
+        _scope.MatchesLoading = true;
+        StateHasChanged();
+        try
+        {
+            var matches = await MatchesClient.GetMatchesAsync(
+                competitionId: _scope.CompetitionId,
+                teamId: _scope.TeamId,
+                season: _scope.Season,
+                pageSize: 300,
+                cancellationToken: CancellationToken.None);
+            _scope.AvailableMatches = matches.OrderByDescending(m => m.Date).ToList();
+        }
+        catch { _scope.AvailableMatches = []; }
+        finally { _scope.MatchesLoading = false; }
+    }
+
+    // ── Validation ─────────────────────────────────────────────────────────────
+
+    private List<string> RunValidation()
+    {
+        var result = ExportRequestValidator.Validate(
+            _target,
+            _scope.TeamId,
+            _selectedPlayerIds,
+            _selectedMatchIds,
+            _scope.DateFrom,
+            _scope.DateTo,
+            GetEffectiveSections());
+        return result.Errors.ToList();
+    }
+
+    // ── Generate & download ────────────────────────────────────────────────────
+
+    private async Task GenerateAndDownloadAsync()
+    {
+        _errorMessage = null;
+        _serverWarnings = [];
+
+        _validationErrors = RunValidation();
+        if (_validationErrors.Count > 0) return;
+
+        var token = ++_generationToken;
         _cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        _status = ExportGenerationStatus.Validating;
 
         try
         {
-            var request = BuildRequest();
-            var (content, fileName, contentType) = await ExportClient.DownloadExportAsync(request, _cts.Token);
+            _status = ExportGenerationStatus.Generating;
+            StateHasChanged();
+
+            var request = ExportRequestBuilder.Build(
+                _scope, _target,
+                _scope.TeamId,
+                _selectedPlayerIds,
+                _selectedMatchIds,
+                new HashSet<string>(GetEffectiveSections(), StringComparer.OrdinalIgnoreCase),
+                _includeRawEvents, _includeShotCoordinates, _includeDataQuality);
+
+            _status = ExportGenerationStatus.Downloading;
+            StateHasChanged();
+
+            var (content, fileName, contentType) =
+                await ExportClient.DownloadExportAsync(request, _cts.Token);
+
+            // Stale-response guard
+            if (token != _generationToken) return;
 
             if (content is null || content.Length == 0)
             {
-                ErrorMessage = "Le serveur n'a retourne aucun contenu.";
+                _errorMessage = "Le serveur n'a retourné aucun contenu.";
+                _status = ExportGenerationStatus.Error;
                 return;
             }
+
+            _status = ExportGenerationStatus.Saving;
+            StateHasChanged();
 
             fileName ??= $"HandWStat_Export_{DateTime.Now:yyyyMMdd}.xlsx";
             contentType ??= "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-            GeneratedFileName = fileName;
-            GeneratedSha256 = Convert.ToHexString(
+            _generatedFileName = fileName;
+            _generatedFileSizeRaw = content.Length;
+            _generatedSha256 = Convert.ToHexString(
                 System.Security.Cryptography.SHA256.HashData(content)).ToLowerInvariant();
-            GeneratedFileSizeRaw = content.Length;
 
             await SaveFileAsync(content, fileName, contentType);
+
+            if (token != _generationToken) return;
+
+            _status = ExportGenerationStatus.Completed;
         }
         catch (OperationCanceledException)
         {
-            ErrorMessage = "Export annule.";
+            if (token == _generationToken)
+            {
+                _status = ExportGenerationStatus.Ready;
+                _errorMessage = "Export annulé.";
+            }
         }
         catch (HandWStat.Services.Api.ApiRequestException ex)
         {
-            ErrorMessage = ex.UserMessage;
+            if (token == _generationToken)
+            {
+                _errorMessage = ex.UserMessage;
+                _status = ExportGenerationStatus.Error;
+            }
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Erreur inattendue: {ex.Message}";
+            if (token == _generationToken)
+            {
+                _errorMessage = $"Erreur inattendue : {ex.Message}";
+                _status = ExportGenerationStatus.Error;
+            }
         }
         finally
         {
-            IsBusy = false;
+            if (token == _generationToken && _status == ExportGenerationStatus.Error)
+            {
+                _status = ExportGenerationStatus.Ready;
+            }
             _cts?.Dispose();
             _cts = null;
         }
     }
 
-    private AnalyticsExportRequestDto BuildRequest()
+    private void Cancel()
     {
-        var sections = SelectedSections.ToList();
-        if (IncludeDataQuality) sections.Add("DATA_QUALITY");
-        if (IncludeRawEvents) sections.Add("EVENTS");
-
-        return new AnalyticsExportRequestDto
-        {
-            Scope = Scope,
-            SeasonLabel = string.IsNullOrWhiteSpace(SeasonLabel) ? null : SeasonLabel.Trim(),
-            SeasonYear = SeasonYear,
-            CompetitionId = _selectedCompetitionId,
-            TeamId = _selectedTeamId,
-            PlayerIds = _selectedPlayerIds.Count > 0 ? _selectedPlayerIds : null,
-            MatchIds = _selectedMatchIds.Count > 0 ? _selectedMatchIds : null,
-            DateFrom = DateFrom,
-            DateTo = DateTo,
-            Sections = sections,
-            IncludeRawEvents = IncludeRawEvents,
-            IncludeShotCoordinates = IncludeShotCoordinates,
-            IncludeDataQuality = IncludeDataQuality,
-            RequestedBy = "HandWStat"
-        };
+        _cts?.Cancel();
+        _cts = null;
+        _status = ExportGenerationStatus.Ready;
+        _errorMessage = "Export annulé.";
     }
 
-    private static string FormatMatchLabel(MatchListItemDto m)
+    private void ClearError()
     {
-        var date = m.Date.HasValue ? m.Date.Value.ToString("dd/MM/yyyy") : "—";
-        var team1 = m.Team1Name ?? "Eq.1";
-        var team2 = m.Team2Name ?? "Eq.2";
-        var score = (m.Team1Score.HasValue && m.Team2Score.HasValue)
-            ? $" {m.Team1Score}-{m.Team2Score}"
-            : "";
-        return $"{date} — {team1} vs {team2}{score}";
+        _errorMessage = null;
+        if (_status == ExportGenerationStatus.Error)
+            _status = ExportGenerationStatus.Ready;
     }
 
     private async Task SaveFileAsync(byte[] content, string fileName, string contentType)
     {
         var path = Path.Combine(FileSystem.AppDataDirectory, fileName);
         await File.WriteAllBytesAsync(path, content);
-
         await Share.RequestAsync(new ShareFileRequest
         {
-            Title = "Exporter le classeur analytique",
-            File = new ShareFile(path, contentType)
+            Title = "Partager le classeur analytique",
+            File = new ShareFile(path, contentType),
         });
     }
 
-    public void Dispose()
+    // ── Formatting helpers ─────────────────────────────────────────────────────
+
+    private static string FormatMatchLabel(MatchListItemDto m)
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
+        var date = m.Date.HasValue
+            ? m.Date.Value.ToString("d MMM", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"))
+            : "—";
+        var t1 = m.Team1Name ?? "Éq.1";
+        var t2 = m.Team2Name ?? "Éq.2";
+        var score = (m.Team1Score.HasValue && m.Team2Score.HasValue)
+            ? $" {m.Team1Score}–{m.Team2Score}"
+            : "";
+        return $"{date} · {t1}{score} vs {t2}";
     }
+
+    private string GetStatusLabel() => _status switch
+    {
+        ExportGenerationStatus.Validating  => "Préparation…",
+        ExportGenerationStatus.Generating  => "Génération…",
+        ExportGenerationStatus.Downloading => "Téléchargement…",
+        ExportGenerationStatus.Saving      => "Enregistrement…",
+        _ => "En cours…",
+    };
 }
