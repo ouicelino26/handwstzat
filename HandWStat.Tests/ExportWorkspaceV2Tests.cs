@@ -535,7 +535,7 @@ public sealed class ExportWorkspaceV2Tests
     }
 
     [Fact]
-    public void Export_SeasonResultsRequestIsMinimalAndKeepsCurrentScope()
+    public void Export_SeasonResultsRequestKeepsScopeAndIncludesCompletePlayerStats()
     {
         var scope = new ExportScopeState
         {
@@ -552,7 +552,9 @@ public sealed class ExportWorkspaceV2Tests
         Assert.Equal(9, request.TeamId);
         Assert.Equal("2025-2026", request.SeasonLabel);
         Assert.Equal("J18", request.Day);
-        Assert.Equal("SEASON_PLAYER_RESULTS", Assert.Single(request.Sections!));
+        Assert.Equal(2, request.Sections!.Count);
+        Assert.Contains("SEASON_PLAYER_RESULTS", request.Sections);
+        Assert.Contains("PLAYERS", request.Sections);
         Assert.False(request.IncludeRawEvents);
         Assert.False(request.IncludeShotCoordinates);
         Assert.Equal(false, request.IncludeDataQuality);
@@ -747,51 +749,11 @@ public sealed class ExportWorkspaceV2Tests
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // SECTION H: SeasonYear derivation
+    // SECTION H: Canonical season-label filtering
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Export_SeasonYear_DerivedFromLabel_2025_2026()
-    {
-        var year = ExportRequestBuilder.TryParseSeasonYear("2025-2026");
-        Assert.Equal(2025, year);
-    }
-
-    [Fact]
-    public void Export_SeasonYear_DerivedFromLabel_2024_2025()
-    {
-        var year = ExportRequestBuilder.TryParseSeasonYear("2024-2025");
-        Assert.Equal(2024, year);
-    }
-
-    [Fact]
-    public void Export_SeasonYear_NullForNull()
-    {
-        Assert.Null(ExportRequestBuilder.TryParseSeasonYear(null));
-    }
-
-    [Fact]
-    public void Export_SeasonYear_NullForBlank()
-    {
-        Assert.Null(ExportRequestBuilder.TryParseSeasonYear(""));
-    }
-
-    [Fact]
-    public void Export_SeasonYear_NullForUnparseable()
-    {
-        Assert.Null(ExportRequestBuilder.TryParseSeasonYear("été"));
-    }
-
-    [Fact]
-    public void Export_SeasonYear_AcceptsSlashSeparator()
-    {
-        // e.g. "2025/2026"
-        var year = ExportRequestBuilder.TryParseSeasonYear("2025/2026");
-        Assert.Equal(2025, year);
-    }
-
-    [Fact]
-    public void Export_RequestPropagatesSeasonYear_InBuiltRequest()
+    public void Export_RequestUsesSeasonLabelWithoutConflictingYear()
     {
         var scope = new ExportScopeState { Season = "2025-2026" };
         var request = ExportRequestBuilder.Build(
@@ -799,7 +761,8 @@ public sealed class ExportWorkspaceV2Tests
             null, [], [],
             new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "PLAYERS" },
             false, false, false);
-        Assert.Equal(2025, request.SeasonYear);
+        Assert.Equal("2025-2026", request.SeasonLabel);
+        Assert.Null(request.SeasonYear);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

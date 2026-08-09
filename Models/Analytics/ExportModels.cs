@@ -331,14 +331,13 @@ public static class ExportRequestBuilder
 
         var apiScope = ExportTargetMapper.ToApiScope(target, selectedPlayerIds.Count);
 
-        // Derive SeasonYear from SeasonLabel when unambiguous (e.g. "2025-2026" → 2025)
-        int? seasonYear = TryParseSeasonYear(scope.Season);
-
         return new AnalyticsExportRequestDto
         {
             Scope = apiScope,
             SeasonLabel = string.IsNullOrWhiteSpace(scope.Season) ? null : scope.Season.Trim(),
-            SeasonYear = seasonYear,
+            // SeasonLabel is the same canonical filter used by the dashboard.
+            // Sending 2025 together with "2025-2026" can exclude 2026 matches.
+            SeasonYear = null,
             CompetitionId = scope.CompetitionId,
             TeamId = target == ExportTargetType.Team ? selectedTeamId : scope.TeamId,
             PlayerIds = selectedPlayerIds.Count > 0 ? selectedPlayerIds.ToList() : null,
@@ -356,7 +355,8 @@ public static class ExportRequestBuilder
 
     /// <summary>
     /// Builds the one-click season workbook request for the current analysis scope.
-    /// The workbook contains the consolidated player results and season leaders.
+    /// The workbook contains the consolidated player results, season leaders,
+    /// and the complete analytics columns used by the global player table.
     /// </summary>
     public static AnalyticsExportRequestDto BuildSeasonResults(ExportScopeState scope) =>
         Build(
@@ -365,26 +365,13 @@ public static class ExportRequestBuilder
             scope.TeamId,
             [],
             [],
-            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "SEASON_PLAYER_RESULTS" },
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "SEASON_PLAYER_RESULTS",
+                "PLAYERS"
+            },
             includeRawEvents: false,
             includeShotCoordinates: false,
             includeDataQuality: false);
 
-    /// <summary>
-    /// Derives SeasonYear from a label like "2025-2026" → 2025.
-    /// Returns null if ambiguous or unparseable.
-    /// Contract: the API uses the start year of the season (the first 4-digit segment).
-    /// </summary>
-    public static int? TryParseSeasonYear(string? seasonLabel)
-    {
-        if (string.IsNullOrWhiteSpace(seasonLabel)) return null;
-
-        var parts = seasonLabel.Trim().Split('-', '/');
-        if (parts.Length >= 2 && int.TryParse(parts[0].Trim(), out var year) && year >= 2000 && year <= 2100)
-        {
-            return year;
-        }
-
-        return null;
-    }
 }

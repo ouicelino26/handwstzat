@@ -160,6 +160,7 @@ public abstract class ApiClientBase
         var technicalCode = TryReadProblemString(details, "code")
             ?? TryReadProblemString(details, "type")
             ?? $"HTTP_{(int)response.StatusCode}";
+        var problemDetail = TryReadProblemString(details, "detail");
         var retryable = response.StatusCode is HttpStatusCode.RequestTimeout
             or HttpStatusCode.TooManyRequests
             || (int)response.StatusCode >= 500;
@@ -171,7 +172,9 @@ public abstract class ApiClientBase
             HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
                 "Connexion non autorisee. Utilisez un compte habilite.",
             HttpStatusCode.BadRequest =>
-                "Le filtre statistique n'a pas pu etre traite. Verifiez le perimetre choisi.",
+                !string.IsNullOrWhiteSpace(problemDetail)
+                    ? problemDetail.Trim()
+                    : "Le filtre statistique n'a pas pu etre traite. Verifiez le perimetre choisi.",
             HttpStatusCode.NotFound =>
                 "Les donnees demandees sont introuvables dans ce perimetre.",
             HttpStatusCode.TooManyRequests =>
