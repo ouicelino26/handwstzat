@@ -254,6 +254,15 @@ public sealed class ExportWorkspaceV2Tests
     }
 
     [Fact]
+    public void Export_GoalkeepersWithoutSelectionMeansAllGoalkeepersInScope()
+    {
+        var result = ExportRequestValidator.Validate(
+            ExportTargetType.Goalkeepers, null, [], [], null, null, ["GOALKEEPERS"]);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
     public void Export_MatchesRequiresAtLeastOneMatch()
     {
         var result = ExportRequestValidator.Validate(
@@ -298,6 +307,7 @@ public sealed class ExportWorkspaceV2Tests
     {
         var sections = ExportSectionCatalog.ForPreset(ExportPreset.FullAnalysis);
         Assert.Contains("SEASON_SUMMARY", sections);
+        Assert.Contains("SEASON_PLAYER_RESULTS", sections);
         Assert.Contains("TEAMS", sections);
         Assert.Contains("PLAYERS", sections);
         Assert.Contains("PLAYERS_PER_MATCH", sections);
@@ -314,6 +324,7 @@ public sealed class ExportWorkspaceV2Tests
     {
         var sections = ExportSectionCatalog.ForPreset(ExportPreset.Staff);
         Assert.Contains("SEASON_SUMMARY", sections);
+        Assert.Contains("SEASON_PLAYER_RESULTS", sections);
         Assert.Contains("TEAMS", sections);
         Assert.Contains("PLAYERS", sections);
         Assert.Contains("MATCHES", sections);
@@ -326,6 +337,7 @@ public sealed class ExportWorkspaceV2Tests
     public void Export_PresetPlayersMapsExpectedSections()
     {
         var sections = ExportSectionCatalog.ForPreset(ExportPreset.Players);
+        Assert.Contains("SEASON_PLAYER_RESULTS", sections);
         Assert.Contains("PLAYERS", sections);
         Assert.Contains("PLAYERS_PER_MATCH", sections);
         Assert.Contains("GOALKEEPERS", sections);
@@ -523,6 +535,30 @@ public sealed class ExportWorkspaceV2Tests
     }
 
     [Fact]
+    public void Export_SeasonResultsRequestIsMinimalAndKeepsCurrentScope()
+    {
+        var scope = new ExportScopeState
+        {
+            CompetitionId = 4,
+            TeamId = 9,
+            Season = "2025-2026",
+            Day = "J18",
+        };
+
+        var request = ExportRequestBuilder.BuildSeasonResults(scope);
+
+        Assert.Equal("SEASON", request.Scope);
+        Assert.Equal(4, request.CompetitionId);
+        Assert.Equal(9, request.TeamId);
+        Assert.Equal("2025-2026", request.SeasonLabel);
+        Assert.Equal("J18", request.Day);
+        Assert.Equal("SEASON_PLAYER_RESULTS", Assert.Single(request.Sections!));
+        Assert.False(request.IncludeRawEvents);
+        Assert.False(request.IncludeShotCoordinates);
+        Assert.Equal(false, request.IncludeDataQuality);
+    }
+
+    [Fact]
     public void Export_RequestIncludesAdvancedOptions()
     {
         var scope = new ExportScopeState();
@@ -578,18 +614,15 @@ public sealed class ExportWorkspaceV2Tests
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Export_DoesNotClaimDayIsEffectiveWhenApiCannotFilterDay()
+    public void Export_DtoSupportsDayFilter()
     {
-        // The API DTO does NOT have a Day field.
-        // This test verifies that AnalyticsExportRequestDto cannot accept a Day value.
-        var dto = new AnalyticsExportRequestDto();
         var type = typeof(AnalyticsExportRequestDto);
         var dayProp = type.GetProperty("Day");
-        Assert.Null(dayProp); // No Day property must exist on the DTO
+        Assert.NotNull(dayProp);
     }
 
     [Fact]
-    public void Export_DayIsStoredInScopeStateButNotPropagatedToRequest()
+    public void Export_DayIsPropagatedToRequest()
     {
         var scope = new ExportScopeState
         {
@@ -604,10 +637,8 @@ public sealed class ExportWorkspaceV2Tests
             new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "PLAYERS" },
             false, false, false);
 
-        // SeasonLabel is sent, but Day is not (no such field on DTO)
         Assert.Equal("2025-2026", request.SeasonLabel);
-        // Confirm Day is available in scope for UI display
-        Assert.Equal("J18", scope.Day);
+        Assert.Equal("J18", request.Day);
     }
 
     [Fact]
@@ -626,15 +657,16 @@ public sealed class ExportWorkspaceV2Tests
     }
 
     [Fact]
-    public void Export_PreviewModel_FlagsDay_AsDisplayOnly()
+    public void Export_PreviewNoLongerFlagsDayAsDisplayOnly()
     {
-        // The preview model must communicate that Day is display-only
         var scope = new ExportScopeState { Day = "J18" };
+        var preview = new ExportPreviewModel
+        {
+            DayFilterIsDisplayOnly = false,
+            DayDisplayValue = scope.Day,
+        };
 
-        // ExportPreviewModel.DayFilterIsDisplayOnly must be true when Day is set
-        // Simulate what GetPreview() does
-        bool dayDisplayOnly = !string.IsNullOrWhiteSpace(scope.Day);
-        Assert.True(dayDisplayOnly);
+        Assert.False(preview.DayFilterIsDisplayOnly);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

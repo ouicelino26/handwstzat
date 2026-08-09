@@ -66,7 +66,9 @@ public sealed class PlayerSheetExportV2Tests
         double medianValue = 0.9,
         double percentile = 72,
         double minValue = 0,
-        double maxValue = 3)
+        double maxValue = 3,
+        int? rank = null,
+        bool isEvaluative = true)
     {
         return new PositionProfileAxisDto
         {
@@ -74,9 +76,11 @@ public sealed class PlayerSheetExportV2Tests
             Label = label,
             Category = category,
             HigherIsBetter = higherIsBetter,
+            IsEvaluative = isEvaluative,
             Value = value,
             MedianValue = medianValue,
             Percentile = percentile,
+            Rank = rank,
             MinValue = minValue,
             MaxValue = maxValue
         };
@@ -92,11 +96,16 @@ public sealed class PlayerSheetExportV2Tests
             PositionId = 3,
             PositionName = positionName,
             CohortPlayerCount = cohortCount,
+            IsCohortReliable = cohortCount >= 5,
+            MinimumCohortPlayerCount = 5,
+            MinimumBenchmarkPlayingTimeMinutes = 30,
             SelectedPlayer = new PositionProfilePlayerDto
             {
                 PlayerId = 42,
                 FullName = "Chloe Valentini",
                 MatchesPlayed = 14,
+                PlayingTimeMinutes = 600,
+                IsBenchmarkEligible = true,
                 Axes = axes?.ToList() ?? []
             }
         };
@@ -193,7 +202,7 @@ public sealed class PlayerSheetExportV2Tests
 
         // Must contain goals, assists, shot rates — not defensive metrics
         var labels = rows.Select(r => r.Label).ToList();
-        Assert.Contains("Buts", labels);
+        Assert.Contains("Buts dans le jeu", labels);
         Assert.Contains("Passes decisives", labels);
         Assert.DoesNotContain("Interceptions", labels);
         Assert.DoesNotContain("Contres", labels);
@@ -212,7 +221,7 @@ public sealed class PlayerSheetExportV2Tests
         var labels = rows.Select(r => r.Label).ToList();
         Assert.Contains("Interceptions", labels);
         Assert.Contains("Contres", labels);
-        Assert.Contains("Sanctions concedees", labels);
+        Assert.Contains("2 minutes", labels);
         // Must not duplicate offensive metrics
         Assert.DoesNotContain("Buts", labels);
         Assert.DoesNotContain("Passes decisives", labels);
@@ -290,6 +299,156 @@ public sealed class PlayerSheetExportV2Tests
     }
 
     // ── RADAR ─────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void PlayerSheet_LowerIsBetterAxis_DoesNotInvertApiPercentileAgain()
+    {
+        var axis = MakeAxis(
+            "turnovers_per60",
+            "PDB /60",
+            "maitrise",
+            higherIsBetter: false,
+            value: 0.4,
+            percentile: 82,
+            rank: 4);
+        var positionProfile = MakePositionProfile([axis]);
+
+        var row = PlayerSheetExportHelper.WithPct(
+            new PlayerSheetRowV2("Pertes de balle", "3", string.Empty, "neutral"),
+            positionProfile,
+            "turnovers_per60");
+
+        Assert.Equal("#4", row.PercentileLabel);
+        Assert.Equal("positive", row.PercentileTone);
+        Assert.Contains("/60", row.Evidence);
+    }
+
+    [Fact]
+    public void PlayerSheet_LowerIsBetterWeakPercentile_RemainsWeak()
+    {
+        var axis = MakeAxis(
+            "turnovers_per60",
+            "PDB /60",
+            "maitrise",
+            higherIsBetter: false,
+            percentile: 18,
+            rank: 19);
+        var positionProfile = MakePositionProfile([axis]);
+
+        var row = PlayerSheetExportHelper.WithPct(
+            new PlayerSheetRowV2("Pertes de balle", "25", string.Empty, "neutral"),
+            positionProfile,
+            "turnovers_per60");
+
+        Assert.Equal("Faible", row.PercentileLabel);
+        Assert.Equal("danger", row.PercentileTone);
+    }
+
+    [Theory]
+    [InlineData(82, 12, "Fort")]
+    [InlineData(70, 3, "Bon")]
+    [InlineData(50, 3, "Moyen")]
+    public void PlayerSheet_RankReplacesOnlyStrongTopTen(
+        double percentile,
+        int rank,
+        string expectedLabel)
+    {
+        var result = PlayerSheetExportHelper.PercentileToLabel(percentile, rank);
+
+        Assert.Equal(expectedLabel, result.Label);
+    }
+
+    [Fact]
+    public void PlayerSheet_UnreliableCohort_ShowsNeutralSampleWarning()
+    {
+        var axis = MakeAxis("assists_per60", "PD /60", "attaque", percentile: 90, rank: 1);
+        var positionProfile = MakePositionProfile([axis], cohortCount: 3);
+
+        var row = PlayerSheetExportHelper.WithPct(
+            new PlayerSheetRowV2("Passes decisives", "8", string.Empty, "good"),
+            positionProfile,
+            "assists_per60");
+
+        Assert.Equal("Éch. faible", row.PercentileLabel);
+        Assert.Equal("neutral", row.PercentileTone);
+    }
+
+    [Fact]
+    public void PlayerSheet_ContextAxis_IsNotPresentedAsStrongOrWeak()
+    {
+        var axis = MakeAxis(
+            "shots_faced_per60",
+            "Tirs subis /60",
+            "volume",
+            higherIsBetter: false,
+            percentile: 90,
+            rank: null,
+            isEvaluative: false);
+        var positionProfile = MakePositionProfile([axis], positionName: "Gardienne");
+
+        var row = PlayerSheetExportHelper.WithPct(
+            new PlayerSheetRowV2("Tirs subis", "120", string.Empty, "neutral"),
+            positionProfile,
+            "shots_faced_per60");
+
+        Assert.Equal("Contexte", row.PercentileLabel);
+        Assert.Equal("neutral", row.PercentileTone);
+    }
+
+    [Fact]
+    public void PlayerSheet_GoalkeeperRows_UsePositionBenchmarks()
+    {
+        var axes = new[]
+        {
+            MakeAxis("saves_per60", "Arrets /60", "gardienne", percentile: 88, rank: 2),
+            MakeAxis("save_rate", "Taux arret", "gardienne", percentile: 68, rank: 4),
+            MakeAxis("penalty_stops_per60", "Arrets 7m /60", "gardienne", percentile: 78, rank: 7),
+            MakeAxis("assists_per60", "Passes /60", "relance", percentile: 60, rank: 8),
+            MakeAxis("shots_faced_per60", "Tirs subis /60", "volume", false, percentile: 50, isEvaluative: false),
+            MakeAxis("goals_conceded_per60", "Buts pris /60", "volume", false, percentile: 82, rank: 3),
+            MakeAxis("turnovers_per60", "PDB /60", "relance", false, percentile: 40, rank: 14),
+            MakeAxis("sanctions_per60", "Sanctions /60", "discipline", false, percentile: 30, rank: 18)
+        };
+        var positionProfile = MakePositionProfile(axes, positionName: "Gardienne");
+        var global = MakeGlobal();
+        var goalkeeper = new PlayerGoalkeeperStatsDto
+        {
+            Arrets = 42,
+            ArretsPenalty = 4,
+            ButsPris = 31,
+            ButsPenalty = 5,
+            TirsSubis = 82,
+            PasseDecisives = 3,
+            PerteDeBalle = 6
+        };
+        var technical = new PlayerTechnicalStatsDto
+        {
+            GoalkeeperSaveRate = 56.1,
+            Sanctions = 2
+        };
+
+        var offensiveRows = PlayerSheetExportHelper.BuildGoalkeeperOffensiveRows(global, goalkeeper, technical, positionProfile);
+        var defensiveRows = PlayerSheetExportHelper.BuildGoalkeeperDefensiveRows(goalkeeper, technical, positionProfile);
+
+        Assert.Equal("#2", Assert.Single(offensiveRows, row => row.Label == "Arrets").PercentileLabel);
+        Assert.Equal("Bon", Assert.Single(offensiveRows, row => row.Label == "Taux d'arret").PercentileLabel);
+        Assert.Equal("Contexte", Assert.Single(defensiveRows, row => row.Label == "Tirs subis").PercentileLabel);
+        Assert.Equal("#3", Assert.Single(defensiveRows, row => row.Label == "Buts encaisses").PercentileLabel);
+    }
+
+    [Fact]
+    public void PlayerSheet_AxisMapping_RequiresCanonicalKey()
+    {
+        var axis = MakeAxis("assists_per60", "PD /60", "attaque", percentile: 90, rank: 2);
+        var positionProfile = MakePositionProfile([axis]);
+
+        var row = PlayerSheetExportHelper.WithPct(
+            new PlayerSheetRowV2("Passes decisives", "8", string.Empty, "good"),
+            positionProfile,
+            "passe");
+
+        Assert.Equal("—", row.PercentileLabel);
+    }
 
     [Fact]
     public void PlayerSheet_RadarHasAtMostSixAxes()

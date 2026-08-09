@@ -854,7 +854,9 @@ public class PositionProfilesBase : ComponentBase, IDisposable
                 Math.Clamp(axis.Value + offset.PlayerOffset, bounds.Min, bounds.Max),
                 Math.Clamp(axis.MedianValue + offset.MedianOffset, bounds.Min, bounds.Max),
                 axis.MinValue,
-                axis.MaxValue));
+                axis.MaxValue,
+                axis.IsEvaluative,
+                axis.Rank));
         }
 
         return result;
@@ -1017,8 +1019,9 @@ public class PositionProfilesBase : ComponentBase, IDisposable
         }
 
         var strongCount = axes.Count(axis => axis.StatusLabel == "Fort");
+        var goodCount = axes.Count(axis => axis.StatusLabel == "Bon");
         var mediumCount = axes.Count(axis => axis.StatusLabel == "Moyen");
-        var fragileCount = axes.Count(axis => axis.StatusLabel == "Fragile");
+        var fragileCount = axes.Count(axis => axis.StatusLabel == "Faible");
 
         if (strongCount >= 4 && fragileCount <= 1)
         {
@@ -1030,7 +1033,7 @@ public class PositionProfilesBase : ComponentBase, IDisposable
             return "profil encore instable sur plusieurs marqueurs du poste, a encadrer avec un role plus cible.";
         }
 
-        if (mediumCount >= strongCount && fragileCount <= 2)
+        if (goodCount + mediumCount >= strongCount && fragileCount <= 2)
         {
             return "profil regulier: peu d ecarts majeurs, base fiable pour le staff.";
         }
@@ -1141,7 +1144,7 @@ public class PositionProfilesBase : ComponentBase, IDisposable
             .Select(axis => $"{axis.Label} ({axis.PlayerDisplayValue})")
             .ToList();
         var fragileAxes = PositionProfileCoachRows
-            .Where(axis => axis.StatusLabel == "Fragile")
+            .Where(axis => axis.StatusLabel == "Faible")
             .Take(3)
             .Select(axis => $"{axis.Label} ({axis.PlayerDisplayValue})")
             .ToList();
@@ -1231,7 +1234,7 @@ public class PositionProfilesBase : ComponentBase, IDisposable
             ("Cohorte", PositionProfile?.CohortPlayerCount.ToString() ?? "0", "Joueuses du poste dans le perimetre.", "info"),
             ("Niveau", level, "Lecture globale du profil.", "positive"),
             ("Profil", profileType, "Type de poste dominant.", "good"),
-            ("Moy. percentile", $"{averagePercentile:0.#}%", "Sur les axes affiches dans la fiche.", averagePercentile >= 65d ? "positive" : "warning")
+            ("Moy. percentile", $"{averagePercentile:0.#}%", "Sur les axes affiches dans la fiche.", PositionBenchmarkHelper.Classify(averagePercentile).Tone)
         };
 
         var xPositions = new double[] { 36d, 416d, 796d, 1176d };
@@ -1603,22 +1606,22 @@ public class PositionProfilesBase : ComponentBase, IDisposable
     private static string GetPositionProfileInsight(string label, double percentile)
     {
         _ = label;
-        return percentile switch
+        return PositionBenchmarkHelper.Classify(percentile).Label switch
         {
-            >= 80 => "niveau fort du poste",
-            >= 65 => "au-dessus de la mediane du poste",
-            >= 35 => "zone a stabiliser",
+            "Fort" => "niveau fort du poste",
+            "Bon" => "au-dessus de la mediane du poste",
+            "Moyen" => "zone a stabiliser",
             _ => "sous la mediane du poste"
         };
     }
 
     private static string GetAxisBadgeLabel(PositionProfileAxisViewModel axis) => GetAxisBadgeLabel(axis.DirectionalPercentile);
 
-    private static string GetAxisBadgeLabel(double percentile) => percentile > 65 ? "Fort" : percentile >= 35 ? "Moyen" : "Fragile";
+    private static string GetAxisBadgeLabel(double percentile) => PositionBenchmarkHelper.Classify(percentile).Label;
 
     private static string GetAxisBadgeTone(PositionProfileAxisViewModel axis) => GetAxisBadgeTone(axis.DirectionalPercentile);
 
-    private static string GetAxisBadgeTone(double percentile) => percentile > 65 ? "positive" : percentile >= 35 ? "warning" : "danger";
+    private static string GetAxisBadgeTone(double percentile) => PositionBenchmarkHelper.Classify(percentile).Tone;
 
     private static int GetScatterDirection(PositionProfileAxisDto axis) => GetScatterDirection(axis.Value, axis.MedianValue, axis.Format);
 

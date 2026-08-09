@@ -26,7 +26,9 @@ public sealed record PositionProfileAxisViewModel(
     double DisplayPlayerValue,
     double DisplayMedianValue,
     double MinValue,
-    double MaxValue)
+    double MaxValue,
+    bool IsEvaluative = true,
+    int? Rank = null)
 {
     public double Delta => PlayerValue - MedianValue;
 
@@ -35,17 +37,13 @@ public sealed record PositionProfileAxisViewModel(
     // The API contract already returns a favorable percentile for negative axes.
     public double DirectionalPercentile => Percentile;
 
-    public string StatusLabel => DirectionalPercentile > 65
-        ? "Fort"
-        : DirectionalPercentile >= 35
-            ? "Moyen"
-            : "Fragile";
+    public string StatusLabel => IsEvaluative
+        ? PositionBenchmarkHelper.Classify(DirectionalPercentile).Label
+        : "Contexte";
 
-    public string StatusTone => DirectionalPercentile > 65
-        ? "positive"
-        : DirectionalPercentile >= 35
-            ? "warning"
-            : "danger";
+    public string StatusTone => IsEvaluative
+        ? PositionBenchmarkHelper.Classify(DirectionalPercentile).Tone
+        : "neutral";
 
     public PositionProfileScatterBucket Bucket => Impact <= GetTolerance()
         ? PositionProfileScatterBucket.Level

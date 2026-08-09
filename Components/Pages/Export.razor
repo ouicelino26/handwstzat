@@ -24,6 +24,66 @@
             </div>
         </header>
 
+        <section class="export-quick" aria-labelledby="season-export-heading">
+            <div class="export-quick__content">
+                <p class="section-kicker">Export recommandé</p>
+                <h3 id="season-export-heading">Bilan final de la saison</h3>
+                <p>
+                    Un seul fichier Excel avec une ligne par joueuse, ses totaux de saison,
+                    ses classements et une feuille récapitulative des leaders.
+                </p>
+                <p class="export-quick__scope">@_scope.ToDisplayLine()</p>
+                <ul class="export-quick__metrics" aria-label="Statistiques incluses">
+                    <li>Buts et tirs</li>
+                    <li>Passes et pertes</li>
+                    <li>7 m et sanctions provoqués</li>
+                    <li>Interceptions, PF et neutralisations</li>
+                    <li>Arrêts des gardiennes</li>
+                </ul>
+                @if (string.IsNullOrWhiteSpace(_scope.Season))
+                {
+                    <p class="export-quick__notice" role="note">
+                        Sélectionnez une saison dans le périmètre pour activer cet export.
+                    </p>
+                }
+                @if (_errorMessage is not null)
+                {
+                    <p class="export-quick__error" role="alert">@_errorMessage</p>
+                }
+                @if (_status == ExportGenerationStatus.Completed && _generatedFileName is not null)
+                {
+                    <p class="export-quick__success" role="status">
+                        Fichier prêt : @_generatedFileName
+                        @if (FormattedFileSize is not null)
+                        {
+                            <span>(@FormattedFileSize)</span>
+                        }
+                    </p>
+                }
+            </div>
+            <div class="export-quick__actions">
+                <button type="button"
+                        class="export-btn export-btn--primary export-quick__button"
+                        disabled="@(IsBusy || string.IsNullOrWhiteSpace(_scope.Season))"
+                        aria-busy="@IsBusy"
+                        @onclick="ExportSeasonAsync">
+                    @(IsBusy ? GetStatusLabel() : "Exporter la saison")
+                </button>
+                @if (IsBusy)
+                {
+                    <button type="button" class="export-btn export-btn--secondary" @onclick="Cancel">
+                        Annuler
+                    </button>
+                }
+            </div>
+        </section>
+
+        <details class="export-custom-builder">
+            <summary class="export-custom-builder__summary">
+                <span>Créer un export personnalisé</span>
+                <small>Choisir la cible, les feuilles et les options avancées</small>
+            </summary>
+
         <div class="export-layout">
 
             <!-- ── Left column: configuration ── -->
@@ -40,8 +100,7 @@
                         {
                             <p class="scope-display__day-note" role="note">
                                 <span class="scope-display__day-badge">@_scope.Day</span>
-                                Le filtre par journée s'applique à la sélection des matchs mais
-                                n'est pas transmis au moteur d'export.
+                                Ce filtre est appliqué au fichier généré.
                             </p>
                         }
                     </div>
@@ -339,10 +398,10 @@
                                 </span>
                             </label>
                             <label class="section-checkbox">
-                                <input type="checkbox" @bind="_includeShotCoordinates" />
+                                <input type="checkbox" disabled />
                                 <span class="section-checkbox__body">
-                                    <strong class="section-checkbox__label">Coordonnées brutes des tirs</strong>
-                                    <em class="section-checkbox__desc">Inclut les coordonnées X/Y brutes. Active automatiquement la feuille Tirs.</em>
+                                    <strong class="section-checkbox__label">Coordonnées brutes des tirs — indisponibles</strong>
+                                    <em class="section-checkbox__desc">La source stocke les zones de tir, mais pas les coordonnées X/Y brutes.</em>
                                 </span>
                             </label>
                             <label class="section-checkbox">
@@ -410,23 +469,13 @@
                             <dt>Options</dt>
                             <dd>
                                 @(GetPreview().IncludeDataQuality ? "✓" : "✗") Qualité des données<br />
-                                @(GetPreview().IncludeRawEvents ? "✓" : "✗") Événements bruts<br />
-                                @(GetPreview().IncludeShotCoordinates ? "✓" : "✗") Coordonnées brutes
+                                @(GetPreview().IncludeRawEvents ? "✓" : "✗") Événements bruts
                             </dd>
                         </div>
                         <div class="export-summary__row">
                             <dt>Format</dt>
                             <dd>@GetPreview().FormatLabel</dd>
                         </div>
-                        @if (GetPreview().DayFilterIsDisplayOnly && !string.IsNullOrWhiteSpace(GetPreview().DayDisplayValue))
-                        {
-                            <div class="export-summary__row export-summary__row--note">
-                                <dt>Note</dt>
-                                <dd>
-                                    @GetPreview().DayDisplayValue — filtre non transmis au serveur (non supporté par l'API).
-                                </dd>
-                            </div>
-                        }
                     </dl>
 
                     <!-- Validation errors -->
@@ -525,7 +574,7 @@
                                     class="export-btn export-btn--primary @(HasValidationErrors ? "is-disabled" : "")"
                                     disabled="@HasValidationErrors"
                                     @onclick="GenerateAndDownloadAsync">
-                                Générer l'export
+                                Exporter la sélection
                             </button>
                         }
                     </div>
@@ -538,6 +587,7 @@
             </aside>
 
         </div><!-- end .export-layout -->
+        </details>
     }
 </div>
 
@@ -612,6 +662,10 @@
     // ── Computed ───────────────────────────────────────────────────────────────
 
     private bool HasValidationErrors => _validationErrors.Count > 0;
+    private bool IsBusy => _status is ExportGenerationStatus.Validating
+        or ExportGenerationStatus.Generating
+        or ExportGenerationStatus.Downloading
+        or ExportGenerationStatus.Saving;
 
     private string? FormattedFileSize => _generatedFileSizeRaw.HasValue
         ? $"{((_generatedFileSizeRaw.Value + 512) / 1024):N0} Ko"
@@ -645,7 +699,7 @@
         {
             IEnumerable<MatchListItemDto> matches = _scope.AvailableMatches;
 
-            // Apply day filter client-side (Day is not sent to API)
+            // Keep the picker consistent with the day that is also sent to the API.
             if (!string.IsNullOrWhiteSpace(_scope.Day))
             {
                 matches = MatchFilterCatalog.ApplySeasonAndDay(matches.ToList(), null, _scope.Day);
@@ -702,7 +756,7 @@
             IncludeShotCoordinates = _includeShotCoordinates,
             IncludeDataQuality = _includeDataQuality,
             FormatLabel = "Excel (.xlsx)",
-            DayFilterIsDisplayOnly = !string.IsNullOrWhiteSpace(_scope.Day),
+            DayFilterIsDisplayOnly = false,
             DayDisplayValue = _scope.Day,
         };
     }
@@ -1053,11 +1107,39 @@
 
     private async Task GenerateAndDownloadAsync()
     {
-        _errorMessage = null;
-        _serverWarnings = [];
-
         _validationErrors = RunValidation();
         if (_validationErrors.Count > 0) return;
+
+        var request = ExportRequestBuilder.Build(
+            _scope, _target,
+            _scope.TeamId,
+            _selectedPlayerIds,
+            _selectedMatchIds,
+            new HashSet<string>(GetEffectiveSections(), StringComparer.OrdinalIgnoreCase),
+            _includeRawEvents, _includeShotCoordinates, _includeDataQuality);
+
+        await DownloadAndSaveAsync(request);
+    }
+
+    private async Task ExportSeasonAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_scope.Season))
+        {
+            _errorMessage = "Sélectionnez une saison avant de lancer le bilan final.";
+            return;
+        }
+
+        _validationErrors = [];
+        await DownloadAndSaveAsync(ExportRequestBuilder.BuildSeasonResults(_scope));
+    }
+
+    private async Task DownloadAndSaveAsync(AnalyticsExportRequestDto request)
+    {
+        _errorMessage = null;
+        _serverWarnings = [];
+        _generatedFileName = null;
+        _generatedFileSizeRaw = null;
+        _generatedSha256 = null;
 
         var token = ++_generationToken;
         _cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
@@ -1067,14 +1149,6 @@
         {
             _status = ExportGenerationStatus.Generating;
             StateHasChanged();
-
-            var request = ExportRequestBuilder.Build(
-                _scope, _target,
-                _scope.TeamId,
-                _selectedPlayerIds,
-                _selectedMatchIds,
-                new HashSet<string>(GetEffectiveSections(), StringComparer.OrdinalIgnoreCase),
-                _includeRawEvents, _includeShotCoordinates, _includeDataQuality);
 
             _status = ExportGenerationStatus.Downloading;
             StateHasChanged();

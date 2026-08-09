@@ -37,6 +37,7 @@ public sealed class AnalyticsExportRequestDto
     public List<int>? MatchIds { get; set; }
     public DateTime? DateFrom { get; set; }
     public DateTime? DateTo { get; set; }
+    public string? Day { get; set; }
     public List<string>? Sections { get; set; }
     public bool IncludeRawEvents { get; set; }
     public bool IncludeShotCoordinates { get; set; }

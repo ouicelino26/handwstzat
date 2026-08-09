@@ -25,6 +25,134 @@
     min-width: 0;
 }
 
+/* ── One-click season export ───────────────────────────────────────────── */
+
+.export-quick {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: clamp(1rem, 3vw, 2.5rem);
+    align-items: center;
+    padding: clamp(1.2rem, 2.5vw, 2rem);
+    border: 1px solid color-mix(in srgb, var(--signal-500) 45%, var(--line));
+    border-radius: var(--radius-md);
+    background:
+        linear-gradient(125deg, color-mix(in srgb, var(--signal-500) 16%, transparent), transparent 62%),
+        var(--surface-raised);
+}
+
+.export-quick__content {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.export-quick h3,
+.export-quick p {
+    margin: 0;
+}
+
+.export-quick h3 {
+    font-size: clamp(1.25rem, 2vw, 1.75rem);
+    color: var(--text);
+}
+
+.export-quick__content > p:not(.section-kicker):not(.export-quick__scope):not(.export-quick__notice):not(.export-quick__error):not(.export-quick__success) {
+    max-width: 54rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+}
+
+.export-quick__scope {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.export-quick__metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.export-quick__metrics li {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 2rem;
+    color: var(--text-muted);
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    font-size: 0.7rem;
+    font-weight: 650;
+}
+
+.export-quick__notice,
+.export-quick__error,
+.export-quick__success {
+    font-size: 0.75rem;
+}
+
+.export-quick__notice { color: var(--text-muted); }
+.export-quick__error { color: var(--danger, #dc5b63); }
+.export-quick__success { color: var(--success, #2aa876); font-weight: 700; }
+
+.export-quick__actions {
+    display: grid;
+    gap: 0.6rem;
+    min-width: 13.5rem;
+}
+
+.export-quick__button {
+    min-height: 3rem;
+    white-space: nowrap;
+}
+
+/* ── Advanced custom builder ───────────────────────────────────────────── */
+
+.export-custom-builder {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+    overflow: clip;
+}
+
+.export-custom-builder__summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.35rem 1rem;
+    align-items: center;
+    padding: 1rem 1.2rem;
+    cursor: pointer;
+    list-style: none;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 750;
+}
+
+.export-custom-builder__summary::-webkit-details-marker { display: none; }
+
+.export-custom-builder__summary::after {
+    content: "+";
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    font-size: 1.35rem;
+    color: var(--signal-500);
+}
+
+.export-custom-builder[open] .export-custom-builder__summary::after { content: "−"; }
+
+.export-custom-builder__summary small {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.export-custom-builder > .export-layout {
+    margin: 0 1rem 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+}
+
 /* ── Panels ─────────────────────────────────────────────────────────────────── */
 
 .export-panel {
@@ -822,6 +950,18 @@ details[open] .advanced-options__chevron {
    ───────────────────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
+    .export-quick {
+        grid-template-columns: 1fr;
+    }
+
+    .export-quick__actions {
+        width: 100%;
+    }
+
+    .export-custom-builder > .export-layout {
+        margin: 0 0.65rem 0.65rem;
+    }
+
     .export-layout {
         grid-template-columns: 1fr;
     }

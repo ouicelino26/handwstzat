@@ -3896,17 +3896,11 @@
 
         if (Profile.IsGoalkeeper)
         {
-            var totalSaves = Goalkeeper.Arrets + Goalkeeper.ArretsPenalty;
-            var tirs = Goalkeeper.TirsSubis;
-            return
-            [
-                new PlayerSheetRowV2("Matchs", Profile.MatchesPlayed.ToString(), string.Empty, "info"),
-                new PlayerSheetRowV2("Arrets", totalSaves.ToString(), $"{Goalkeeper.Arrets} jeu + {Goalkeeper.ArretsPenalty} sur 7m", "positive"),
-                new PlayerSheetRowV2("Taux d'arret", PlayerSheetExportHelper.FormatRateOrDash(Goalkeeper.TauxArret, tirs), $"{totalSaves} / {tirs}", Goalkeeper.TauxArret >= 45 ? "positive" : "warning"),
-                new PlayerSheetRowV2("Stop 7m", PlayerSheetExportHelper.FormatRateOrDash(Technical.GoalkeeperPenaltyStopRate, Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty), $"{Goalkeeper.ArretsPenalty} / {Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty}", Technical.GoalkeeperPenaltyStopRate >= 40 ? "good" : "warning"),
-                new PlayerSheetRowV2("Passes decisives", Goalkeeper.PasseDecisives.ToString(), string.Empty, "good"),
-                new PlayerSheetRowV2("Buts", Goalkeeper.Buts.ToString(), string.Empty, "neutral"),
-            ];
+            return PlayerSheetExportHelper.BuildGoalkeeperOffensiveRows(
+                Global,
+                Goalkeeper,
+                Technical,
+                positionProfile);
         }
 
         var v2Offense = LeagueAnalytics?.Analytics?.Offense;
@@ -3934,13 +3928,10 @@
 
         if (Profile.IsGoalkeeper)
         {
-            return
-            [
-                new PlayerSheetRowV2("Tirs subis", Goalkeeper.TirsSubis.ToString(), string.Empty, "neutral"),
-                new PlayerSheetRowV2("Buts encaisses", (Goalkeeper.ButsPris + Goalkeeper.ButsPenalty).ToString(), $"{Goalkeeper.ButsPris} jeu + {Goalkeeper.ButsPenalty} sur 7m", "warning"),
-                new PlayerSheetRowV2("Pertes de balle", Goalkeeper.PerteDeBalle.ToString(), string.Empty, Goalkeeper.PerteDeBalle > 5 ? "warning" : "neutral"),
-                new PlayerSheetRowV2("Sanctions", Technical.Sanctions.ToString(), string.Empty, Technical.Sanctions > 3 ? "danger" : "neutral"),
-            ];
+            return PlayerSheetExportHelper.BuildGoalkeeperDefensiveRows(
+                Goalkeeper,
+                Technical,
+                positionProfile);
         }
 
         return PlayerSheetExportHelper.BuildDefensiveRows(Profile, Defense, Sanctions, positionProfile);

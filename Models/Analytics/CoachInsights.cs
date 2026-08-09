@@ -61,7 +61,7 @@ internal static class PositionProfileInsightEngine
         }
 
         var axes = allAxes
-            .Where(IsFiniteAxis)
+            .Where(axis => axis.IsEvaluative && IsFiniteAxis(axis))
             .ToList();
 
         if (axes.Count == 0)
@@ -78,14 +78,14 @@ internal static class PositionProfileInsightEngine
         var riskScore = AverageOrFallback(axes.Where(IsRiskAxis).Select(axis => axis.DirectionalPercentile), overallAverage);
 
         var strongAxes = axes
-            .Where(axis => axis.DirectionalPercentile >= 65d)
+            .Where(axis => axis.IsEvaluative && axis.DirectionalPercentile >= 75d)
             .OrderByDescending(axis => axis.DirectionalPercentile)
             .ThenByDescending(axis => axis.Impact)
             .Take(3)
             .ToList();
 
         var weakAxes = axes
-            .Where(axis => axis.DirectionalPercentile <= 35d)
+            .Where(axis => axis.IsEvaluative && axis.DirectionalPercentile < 35d)
             .OrderBy(axis => axis.DirectionalPercentile)
             .ThenByDescending(axis => axis.Impact)
             .Take(3)

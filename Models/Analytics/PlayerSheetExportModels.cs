@@ -145,32 +145,22 @@ public static class PlayerSheetExportHelper
         var penWonValue    = penaltiesWon >= 0   ? penaltiesWon.ToString()   : (penaltiesWonUnavailable   ? "N/D" : "—");
         var sanctDrawnValue = sanctionsDrawn >= 0 ? sanctionsDrawn.ToString() : (sanctionsDrawnUnavailable ? "N/D" : "—");
 
-        var axes = positionProfile?.SelectedPlayer?.Axes ?? [];
-        var cohortSize = positionProfile?.CohortPlayerCount ?? 0;
-
         return
         [
-            // open_goals_per60 · label "Buts jeu /60"
-            WithPct(new PlayerSheetRowV2("Buts", global.TotalGoals.ToString(), $"{offense.Buts} jeu + {offense.Buts7m} sur 7m", "positive"),
-                axes, new[]{"open_goals_per60","open_goal","buts jeu","jeu /60","finition"}, cohortSize),
-            // no axis for 7m goals specifically
+            WithPct(new PlayerSheetRowV2("Buts dans le jeu", offense.Buts.ToString(), string.Empty, "positive"),
+                positionProfile, "open_goals_per60"),
             WithPct(new PlayerSheetRowV2("Buts sur 7m", offense.Buts7m.ToString(), string.Empty, "positive"),
-                axes, new[]{"penalty_goal","7m_goal","but_7m","buts_7m"}, cohortSize),
-            // no axis for 7m success rate — shows "—"
+                positionProfile, "penalty_goals_per60"),
             WithPct(new PlayerSheetRowV2("% tir 7m", FormatRateOrDash(technical.PenaltySuccessRate, penShots), penShots > 0 ? $"{offense.Buts7m} / {penShots}" : string.Empty, technical.PenaltySuccessRate >= 60 ? "positive" : "warning"),
-                axes, new[]{"penalty_success_rate","7m_success_rate","taux_7m_reussi"}, cohortSize),
-            // assists_per60 · label "PD /60"
+                positionProfile, "penalty_success_rate"),
             WithPct(new PlayerSheetRowV2("Passes decisives", global.AssistCount.ToString(), string.Empty, "good"),
-                axes, new[]{"assists_per60","assists_per","pd /60","passe","assist"}, cohortSize),
-            // turnovers_per60 · label "PDB /60"
+                positionProfile, "assists_per60"),
             WithPct(new PlayerSheetRowV2("Pertes de balle", passing.TotalPertes.ToString(), string.Empty, passing.TotalPertes > 15 ? "warning" : "neutral"),
-                axes, new[]{"turnovers_per60","turnovers_per","pdb /60","turnover","perte"}, cohortSize),
-            // penalties_won_per60 · label "7m obt. /60"
+                positionProfile, "turnovers_per60"),
             WithPct(new PlayerSheetRowV2("7m obtenus", penWonValue, string.Empty, "positive"),
-                axes, new[]{"penalties_won_per60","penalties_won","7m obt","pen_won","penalty_won"}, cohortSize),
-            // sanctions_won_per60 · label "Sanctions obt. /60"
+                positionProfile, "penalties_won_per60"),
             WithPct(new PlayerSheetRowV2("Sanctions obtenues", sanctDrawnValue, string.Empty, "neutral"),
-                axes, new[]{"sanctions_won_per60","sanctions_won","sanctions obt","sanction_won","sanction_drawn"}, cohortSize),
+                positionProfile, "sanctions_won_per60"),
         ];
     }
 
@@ -181,82 +171,134 @@ public static class PlayerSheetExportHelper
         PlayerSanctionStatsDto sanctions,
         PositionProfileResponseDto? positionProfile = null)
     {
-        var totalSanctions = sanctions.Avertissements + sanctions.DeuxMinutes + sanctions.Exclusions;
-        var axes = positionProfile?.SelectedPlayer?.Axes ?? [];
-        var cohortSize = positionProfile?.CohortPlayerCount ?? 0;
+        return
+        [
+            WithPct(new PlayerSheetRowV2("Interceptions", defense.Interceptions.ToString(), string.Empty, "good"),
+                positionProfile, "interceptions_per60"),
+            WithPct(new PlayerSheetRowV2("Contres", defense.Contres.ToString(), string.Empty, "good"),
+                positionProfile, "blocks_per60"),
+            WithPct(new PlayerSheetRowV2("7m concedes", sanctions.PenaltyConcede.ToString(), string.Empty, sanctions.PenaltyConcede > 3 ? "warning" : "neutral"),
+                positionProfile, "penalties_conceded_per60"),
+            WithPct(new PlayerSheetRowV2("2 minutes", sanctions.DeuxMinutes.ToString(), $"{sanctions.Avertissements} avert. · {sanctions.Exclusions} excl.", sanctions.DeuxMinutes > 5 ? "danger" : "neutral"),
+                positionProfile, "two_minutes_per60"),
+        ];
+    }
+
+    /// <summary>Build offensive table rows for a goalkeeper with exact position-axis mappings.</summary>
+    public static IReadOnlyList<PlayerSheetRowV2> BuildGoalkeeperOffensiveRows(
+        PlayerGlobalStatsDto global,
+        PlayerGoalkeeperStatsDto goalkeeper,
+        PlayerTechnicalStatsDto technical,
+        PositionProfileResponseDto? positionProfile = null)
+    {
+        var totalSaves = goalkeeper.Arrets + goalkeeper.ArretsPenalty;
+        var penaltyShotsFaced = goalkeeper.ArretsPenalty + goalkeeper.ButsPenalty;
 
         return
         [
-            // interceptions_per60 · label "INTS /60"
-            WithPct(new PlayerSheetRowV2("Interceptions", defense.Interceptions.ToString(), string.Empty, "good"),
-                axes, new[]{"interceptions_per60","interceptions_per","ints /60","interception","intercept"}, cohortSize),
-            // blocks_per60 · label "Contres /60"
-            WithPct(new PlayerSheetRowV2("Contres", defense.Contres.ToString(), string.Empty, "good"),
-                axes, new[]{"blocks_per60","blocks_per","contres /60","block","contre"}, cohortSize),
-            // penalties_conceded_per60 · label "7m conc. /60"
-            WithPct(new PlayerSheetRowV2("7m concedes", sanctions.PenaltyConcede.ToString(), string.Empty, sanctions.PenaltyConcede > 3 ? "warning" : "neutral"),
-                axes, new[]{"penalties_conceded_per60","penalties_conceded","7m conc","pen_conc","penalty_conceded"}, cohortSize),
-            // two_minutes_per60 · label "2 min /60"
-            WithPct(new PlayerSheetRowV2("Sanctions concedees", totalSanctions.ToString(), $"{sanctions.Avertissements} avert. · {sanctions.DeuxMinutes} x 2min · {sanctions.Exclusions} excl.", totalSanctions > 5 ? "danger" : "neutral"),
-                axes, new[]{"two_minutes_per60","two_minutes","2 min /60","two_min","discipline"}, cohortSize),
+            new PlayerSheetRowV2("Matchs", global.MatchesPlayed.ToString(), string.Empty, "neutral"),
+            WithPct(new PlayerSheetRowV2("Arrets", totalSaves.ToString(), $"{goalkeeper.Arrets} jeu + {goalkeeper.ArretsPenalty} sur 7m", "positive"),
+                positionProfile, "saves_per60"),
+            WithPct(new PlayerSheetRowV2("Taux d'arret", FormatRateOrDash(technical.GoalkeeperSaveRate, goalkeeper.TirsSubis), goalkeeper.TirsSubis > 0 ? $"{totalSaves} / {goalkeeper.TirsSubis}" : string.Empty, "good"),
+                positionProfile, "save_rate"),
+            WithPct(new PlayerSheetRowV2("Arrets sur 7m", goalkeeper.ArretsPenalty.ToString(), penaltyShotsFaced > 0 ? $"{goalkeeper.ArretsPenalty} / {penaltyShotsFaced}" : string.Empty, "good"),
+                positionProfile, "penalty_stops_per60"),
+            WithPct(new PlayerSheetRowV2("Passes decisives", goalkeeper.PasseDecisives.ToString(), string.Empty, "good"),
+                positionProfile, "assists_per60"),
+            WithPct(new PlayerSheetRowV2("Buts", goalkeeper.Buts.ToString(), string.Empty, "positive"),
+                positionProfile, "goalkeeper_goals_per60"),
+        ];
+    }
+
+    /// <summary>Build defensive table rows for a goalkeeper with exact position-axis mappings.</summary>
+    public static IReadOnlyList<PlayerSheetRowV2> BuildGoalkeeperDefensiveRows(
+        PlayerGoalkeeperStatsDto goalkeeper,
+        PlayerTechnicalStatsDto technical,
+        PositionProfileResponseDto? positionProfile = null)
+    {
+        var concededGoals = goalkeeper.ButsPris + goalkeeper.ButsPenalty;
+
+        return
+        [
+            WithPct(new PlayerSheetRowV2("Tirs subis", goalkeeper.TirsSubis.ToString(), string.Empty, "neutral"),
+                positionProfile, "shots_faced_per60"),
+            WithPct(new PlayerSheetRowV2("Buts encaisses", concededGoals.ToString(), $"{goalkeeper.ButsPris} jeu + {goalkeeper.ButsPenalty} sur 7m", "warning"),
+                positionProfile, "goals_conceded_per60"),
+            WithPct(new PlayerSheetRowV2("Pertes de balle", goalkeeper.PerteDeBalle.ToString(), string.Empty, goalkeeper.PerteDeBalle > 5 ? "warning" : "neutral"),
+                positionProfile, "turnovers_per60"),
+            WithPct(new PlayerSheetRowV2("Sanctions", technical.Sanctions.ToString(), string.Empty, technical.Sanctions > 3 ? "warning" : "neutral"),
+                positionProfile, "sanctions_per60"),
         ];
     }
 
     // ── Percentile benchmark helpers ─────────────────────────────────────────
 
     /// <summary>
-    /// Returns (label, tone) for a 0-100 favorable-direction percentile.
-    /// Si la taille de cohorte est connue et le rang estimé est ≤10 : affiche "#N".
-    /// Sinon : Fort ≥75 · Bon ≥50 · Moyen ≥25 · Faible &lt;25.
+    /// Returns a badge for an API percentile that is already oriented in the favorable direction.
+    /// A real top-10 rank replaces "Fort"; no rank is estimated on the client.
     /// </summary>
-    public static (string Label, string Tone) PercentileToLabel(double percentile, int cohortSize = 0)
+    public static (string Label, string Tone) PercentileToLabel(
+        double percentile,
+        int? rank = null,
+        bool isReliable = true,
+        bool isEligible = true,
+        bool isEvaluative = true)
     {
-        if (cohortSize >= 10)
-        {
-            // Estimate rank: percentile 100 = rank 1, percentile 0 = rank cohortSize
-            var estimatedRank = (int)Math.Round((100d - percentile) / 100d * cohortSize) + 1;
-            if (estimatedRank <= 10)
-                return ($"#{estimatedRank}", "positive");
-        }
-        return percentile switch
-        {
-            >= 75 => ("Fort",   "positive"),
-            >= 50 => ("Bon",    "good"),
-            >= 25 => ("Moyen",  "warning"),
-            _      => ("Faible", "danger"),
-        };
+        return PositionBenchmarkHelper.FormatBadge(
+            percentile,
+            rank,
+            isReliable,
+            isEligible,
+            isEvaluative);
     }
 
     /// <summary>
-    /// Finds the best-matching axis by key/label keywords and enriches the row with percentile label.
-    /// Inverts the percentile for !HigherIsBetter axes so the badge always reads as favorable direction.
-    /// Returns the row unchanged when no axis matches.
+    /// Enriches a row from one canonical API axis key. API percentiles are never inverted here.
     /// </summary>
     public static PlayerSheetRowV2 WithPct(
         PlayerSheetRowV2 row,
-        IReadOnlyList<PositionProfileAxisDto> axes,
-        string[] keywords,
-        int cohortSize = 0)
+        PositionProfileResponseDto? positionProfile,
+        string axisKey)
     {
-        // Match by explicit keyword in Key or Label only — no fuzzy fallback
-        var axis = axes.FirstOrDefault(a =>
-            keywords.Any(k =>
-                a.Key.Contains(k, StringComparison.OrdinalIgnoreCase) ||
-                a.Label.Contains(k, StringComparison.OrdinalIgnoreCase)));
+        var axes = positionProfile?.SelectedPlayer?.Axes ?? [];
+        var axis = axes.FirstOrDefault(candidate =>
+            string.Equals(candidate.Key, axisKey, StringComparison.OrdinalIgnoreCase));
 
         if (axis is null)
         {
-            // Profile is loaded (axes not empty) but no axis covers this metric → neutral placeholder
             return axes.Count > 0
                 ? row with { PercentileLabel = "—", PercentileTone = "neutral" }
                 : row;
         }
 
-        // Invert for negative-direction metrics so the badge reads in the favorable direction
-        var effectivePercentile = axis.HigherIsBetter ? axis.Percentile : (100d - axis.Percentile);
+        var (label, tone) = PercentileToLabel(
+            axis.Percentile,
+            axis.Rank,
+            PositionBenchmarkHelper.IsCohortReliable(positionProfile),
+            PositionBenchmarkHelper.IsSelectedPlayerEligible(positionProfile),
+            axis.IsEvaluative);
 
-        var (label, tone) = PercentileToLabel(effectivePercentile, cohortSize);
-        return row with { PercentileLabel = label, PercentileTone = tone };
+        var evidence = AppendBenchmarkEvidence(row.Evidence, axis);
+        return row with
+        {
+            Evidence = evidence,
+            Tone = tone,
+            PercentileLabel = label,
+            PercentileTone = tone
+        };
+    }
+
+    private static string AppendBenchmarkEvidence(string evidence, PositionProfileAxisDto axis)
+    {
+        var benchmarkValue = axis.Key.EndsWith("_per60", StringComparison.OrdinalIgnoreCase)
+            ? $"{axis.Value.ToString("0.##", CultureInfo.InvariantCulture)} /60"
+            : string.Equals(axis.Format, "percent", StringComparison.OrdinalIgnoreCase)
+                ? $"{axis.Value.ToString("0.#", CultureInfo.InvariantCulture)} %"
+                : axis.Value.ToString("0.##", CultureInfo.InvariantCulture);
+
+        return string.IsNullOrWhiteSpace(evidence)
+            ? benchmarkValue
+            : $"{evidence} · {benchmarkValue}";
     }
 
     // ── Display formatting ────────────────────────────────────────────────────

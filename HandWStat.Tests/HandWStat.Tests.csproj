@@ -29,6 +29,7 @@
     <Compile Include="..\Services\PlayerTableMapper.cs" Link="Services\PlayerTableMapper.cs" />
     <Compile Include="..\Models\Analytics\KpiModels.cs" Link="Models\Analytics\KpiModels.cs" />
     <Compile Include="..\Models\Analytics\MetricDisplayModels.cs" Link="Models\Analytics\MetricDisplayModels.cs" />
+    <Compile Include="..\Models\Analytics\PositionBenchmarkHelper.cs" Link="Models\Analytics\PositionBenchmarkHelper.cs" />
     <Compile Include="..\Models\Analytics\PlayerSheetExportModels.cs" Link="Models\Analytics\PlayerSheetExportModels.cs" />
     <Compile Include="..\Models\Analytics\LeagueAnalyticsModels.cs" Link="Models\Analytics\LeagueAnalyticsModels.cs" />
     <Compile Include="..\Services\Api\ApiClientBase.cs" Link="Services\Api\ApiClientBase.cs" />
@@ -51,11 +52,11 @@
     <Compile Include="..\Models\Analytics\GameSeasonBaselineCalculator.cs" Link="Models\Analytics\GameSeasonBaselineCalculator.cs" />
     <Compile Include="..\Models\Analytics\PlayerGameRowBuilder.cs" Link="Models\Analytics\PlayerGameRowBuilder.cs" />
     <Compile Include="..\Models\Analytics\TableHeatToneHelper.cs" Link="Models\Analytics\TableHeatToneHelper.cs" />
-    <Compile Include="..\Models\Matches\MatchScoreFormatter.cs" Link="Models\Matches\MatchScoreFormatter.cs" />
-    <Compile Include="..\Models\Matches\MatchIdentityDisplay.cs" Link="Models\Matches\MatchIdentityDisplay.cs" />
-    <Compile Include="..\Models\Matches\MatchComparisonModels.cs" Link="Models\Matches\MatchComparisonModels.cs" />
-    <Compile Include="..\Models\Matches\MatchComparisonBuilder.cs" Link="Models\Matches\MatchComparisonBuilder.cs" />
-    <Compile Include="..\Models\Matches\MatchScenarioAnalyzerV2.cs" Link="Models\Matches\MatchScenarioAnalyzerV2.cs" />
+    <Compile Include="..\Models\Matches\MatchScoreFormatter.cs" Link="Models\Matches\MatchScoreFormatter.cs" Condition="Exists('..\Models\Matches\MatchScoreFormatter.cs')" />
+    <Compile Include="..\Models\Matches\MatchIdentityDisplay.cs" Link="Models\Matches\MatchIdentityDisplay.cs" Condition="Exists('..\Models\Matches\MatchIdentityDisplay.cs')" />
+    <Compile Include="..\Models\Matches\MatchComparisonModels.cs" Link="Models\Matches\MatchComparisonModels.cs" Condition="Exists('..\Models\Matches\MatchComparisonModels.cs')" />
+    <Compile Include="..\Models\Matches\MatchComparisonBuilder.cs" Link="Models\Matches\MatchComparisonBuilder.cs" Condition="Exists('..\Models\Matches\MatchComparisonBuilder.cs')" />
+    <Compile Include="..\Models\Matches\MatchScenarioAnalyzerV2.cs" Link="Models\Matches\MatchScenarioAnalyzerV2.cs" Condition="Exists('..\Models\Matches\MatchScenarioAnalyzerV2.cs')" />
     <Compile Include="..\Models\Analytics\ExportModels.cs" Link="Models\Analytics\ExportModels.cs" />
     <Compile Include="..\Models\Analytics\SmartFilterCatalog.cs" Link="Models\Analytics\SmartFilterCatalog.cs" />
     <Compile Include="..\Services\Api\ExportApiClient.cs" Link="Services\Api\ExportApiClient.cs" />

@@ -61,6 +61,7 @@ public static class ExportSectionCatalog
 {
     public static readonly IReadOnlyList<ExportSectionItem> All =
     [
+        new("SEASON_PLAYER_RESULTS", "Bilan final des joueuses",  "Totaux de saison, classements et leaders dans un seul fichier", true, false),
         new("SEASON_SUMMARY",    "Synthèse du périmètre",      "Totaux agrégés sur le périmètre analysé",                  true,  false),
         new("TEAMS",             "Équipes",                     "Statistiques par équipe",                                  true,  false),
         new("PLAYERS",           "Joueuses",                    "Statistiques globales par joueuse",                        true,  false),
@@ -82,16 +83,16 @@ public static class ExportSectionCatalog
     {
         ExportPreset.FullAnalysis => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "SEASON_SUMMARY", "TEAMS", "PLAYERS", "PLAYERS_PER_MATCH",
+            "SEASON_SUMMARY", "SEASON_PLAYER_RESULTS", "TEAMS", "PLAYERS", "PLAYERS_PER_MATCH",
             "GOALKEEPERS", "MATCHES", "SHOTS", "DEFENSE", "METRIC_DICTIONARY", "DATA_QUALITY",
         },
         ExportPreset.Staff => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "SEASON_SUMMARY", "TEAMS", "PLAYERS", "MATCHES", "DATA_QUALITY",
+            "SEASON_SUMMARY", "SEASON_PLAYER_RESULTS", "TEAMS", "PLAYERS", "MATCHES", "DATA_QUALITY",
         },
         ExportPreset.Players => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "PLAYERS", "PLAYERS_PER_MATCH", "GOALKEEPERS", "DATA_QUALITY",
+            "SEASON_PLAYER_RESULTS", "PLAYERS", "PLAYERS_PER_MATCH", "GOALKEEPERS", "DATA_QUALITY",
         },
         ExportPreset.Matches => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -104,7 +105,7 @@ public static class ExportSectionCatalog
         ExportPreset.Custom => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
         _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "SEASON_SUMMARY", "TEAMS", "PLAYERS", "PLAYERS_PER_MATCH",
+            "SEASON_SUMMARY", "SEASON_PLAYER_RESULTS", "TEAMS", "PLAYERS", "PLAYERS_PER_MATCH",
             "GOALKEEPERS", "MATCHES", "SHOTS", "DEFENSE", "METRIC_DICTIONARY", "DATA_QUALITY",
         },
     };
@@ -128,9 +129,8 @@ public sealed class ExportScopeState
     public string? Season { get; set; }
 
     /// <summary>
-    /// Day from global scope. NOTE: the export API does not accept a Day field.
-    /// This is stored for display and for filtering the match/player lists,
-    /// but is NOT propagated to AnalyticsExportRequestDto.
+    /// Day from global scope. It is propagated to the export API and is also
+    /// used to refine the client-side match picker.
     /// </summary>
     public string? Day { get; set; }
 
@@ -283,11 +283,6 @@ public static class ExportRequestValidator
             errors.Add("Sélectionnez au moins une joueuse.");
         }
 
-        if (target == ExportTargetType.Goalkeepers && selectedPlayerIds.Count == 0)
-        {
-            errors.Add("Sélectionnez au moins une gardienne.");
-        }
-
         if (target == ExportTargetType.Matches && selectedMatchIds.Count == 0)
         {
             errors.Add("Sélectionnez au moins un match.");
@@ -350,6 +345,7 @@ public static class ExportRequestBuilder
             MatchIds = selectedMatchIds.Count > 0 ? selectedMatchIds.ToList() : null,
             DateFrom = scope.DateFrom,
             DateTo = scope.DateTo,
+            Day = string.IsNullOrWhiteSpace(scope.Day) ? null : scope.Day.Trim(),
             Sections = sections.ToList(),
             IncludeRawEvents = includeRawEvents,
             IncludeShotCoordinates = includeShotCoordinates,
@@ -357,6 +353,22 @@ public static class ExportRequestBuilder
             RequestedBy = "HandWStat",
         };
     }
+
+    /// <summary>
+    /// Builds the one-click season workbook request for the current analysis scope.
+    /// The workbook contains the consolidated player results and season leaders.
+    /// </summary>
+    public static AnalyticsExportRequestDto BuildSeasonResults(ExportScopeState scope) =>
+        Build(
+            scope,
+            ExportTargetType.FullScope,
+            scope.TeamId,
+            [],
+            [],
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "SEASON_PLAYER_RESULTS" },
+            includeRawEvents: false,
+            includeShotCoordinates: false,
+            includeDataQuality: false);
 
     /// <summary>
     /// Derives SeasonYear from a label like "2025-2026" → 2025.

@@ -527,9 +527,11 @@ public class PositionProfileAxisDto
     public string Category { get; set; } = string.Empty;
     public string Format { get; set; } = string.Empty;
     public bool HigherIsBetter { get; set; }
+    public bool IsEvaluative { get; set; } = true;
     public double Value { get; set; }
     public double MedianValue { get; set; }
     public double Percentile { get; set; }
+    public int? Rank { get; set; }
     public double MinValue { get; set; }
     public double MaxValue { get; set; }
     public string Tone { get; set; } = string.Empty;
@@ -541,6 +543,7 @@ public class PositionProfilePlayerDto : PlayerListItemDto
     public int MatchesWithPlayingTime { get; set; }
     public double PlayingTimeMinutes { get; set; }
     public double AveragePlayingTimePerMatchMinutes { get; set; }
+    public bool? IsBenchmarkEligible { get; set; }
     public List<PositionProfileAxisDto> Axes { get; set; } = [];
 }
 
@@ -551,6 +554,9 @@ public class PositionProfileResponseDto
     public string? PositionName { get; set; }
     public bool IsGoalkeeperProfile { get; set; }
     public int CohortPlayerCount { get; set; }
+    public bool? IsCohortReliable { get; set; }
+    public int MinimumCohortPlayerCount { get; set; }
+    public double MinimumBenchmarkPlayingTimeMinutes { get; set; }
     public PositionProfilePlayerDto? SelectedPlayer { get; set; }
     public PositionProfilePlayerDto? MedianProfile { get; set; }
     public List<PositionProfilePlayerDto> Players { get; set; } = [];
