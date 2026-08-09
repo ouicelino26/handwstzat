@@ -89,7 +89,9 @@ public sealed class PlayerSheetExportV2Tests
     private static PositionProfileResponseDto MakePositionProfile(
         IEnumerable<PositionProfileAxisDto>? axes = null,
         int cohortCount = 22,
-        string positionName = "Ailier gauche")
+        string positionName = "Ailier gauche",
+        double playingTimeMinutes = 600,
+        bool isBenchmarkEligible = true)
     {
         return new PositionProfileResponseDto
         {
@@ -104,8 +106,8 @@ public sealed class PlayerSheetExportV2Tests
                 PlayerId = 42,
                 FullName = "Chloe Valentini",
                 MatchesPlayed = 14,
-                PlayingTimeMinutes = 600,
-                IsBenchmarkEligible = true,
+                PlayingTimeMinutes = playingTimeMinutes,
+                IsBenchmarkEligible = isBenchmarkEligible,
                 Axes = axes?.ToList() ?? []
             }
         };
@@ -371,6 +373,42 @@ public sealed class PlayerSheetExportV2Tests
 
         Assert.Equal("Éch. faible", row.PercentileLabel);
         Assert.Equal("neutral", row.PercentileTone);
+    }
+
+    [Fact]
+    public void PlayerSheet_MissingPlayingTime_DoesNotClaimEveryMetricHasAWeakSample()
+    {
+        var axis = MakeAxis("assists_per60", "PD /60", "attaque", percentile: 90, rank: null);
+        var positionProfile = MakePositionProfile(
+            [axis],
+            playingTimeMinutes: 0,
+            isBenchmarkEligible: false);
+
+        var row = PlayerSheetExportHelper.WithPct(
+            new PlayerSheetRowV2("Passes decisives", "20", string.Empty, "good"),
+            positionProfile,
+            "assists_per60");
+
+        Assert.Equal("Temps N/D", row.PercentileLabel);
+        Assert.Equal("Temps N/D", row.Evidence);
+        Assert.Equal("neutral", row.PercentileTone);
+    }
+
+    [Fact]
+    public void PlayerSheet_MissingPlayingTime_HidesMisleadingPer60Radars()
+    {
+        var axes = new[]
+        {
+            MakeAxis("open_goals_per60", "Buts jeu /60", "attaque", percentile: 90),
+            MakeAxis("interceptions_per60", "INTS /60", "defense", percentile: 80)
+        };
+        var positionProfile = MakePositionProfile(
+            axes,
+            playingTimeMinutes: 0,
+            isBenchmarkEligible: false);
+
+        Assert.Empty(PlayerSheetExportHelper.BuildOffensiveRadarAxes(positionProfile, false));
+        Assert.Empty(PlayerSheetExportHelper.BuildDefensiveRadarAxes(positionProfile, false));
     }
 
     [Fact]

@@ -28,7 +28,7 @@ public static class PlayerSheetExportHelper
         bool isGoalkeeper)
     {
         var allAxes = positionProfile?.SelectedPlayer?.Axes ?? [];
-        if (allAxes.Count == 0)
+        if (allAxes.Count == 0 || HasMissingPlayingTime(positionProfile))
         {
             return [];
         }
@@ -64,7 +64,7 @@ public static class PlayerSheetExportHelper
         bool isGoalkeeper)
     {
         var allAxes = positionProfile?.SelectedPlayer?.Axes ?? [];
-        if (allAxes.Count == 0)
+        if (allAxes.Count == 0 || HasMissingPlayingTime(positionProfile))
         {
             return [];
         }
@@ -242,14 +242,16 @@ public static class PlayerSheetExportHelper
         int? rank = null,
         bool isReliable = true,
         bool isEligible = true,
-        bool isEvaluative = true)
+        bool isEvaluative = true,
+        bool hasPlayingTime = true)
     {
         return PositionBenchmarkHelper.FormatBadge(
             percentile,
             rank,
             isReliable,
             isEligible,
-            isEvaluative);
+            isEvaluative,
+            hasPlayingTime);
     }
 
     /// <summary>
@@ -276,9 +278,13 @@ public static class PlayerSheetExportHelper
             axis.Rank,
             PositionBenchmarkHelper.IsCohortReliable(positionProfile),
             PositionBenchmarkHelper.IsSelectedPlayerEligible(positionProfile),
-            axis.IsEvaluative);
+            axis.IsEvaluative,
+            (positionProfile?.SelectedPlayer?.PlayingTimeMinutes ?? 0d) > 0d);
 
-        var evidence = AppendBenchmarkEvidence(row.Evidence, axis);
+        var evidence = AppendBenchmarkEvidence(
+            row.Evidence,
+            axis,
+            positionProfile?.SelectedPlayer?.PlayingTimeMinutes ?? 0d);
         return row with
         {
             Evidence = evidence,
@@ -288,8 +294,18 @@ public static class PlayerSheetExportHelper
         };
     }
 
-    private static string AppendBenchmarkEvidence(string evidence, PositionProfileAxisDto axis)
+    private static string AppendBenchmarkEvidence(
+        string evidence,
+        PositionProfileAxisDto axis,
+        double playingTimeMinutes)
     {
+        if (axis.Key.EndsWith("_per60", StringComparison.OrdinalIgnoreCase) && playingTimeMinutes <= 0d)
+        {
+            return string.IsNullOrWhiteSpace(evidence)
+                ? "Temps N/D"
+                : $"{evidence} · Temps N/D";
+        }
+
         var benchmarkValue = axis.Key.EndsWith("_per60", StringComparison.OrdinalIgnoreCase)
             ? $"{axis.Value.ToString("0.##", CultureInfo.InvariantCulture)} /60"
             : string.Equals(axis.Format, "percent", StringComparison.OrdinalIgnoreCase)
@@ -299,6 +315,14 @@ public static class PlayerSheetExportHelper
         return string.IsNullOrWhiteSpace(evidence)
             ? benchmarkValue
             : $"{evidence} · {benchmarkValue}";
+    }
+
+    private static bool HasMissingPlayingTime(PositionProfileResponseDto? positionProfile)
+    {
+        var selectedPlayer = positionProfile?.SelectedPlayer;
+        return selectedPlayer is not null
+            && selectedPlayer.PlayingTimeMinutes <= 0d
+            && selectedPlayer.Axes.Any(axis => axis.Key.EndsWith("_per60", StringComparison.OrdinalIgnoreCase));
     }
 
     // ── Display formatting ────────────────────────────────────────────────────

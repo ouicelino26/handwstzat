@@ -29,16 +29,24 @@ public static class PositionBenchmarkHelper
         int? rank,
         bool isReliable,
         bool isEligible,
-        bool isEvaluative = true)
+        bool isEvaluative = true,
+        bool hasPlayingTime = true)
     {
         if (!isEvaluative)
         {
             return ("Contexte", "neutral");
         }
 
-        if (!isReliable || !isEligible)
+        if (!isReliable)
         {
             return ("Éch. faible", "neutral");
+        }
+
+        if (!isEligible)
+        {
+            return hasPlayingTime
+                ? ("Éch. faible", "neutral")
+                : ("Temps N/D", "neutral");
         }
 
         var band = Classify(percentile);

@@ -3731,9 +3731,15 @@
 
         if (primaryAxes.Count == 0)
         {
+            var missingPlayingTime = positionProfile?.SelectedPlayer is not null
+                && positionProfile.SelectedPlayer.PlayingTimeMinutes <= 0d;
+            var emptyTitle = missingPlayingTime ? "Radar non calculable" : "Radar poste indisponible";
+            var emptyDetail = missingPlayingTime
+                ? "Temps de jeu non importe : comparaison par 60 minutes masquee."
+                : "La cohorte du poste n'a pas pu etre chargee.";
             return panelBg + $"""
-  <text x="{FormatSvgNumber(panelX + panelW / 2d)}" y="{FormatSvgNumber(panelY + panelH / 2d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="#0f172a">Radar poste indisponible</text>
-  <text x="{FormatSvgNumber(panelX + panelW / 2d)}" y="{FormatSvgNumber(panelY + panelH / 2d + 28d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">La cohorte du poste n'a pas pu etre chargee.</text>
+  <text x="{FormatSvgNumber(panelX + panelW / 2d)}" y="{FormatSvgNumber(panelY + panelH / 2d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="#0f172a">{emptyTitle}</text>
+  <text x="{FormatSvgNumber(panelX + panelW / 2d)}" y="{FormatSvgNumber(panelY + panelH / 2d + 28d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">{emptyDetail}</text>
 """;
         }
 
