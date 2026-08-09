@@ -1,0 +1,60 @@
+.metric-breakdown-card {
+    display: grid;
+    gap: 0.8rem;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--court-400) 38%, transparent);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+}
+
+.metric-breakdown-card header,
+.metric-breakdown-card header > div,
+.metric-breakdown-card dl {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.metric-breakdown-card header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+}
+
+.metric-breakdown-card header span,
+.metric-breakdown-card summary,
+.metric-breakdown-card dt,
+.metric-breakdown-card dd {
+    color: var(--text-body);
+}
+
+.metric-breakdown-card header strong {
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: clamp(1.9rem, 5vw, 3rem);
+    line-height: 1;
+}
+
+.metric-breakdown-card summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.metric-breakdown-card dl {
+    margin: 0.75rem 0 0;
+}
+
+.metric-breakdown-card dl > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.metric-breakdown-card dt,
+.metric-breakdown-card dd {
+    margin: 0;
+    font-size: 0.78rem;
+}
+
+.metric-breakdown-card dd {
+    text-align: right;
+}

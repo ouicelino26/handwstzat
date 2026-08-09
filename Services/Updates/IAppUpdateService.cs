@@ -8,10 +8,11 @@ public interface IAppUpdateService
 
     event Action? StateChanged;
 
-    Task CheckAsync(CancellationToken cancellationToken = default);
+    Task CheckAsync(
+        bool ignoreDismissedUpdate = false,
+        CancellationToken cancellationToken = default);
 
     Task<bool> OpenDownloadAsync(CancellationToken cancellationToken = default);
 
     void DismissOptionalUpdate();
 }
-

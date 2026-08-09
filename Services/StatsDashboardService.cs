@@ -1,28 +1,32 @@
 using HandWStat.Models.Analytics;
+using HandWStat.Models.Contracts;
+using HandWStat.Services.Analytics;
 using HandWStat.Services.Api;
-using HandballManagerCore.DTO;
 
 namespace HandWStat.Services;
 
 public sealed class StatsDashboardService
 {
-    private readonly StatsApiClient _statsApiClient;
+    private readonly IAnalyticsGateway _analyticsGateway;
     private readonly PlayersApiClient _playersApiClient;
     private readonly MatchesApiClient _matchesApiClient;
     private readonly TeamOfTheDayService _teamOfTheDayService;
+    private readonly DashboardSnapshotBuilder _snapshotBuilder;
     private readonly IApiAuthService _authService;
 
     public StatsDashboardService(
-        StatsApiClient statsApiClient,
+        IAnalyticsGateway analyticsGateway,
         PlayersApiClient playersApiClient,
         MatchesApiClient matchesApiClient,
         TeamOfTheDayService teamOfTheDayService,
+        DashboardSnapshotBuilder snapshotBuilder,
         IApiAuthService authService)
     {
-        _statsApiClient = statsApiClient;
+        _analyticsGateway = analyticsGateway;
         _playersApiClient = playersApiClient;
         _matchesApiClient = matchesApiClient;
         _teamOfTheDayService = teamOfTheDayService;
+        _snapshotBuilder = snapshotBuilder;
         _authService = authService;
     }
 
@@ -44,12 +48,12 @@ public sealed class StatsDashboardService
             var rankingMetric = NormalizeRankingMetric(filters.RankingMetric);
             var rankingTop = Math.Clamp(filters.Top, 3, 12);
 
-            var overviewTask = _statsApiClient.GetOverviewAsync(queryOptions, cancellationToken);
-            var playersTask = _statsApiClient.GetPlayersAsync(queryOptions, cancellationToken);
-            var topScorersTask = _statsApiClient.GetRankingsAsync("goals", queryOptions, rankingTop, cancellationToken);
-            var efficiencyTask = _statsApiClient.GetRankingsAsync("shotsuccess", queryOptions, rankingTop, cancellationToken);
-            var requestedTask = _statsApiClient.GetRankingsAsync(rankingMetric, queryOptions, rankingTop, cancellationToken);
-            var interceptionsTask = _statsApiClient.GetRankingsAsync("interceptions", queryOptions, 5, cancellationToken);
+            var overviewTask = _analyticsGateway.GetOverviewAsync(queryOptions, cancellationToken);
+            var playersTask = _analyticsGateway.GetPlayersAsync(queryOptions, cancellationToken);
+            var topScorersTask = _analyticsGateway.GetRankingsAsync("goals", queryOptions, rankingTop, cancellationToken);
+            var efficiencyTask = _analyticsGateway.GetRankingsAsync("shotsuccess", queryOptions, rankingTop, cancellationToken);
+            var requestedTask = _analyticsGateway.GetRankingsAsync(rankingMetric, queryOptions, rankingTop, cancellationToken);
+            var interceptionsTask = _analyticsGateway.GetRankingsAsync("interceptions", queryOptions, 5, cancellationToken);
             var recentMatchesTask = _matchesApiClient.GetMatchesAsync(
                 competitionId: filters.CompetitionId,
                 teamId: filters.TeamId,
@@ -73,40 +77,19 @@ public sealed class StatsDashboardService
 
             var overview = overviewTask.Result ?? new StatsOverviewDto();
             var playerStats = playersTask.Result;
-            var players = playerStats
-                .Select(player => new PlayerDirectoryItem(
-                    player.PlayerId,
-                    player.FullName,
-                    player.TeamName ?? "Equipe non renseignee",
-                    player.PositionName ?? "Poste non renseigne",
-                    player.Nationality,
-                    player.Age,
-                    player.IsGoalkeeper))
-                .OrderBy(player => player.FullName)
-                .ToList();
+            var players = _snapshotBuilder.BuildPlayerDirectory(playerStats);
 
             var selectedPlayerId = ResolveSelectedPlayerId(filters.SpotlightPlayerId, playerStats, topScorersTask.Result, requestedTask.Result);
             var globalBoardsTask = LoadGlobalBoardsAsync(queryOptions, playerStats, cancellationToken);
-            var teamOfTheDayTask = LoadTeamOfTheDaySafeAsync(filters, cancellationToken);
 
             if (!selectedPlayerId.HasValue)
             {
                 return new DashboardSnapshot
                 {
-                    Overview = new OverviewMetrics(
-                        overview.PlayerCount,
-                        overview.TeamCount,
-                        overview.MatchCount,
-                        overview.GoalCount + overview.PenaltyGoalCount + overview.AssistCount + overview.InterceptionCount + overview.SaveCount + overview.TurnoverCount + overview.SanctionCount,
-                        overview.GoalCount + overview.PenaltyGoalCount,
-                        overview.AssistCount,
-                        overview.InterceptionCount,
-                        overview.SaveCount,
-                        overview.TurnoverCount,
-                        overview.SanctionCount),
+                    Overview = _snapshotBuilder.BuildOverview(overview),
                     Players = players,
                     GlobalBoards = await globalBoardsTask,
-                    TeamOfTheDay = await teamOfTheDayTask,
+                    TeamOfTheDay = TeamOfTheDaySnapshotDto.Empty("Ouvrez la section Equipe de la journee pour charger cette analyse."),
                     TopScorers = MapRanking(topScorersTask.Result),
                     EfficiencyRanking = MapRanking(efficiencyTask.Result),
                     RequestedRanking = MapRanking(requestedTask.Result),
@@ -123,14 +106,14 @@ public sealed class StatsDashboardService
             var selectedPlayerQuery = queryOptions;
 
             var profileTask = _playersApiClient.GetPlayerProfileAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
-            var globalTask = _statsApiClient.GetPlayerGlobalAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
-            var offenseTask = _statsApiClient.GetPlayerOffenseAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
-            var technicalTask = _statsApiClient.GetPlayerTechnicalAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
-            var defenseTask = _statsApiClient.GetPlayerDefenseAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
-            var passingTask = _statsApiClient.GetPlayerPassingAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
-            var sanctionsTask = _statsApiClient.GetPlayerSanctionsAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
-            var goalkeeperTask = _statsApiClient.GetPlayerGoalkeeperAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
-            var spatialTask = _statsApiClient.GetPlayerSpatialAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
+            var globalTask = _analyticsGateway.GetPlayerGlobalAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
+            var offenseTask = _analyticsGateway.GetPlayerOffenseAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
+            var technicalTask = _analyticsGateway.GetPlayerTechnicalAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
+            var defenseTask = _analyticsGateway.GetPlayerDefenseAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
+            var passingTask = _analyticsGateway.GetPlayerPassingAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
+            var sanctionsTask = _analyticsGateway.GetPlayerSanctionsAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
+            var goalkeeperTask = _analyticsGateway.GetPlayerGoalkeeperAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
+            var spatialTask = _analyticsGateway.GetPlayerSpatialAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
             var playerMatchesTask = _playersApiClient.GetPlayerMatchesAsync(selectedPlayerId.Value, selectedPlayerQuery, cancellationToken);
 
             await Task.WhenAll(
@@ -144,8 +127,7 @@ public sealed class StatsDashboardService
                 goalkeeperTask,
                 spatialTask,
                 playerMatchesTask,
-                globalBoardsTask,
-                teamOfTheDayTask);
+                globalBoardsTask);
 
             var selectedDirectory = playerStats.FirstOrDefault(player => player.PlayerId == selectedPlayerId.Value);
             var profile = profileTask.Result ?? CreateProfileFallback(selectedDirectory, selectedPlayerId.Value);
@@ -161,20 +143,10 @@ public sealed class StatsDashboardService
 
             return new DashboardSnapshot
             {
-                Overview = new OverviewMetrics(
-                    overview.PlayerCount,
-                    overview.TeamCount,
-                    overview.MatchCount,
-                    overview.GoalCount + overview.PenaltyGoalCount + overview.AssistCount + overview.InterceptionCount + overview.SaveCount + overview.TurnoverCount + overview.SanctionCount,
-                    overview.GoalCount + overview.PenaltyGoalCount,
-                    overview.AssistCount,
-                    overview.InterceptionCount,
-                    overview.SaveCount,
-                    overview.TurnoverCount,
-                    overview.SanctionCount),
+                Overview = _snapshotBuilder.BuildOverview(overview),
                 Players = players,
                 GlobalBoards = globalBoardsTask.Result,
-                TeamOfTheDay = teamOfTheDayTask.Result,
+                TeamOfTheDay = TeamOfTheDaySnapshotDto.Empty("Ouvrez la section Equipe de la journee pour charger cette analyse."),
                 TopScorers = MapRanking(topScorersTask.Result),
                 EfficiencyRanking = MapRanking(efficiencyTask.Result),
                 RequestedRanking = MapRanking(requestedTask.Result),
@@ -201,9 +173,17 @@ public sealed class StatsDashboardService
                 IsDemo = false
             };
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ApiRequestException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Impossible de charger les dernieres donnees. {ex.Message}", ex);
+            throw new InvalidOperationException("Impossible de charger les dernieres donnees statistiques.", ex);
         }
     }
 
@@ -220,13 +200,13 @@ public sealed class StatsDashboardService
         var rankingMetric = NormalizeRankingMetric(filters.RankingMetric);
         var rankingTop = Math.Clamp(filters.Top, 3, 12);
 
-        var requestedTask = _statsApiClient.GetRankingsAsync(rankingMetric, queryOptions, rankingTop, cancellationToken);
+        var requestedTask = _analyticsGateway.GetRankingsAsync(rankingMetric, queryOptions, rankingTop, cancellationToken);
         var requestedRanking = await requestedTask;
 
         return (MapRanking(requestedRanking), GetRankingLabel(rankingMetric));
     }
 
-    private async Task<TeamOfTheDaySnapshotDto> LoadTeamOfTheDaySafeAsync(
+    public async Task<TeamOfTheDaySnapshotDto> LoadTeamOfTheDayAsync(
         DashboardFilterState filters,
         CancellationToken cancellationToken)
     {
@@ -234,11 +214,70 @@ public sealed class StatsDashboardService
         {
             return await _teamOfTheDayService.LoadAsync(filters, cancellationToken);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
         {
-            return TeamOfTheDaySnapshotDto.Empty($"Equipe type indisponible : {ex.Message}");
+            throw;
+        }
+        catch (Exception)
+        {
+            return TeamOfTheDaySnapshotDto.Empty("Equipe type indisponible. Reessayez dans quelques instants.");
         }
     }
+
+    public async Task<DashboardPlayerTable> LoadPlayerTableAsync(
+        DashboardFilterState filters,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_authService.Session.IsAuthenticated)
+        {
+            throw new InvalidOperationException("Connexion requise pour ouvrir l'interface live.");
+        }
+
+        try
+        {
+            var queryOptions = filters.ToStatsQueryOptions();
+            var playerStats = await _analyticsGateway.GetPlayersAsync(queryOptions, cancellationToken);
+
+            if (playerStats.Count == 0)
+            {
+                return DashboardPlayerTable.Empty;
+            }
+
+            var response = await _analyticsGateway.ComparePlayersAsync(new ComparePlayersRequestDto
+            {
+                PlayerIds = playerStats
+                    .Select(player => player.PlayerId)
+                    .Distinct()
+                    .ToList(),
+                CompetitionId = queryOptions.CompetitionId,
+                TeamId = queryOptions.TeamId,
+                PositionId = queryOptions.PositionId,
+                MatchId = queryOptions.MatchId,
+                From = queryOptions.From,
+                To = queryOptions.To,
+                Year = queryOptions.Year,
+                Season = queryOptions.Season,
+                Day = queryOptions.Day
+            }, cancellationToken) ?? new ComparePlayersResponseDto();
+
+            return BuildPlayerTable(response);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ApiRequestException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Impossible de charger le tableau analytique joueuses.", ex);
+        }
+    }
+
+    public static DashboardPlayerTable BuildPlayerTable(ComparePlayersResponseDto response) =>
+        PlayerTableMapper.Build(response);
 
     private async Task<DashboardGlobalBoards> LoadGlobalBoardsAsync(
         StatsQueryOptionsDto queryOptions,
@@ -250,7 +289,7 @@ public sealed class StatsDashboardService
             return DashboardGlobalBoards.Empty;
         }
 
-        var response = await _statsApiClient.ComparePlayersAsync(new ComparePlayersRequestDto
+        var response = await _analyticsGateway.ComparePlayersAsync(new ComparePlayersRequestDto
         {
             PlayerIds = playerStats
                 .Select(player => player.PlayerId)
@@ -413,7 +452,7 @@ public sealed class StatsDashboardService
             return player.ShotAttempts;
         }
 
-        return offense is null ? 0 : offense.TotalButs + offense.TirsRates + offense.PenaltyRate + offense.TirContre;
+        return offense is null ? 0 : offense.TotalButs + offense.TirsRates + offense.PenaltyRate;
     }
 
     private static int ResolvePenaltyAttempts(
@@ -450,18 +489,19 @@ public sealed class StatsDashboardService
     private static IReadOnlyList<ZoneStat> MapGoalZones(IReadOnlyList<ZoneStatDto>? stats, IReadOnlyList<ZoneStatDto>? eventsByZone)
     {
         var outcomesByZone = (eventsByZone ?? [])
-            .ToDictionary(zone => zone.ZoneCode, zone => zone.Outcomes, StringComparer.OrdinalIgnoreCase);
+            .Where(zone => zone.ZoneCode is not null)
+            .ToDictionary(zone => zone.ZoneCode!, zone => zone.Outcomes, StringComparer.OrdinalIgnoreCase);
 
         return (stats ?? [])
             .Select(zone => new ZoneStat(
-                zone.ZoneCode,
-                zone.ZoneCode,
+                zone.ZoneCode ?? string.Empty,
+                zone.ZoneCode ?? string.Empty,
                 zone.SuccessRate,
                 zone.Attempts,
                 zone.SuccessCount,
-                outcomesByZone.TryGetValue(zone.ZoneCode, out var outcomes)
-                    ? outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList()
-                    : zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList()))
+                outcomesByZone.TryGetValue(zone.ZoneCode ?? string.Empty, out var outcomes)
+                    ? outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList()
+                    : zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList()))
             .ToList();
     }
 
@@ -474,7 +514,7 @@ public sealed class StatsDashboardService
                 zone.SuccessRate,
                 zone.Attempts,
                 zone.SuccessCount,
-                zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList()))
+                zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName ?? string.Empty, outcome.Count)).ToList()))
             .ToList();
     }
 
@@ -602,7 +642,7 @@ public sealed class StatsDashboardService
         PlayerSanctionStatsDto? sanctions,
         PlayerGoalkeeperStatsDto? goalkeeper)
     {
-        var shotAttempts = offense.TotalButs + offense.TirsRates + offense.PenaltyRate + offense.TirContre;
+        var shotAttempts = offense.TotalButs + offense.TirsRates + offense.PenaltyRate;
         var technicalLosses = passing is null
             ? 0
             : passing.MauvaisePasse + passing.PerteDeBalle + passing.FauteTechnique + passing.PassageEnForce;
@@ -635,7 +675,7 @@ public sealed class StatsDashboardService
             Technical = new TechnicalStatsDto
             {
                 ShotAttempts = shotAttempts,
-                ShotWaste = offense.TirsRates + offense.PenaltyRate + offense.TirContre,
+                ShotWaste = offense.TirsRates + offense.PenaltyRate,
                 PenaltyAttempts = offense.Buts7m + offense.PenaltyRate,
                 TechnicalLosses = technicalLosses,
                 DefensiveImpact = defensiveImpact,
@@ -646,10 +686,10 @@ public sealed class StatsDashboardService
                 TirsSubis = goalkeeperStops + goalkeeperConcededGoals + goalkeeperPenaltyConcededGoals,
                 Sanctions = sanctionsCount,
                 OpenShotSuccessRate = offense.TauxReussiteTir,
-                OverallShotSuccessRate = HandballKpiHelper.Share(offense.TotalButs, Math.Max(shotAttempts, 1)),
+                OverallShotSuccessRate = HandballKpiHelper.Percentage(offense.TotalButs, shotAttempts) ?? 0,
                 PenaltySuccessRate = offense.TauxReussitePenalty,
                 GoalkeeperSaveRate = goalkeeper?.TauxArret ?? 0,
-                GoalkeeperPenaltyStopRate = HandballKpiHelper.Share(goalkeeperPenaltyStops, Math.Max(goalkeeperPenaltyStops + goalkeeperPenaltyConcededGoals, 1))
+                GoalkeeperPenaltyStopRate = HandballKpiHelper.Percentage(goalkeeperPenaltyStops, goalkeeperPenaltyStops + goalkeeperPenaltyConcededGoals) ?? 0
             }
         };
     }

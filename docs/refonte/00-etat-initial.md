@@ -56,7 +56,7 @@ dotnet format --verify-no-changes
   "ApiSettings": {
     "BaseUrl": "https://handballwstat.ddnsfree.com/api/",
     "ClientId": "my-HandApp-id",
-    "ClientSecret": "sg321sef6e5sfes321fse3f21"
+    "ClientSecret": "[REDACTED - ROTATION REQUIRED]"
   }
 }
 ```

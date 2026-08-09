@@ -174,9 +174,9 @@
         return "Le club principal du profil est detaille ci-dessus; les autres clubs observes sont affiches plus bas.";
     }
 
-    private static string FormatMinutes(double value)
+    private static string FormatMinutes(double minutes)
     {
-        var formatted = HandballKpiHelper.FormatNumber(value);
+        var formatted = HandballKpiHelper.FormatNumber(minutes);
         return $"{formatted} min";
     }
 }

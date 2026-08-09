@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant C as Client
+    participant A as AuthController
+    participant D as MySQL Users
+    C->>A: POST /auth/login
+    A->>D: Recherche utilisateur actif
+    D-->>A: Hash, sel, role
+    A->>A: PBKDF2-SHA256
+    A-->>C: JWT signe, expiration 4 h
+    C->>A: Bearer JWT
+    A->>A: Signature et role
+    A-->>C: Reponse autorisee
+

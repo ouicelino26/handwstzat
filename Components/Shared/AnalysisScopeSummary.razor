@@ -1,0 +1,28 @@
+@using HandWStat.Models.Analytics
+@namespace HandWStat.Components.Shared
+
+<section class="analysis-scope-summary" aria-labelledby="analysis-scope-title">
+    <header>
+        <span>Perimetre d'analyse</span>
+        <strong id="analysis-scope-title">Scope statistique actif</strong>
+    </header>
+
+    <dl>
+        <div><dt>Competition</dt><dd>@Scope.Competition</dd></div>
+        <div><dt>Equipe</dt><dd>@Scope.Team</dd></div>
+        <div><dt>Saison</dt><dd>@Scope.Season</dd></div>
+        <div><dt>Journee</dt><dd>@Scope.Day</dd></div>
+        <div><dt>Periode</dt><dd>@Scope.Period</dd></div>
+        <div><dt>Matchs</dt><dd>@(Scope.MatchCount?.ToString() ?? "Non renseigne")</dd></div>
+        <div><dt>Genere le</dt><dd>@GeneratedLabel</dd></div>
+    </dl>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public AnalysisScopeDisplayModel Scope { get; set; } = default!;
+
+    private string GeneratedLabel => Scope.GeneratedAt.HasValue
+        ? Scope.GeneratedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+        : "Date non fournie";
+}

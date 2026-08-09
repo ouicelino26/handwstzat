@@ -1,0 +1,136 @@
+.league-player-stats {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+    padding: clamp(1rem, 2.5vw, 1.5rem);
+    border: 1px solid color-mix(in srgb, var(--court-400) 28%, transparent);
+    border-radius: 1.25rem;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+}
+
+.league-player-stats__head,
+.league-player-stats__badges,
+.league-player-stats__meta,
+.league-player-stats__section > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.league-player-stats__head,
+.league-player-stats__section > summary {
+    justify-content: space-between;
+}
+
+.league-player-stats__head {
+    align-items: flex-start;
+}
+
+.league-player-stats__head p,
+.league-player-stats__head h3 {
+    margin: 0;
+}
+
+.league-player-stats__head p {
+    color: var(--court-400);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.league-player-stats__head h3 {
+    margin-top: 0.2rem;
+    color: var(--text);
+}
+
+.league-player-stats__badges,
+.league-player-stats__meta {
+    flex-wrap: wrap;
+}
+
+.league-player-stats__meta {
+    color: var(--text-body);
+    font-size: 0.75rem;
+}
+
+.league-player-stats__section {
+    border: 1px solid color-mix(in srgb, var(--text-muted) 28%, transparent);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--surface-raised) 76%, transparent);
+    overflow: clip;
+}
+
+.league-player-stats__section > summary {
+    min-height: 3.25rem;
+    padding: 0.9rem 1rem;
+    color: var(--text);
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.league-player-stats__section > summary:focus-visible {
+    outline: 3px solid var(--court-400);
+    outline-offset: -3px;
+}
+
+.league-player-stats__section > summary small {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.league-player-stats__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: 0.8rem;
+    padding: 0 1rem 1rem;
+}
+
+.league-player-stats__error {
+    display: grid;
+    gap: 0.6rem;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--danger-400) 58%, transparent);
+    border-radius: 1rem;
+    color: var(--text-body);
+}
+
+.league-player-stats__error strong {
+    color: var(--text);
+}
+
+.league-player-stats__error dl {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+}
+
+.league-player-stats__error dl > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.league-player-stats__error dt,
+.league-player-stats__error dd {
+    margin: 0;
+    font-size: 0.75rem;
+}
+
+.league-player-stats__error dd {
+    text-align: right;
+}
+
+@media (max-width: 720px) {
+    .league-player-stats__head {
+        display: grid;
+    }
+
+    .league-player-stats__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .league-player-stats__section:not([open]) .league-player-stats__grid {
+        display: none;
+    }
+}

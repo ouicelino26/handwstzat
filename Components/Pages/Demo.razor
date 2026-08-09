@@ -83,8 +83,8 @@
 
         <div class="tour-court-grid">
             <div class="tour-court-stage">
-                <GoalKpi GoalZones="@Snapshot.Spotlight.GoalZones"
-                         TriggerZones="@Snapshot.Spotlight.TriggerZones"
+                <GoalKpi GoalZones="@CourtZoneMapper.FromZoneStats(Snapshot.Spotlight.GoalZones)"
+                         TriggerZones="@CourtZoneMapper.FromZoneStats(Snapshot.Spotlight.TriggerZones)"
                          IsGoalkeeper="@Snapshot.Spotlight.IsGoalkeeper"
                          ActiveZoneKey="@ActiveZoneKey"
                          OnZoneSelected="HandleZoneSelectionAsync" />

@@ -37,9 +37,12 @@ audit_reports/
 
 # Local release/deployment secrets
 deployment/release-settings.json
-appsettings.Production.json
-*.env
 .env
+appsettings.Production.json
+*.pem
+*.key
+backups/
+release-manifest.local.json
 
 # OS files
 .DS_Store

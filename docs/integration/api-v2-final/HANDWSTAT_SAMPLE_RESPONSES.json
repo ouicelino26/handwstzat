@@ -1,0 +1,233 @@
+{
+  "LeaguePlayerAnalyticsResponse_FullProfile": {
+    "description": "GET /api/v2/analytics/players/42?include=overview,offense,defense,goalkeeper",
+    "status": 200,
+    "body": {
+      "playerId": 42,
+      "metricVersion": "1.0",
+      "included": ["overview", "offense", "defense", "goalkeeper"],
+      "overview": {
+        "playerId": 42,
+        "fullName": "Marie Dupont",
+        "teamId": 7,
+        "teamName": "METZ Handball",
+        "positionId": 3,
+        "positionCode": "AR",
+        "positionName": "Arrière",
+        "isGoalkeeper": false,
+        "matchesPlayed": 18
+      },
+      "offense": {
+        "totalGoals": 72,
+        "openPlayGoals": 68,
+        "penaltyGoals": 4,
+        "assists": 23,
+        "penaltiesWon": 6,
+        "sanctionsDrawn": 3,
+        "totalTurnovers": 15,
+        "badPasses": 10,
+        "failedPivotPasses": {
+          "metricCode": "FAILED_PIVOT_PASSES",
+          "metricVersion": "1.0",
+          "value": null,
+          "availability": "DATA_MISSING",
+          "reason": "No canonical pivot pass event identifier available in source data."
+        },
+        "totalShotRate": {
+          "metricCode": "TOTAL_SHOT_RATE",
+          "metricVersion": "1.0",
+          "value": 64.29,
+          "unit": "percent",
+          "sample": { "numerator": 72, "denominator": 112, "minimumSample": 10 },
+          "quality": { "sampleReliable": true, "qualityScore": 1.0, "reason": null },
+          "numerator": 72,
+          "denominator": 112,
+          "minimumSample": 10,
+          "sampleReliable": true,
+          "qualityScore": 1.0
+        },
+        "openPlayShotRate": {
+          "metricCode": "OPEN_PLAY_SHOT_RATE",
+          "metricVersion": "1.0",
+          "value": 65.38,
+          "unit": "percent",
+          "sample": { "numerator": 68, "denominator": 104, "minimumSample": 10 },
+          "quality": { "sampleReliable": true, "qualityScore": 1.0, "reason": null },
+          "numerator": 68,
+          "denominator": 104,
+          "minimumSample": 10,
+          "sampleReliable": true,
+          "qualityScore": 1.0
+        },
+        "penaltyShotRate": {
+          "metricCode": "PENALTY_SHOT_RATE",
+          "metricVersion": "1.0",
+          "value": 50.0,
+          "unit": "percent",
+          "sample": { "numerator": 4, "denominator": 8, "minimumSample": 3 },
+          "quality": { "sampleReliable": true, "qualityScore": 1.0, "reason": null },
+          "numerator": 4,
+          "denominator": 8,
+          "minimumSample": 3,
+          "sampleReliable": true,
+          "qualityScore": 1.0
+        }
+      },
+      "defense": {
+        "interceptions": 14,
+        "blocks": 8,
+        "offensiveFoulsDrawn": 5,
+        "neutralizations": 3,
+        "penaltiesConceded": 1,
+        "sanctionsConceded": 4,
+        "warningsConceded": 2,
+        "twoMinuteSuspensionsConceded": 2,
+        "disqualificationsConceded": 0
+      },
+      "goalkeeper": null
+    }
+  },
+  "LeaguePlayerAnalyticsResponse_GoalkeeperProfile": {
+    "description": "GET /api/v2/analytics/players/99?include=overview,goalkeeper",
+    "status": 200,
+    "body": {
+      "playerId": 99,
+      "metricVersion": "1.0",
+      "included": ["goalkeeper", "overview"],
+      "overview": {
+        "playerId": 99,
+        "fullName": "Sophie Martin",
+        "teamId": 3,
+        "teamName": "Brest Bretagne Handball",
+        "positionId": 1,
+        "positionCode": "GB",
+        "positionName": "Gardienne de but",
+        "isGoalkeeper": true,
+        "matchesPlayed": 22
+      },
+      "offense": null,
+      "defense": null,
+      "goalkeeper": {
+        "totalSaves": 198,
+        "openPlaySaves": 175,
+        "penaltySaves": 23,
+        "totalShotsFaced": 396,
+        "openPlayShotsFaced": 348,
+        "penaltyShotsFaced": 48,
+        "totalSaveRate": {
+          "metricCode": "TOTAL_SAVE_RATE",
+          "metricVersion": "1.0",
+          "value": 50.0,
+          "unit": "percent",
+          "sample": { "numerator": 198, "denominator": 396, "minimumSample": 20 },
+          "quality": { "sampleReliable": true, "qualityScore": 1.0, "reason": null },
+          "numerator": 198,
+          "denominator": 396,
+          "minimumSample": 20,
+          "sampleReliable": true,
+          "qualityScore": 1.0
+        },
+        "openPlaySaveRate": {
+          "metricCode": "OPEN_PLAY_SAVE_RATE",
+          "metricVersion": "1.0",
+          "value": 50.29,
+          "unit": "percent",
+          "sample": { "numerator": 175, "denominator": 348, "minimumSample": 20 },
+          "quality": { "sampleReliable": true, "qualityScore": 1.0, "reason": null },
+          "numerator": 175,
+          "denominator": 348,
+          "minimumSample": 20,
+          "sampleReliable": true,
+          "qualityScore": 1.0
+        },
+        "penaltySaveRate": {
+          "metricCode": "PENALTY_SAVE_RATE",
+          "metricVersion": "1.0",
+          "value": 47.92,
+          "unit": "percent",
+          "sample": { "numerator": 23, "denominator": 48, "minimumSample": 5 },
+          "quality": { "sampleReliable": true, "qualityScore": 1.0, "reason": null },
+          "numerator": 23,
+          "denominator": 48,
+          "minimumSample": 5,
+          "sampleReliable": true,
+          "qualityScore": 1.0
+        },
+        "assists": 12,
+        "goals": 0,
+        "totalTurnovers": 8,
+        "missedShots": 5
+      }
+    }
+  },
+  "ProblemDetails_400_InvalidPlayer": {
+    "description": "GET /api/v2/analytics/players/0",
+    "status": 400,
+    "body": {
+      "type": "https://httpstatuses.com/400",
+      "title": "Invalid player identifier",
+      "status": 400,
+      "detail": "playerId must be greater than zero.",
+      "instance": "/api/v2/analytics/players/0",
+      "correlationId": "0HN8XXXXXXXXXXXX:00000001"
+    }
+  },
+  "ProblemDetails_404_PlayerNotFound": {
+    "description": "GET /api/v2/analytics/players/9999",
+    "status": 404,
+    "body": {
+      "type": "https://httpstatuses.com/404",
+      "title": "Player not found",
+      "status": 404,
+      "detail": "No player exists with identifier 9999.",
+      "instance": "/api/v2/analytics/players/9999",
+      "correlationId": "0HN8XXXXXXXXXXXX:00000002"
+    }
+  },
+  "ProblemDetails_400_MissingSection": {
+    "description": "GET /api/v2/analytics/players/42?include=",
+    "status": 400,
+    "body": {
+      "type": "https://httpstatuses.com/400",
+      "title": "Missing analytics section",
+      "status": 400,
+      "detail": "include must select at least one supported section.",
+      "instance": "/api/v2/analytics/players/42",
+      "correlationId": "0HN8XXXXXXXXXXXX:00000003"
+    }
+  },
+  "MetricValue_NullOnZeroDenominator": {
+    "description": "Example of a rate metric when no shots were taken",
+    "field": "offense.totalShotRate",
+    "value": {
+      "metricCode": "TOTAL_SHOT_RATE",
+      "metricVersion": "1.0",
+      "value": null,
+      "unit": "percent",
+      "sample": { "numerator": 0, "denominator": 0, "minimumSample": 10 },
+      "quality": { "sampleReliable": false, "qualityScore": 0.0, "reason": "ZERO_OR_INVALID_DENOMINATOR" },
+      "numerator": 0,
+      "denominator": 0,
+      "minimumSample": 10,
+      "sampleReliable": false,
+      "qualityScore": 0.0
+    }
+  },
+  "MetricValue_NullBelowMinimumSample": {
+    "description": "Example of a rate metric below minimum sample threshold — value is still present but reliability is false",
+    "field": "offense.penaltyShotRate",
+    "value": {
+      "metricCode": "PENALTY_SHOT_RATE",
+      "metricVersion": "1.0",
+      "value": 33.33,
+      "unit": "percent",
+      "sample": { "numerator": 1, "denominator": 3, "minimumSample": 5 },
+      "quality": { "sampleReliable": false, "qualityScore": 0.6, "reason": "BELOW_MINIMUM_SAMPLE" },
+      "numerator": 1,
+      "denominator": 3,
+      "minimumSample": 5,
+      "sampleReliable": false,
+      "qualityScore": 0.6
+    }
+  }
+}

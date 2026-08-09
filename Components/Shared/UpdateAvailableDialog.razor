@@ -15,11 +15,15 @@
             {
                 <p class="update-dialog__error">@UpdateService.State.ErrorMessage</p>
             }
+            <UpdateDownloadProgress />
             <div class="update-dialog__actions">
                 <button type="button" class="button-secondary" @onclick="UpdateService.DismissOptionalUpdate">
                     Plus tard
                 </button>
-                <button type="button" class="button-primary" @onclick="DownloadAsync">
+                <button type="button"
+                        class="button-primary"
+                        disabled="@(UpdateService.State.Status is AppUpdateStatus.Downloading or AppUpdateStatus.Installing)"
+                        @onclick="DownloadAsync">
                     Télécharger
                 </button>
             </div>
@@ -37,4 +41,3 @@
         return $"{megabytes:0.#} Mo";
     }
 }
-

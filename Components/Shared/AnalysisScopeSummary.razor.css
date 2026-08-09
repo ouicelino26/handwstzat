@@ -1,0 +1,48 @@
+.analysis-scope-summary {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--court-400) 24%, transparent);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--surface-raised) 90%, transparent);
+}
+
+.analysis-scope-summary header {
+    display: grid;
+    gap: 0.18rem;
+}
+
+.analysis-scope-summary header span,
+.analysis-scope-summary dt {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.analysis-scope-summary header strong,
+.analysis-scope-summary dd {
+    color: var(--text);
+}
+
+.analysis-scope-summary dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.analysis-scope-summary dl > div {
+    min-width: 0;
+}
+
+.analysis-scope-summary dt,
+.analysis-scope-summary dd {
+    margin: 0;
+}
+
+.analysis-scope-summary dd {
+    overflow-wrap: anywhere;
+    font-size: 0.82rem;
+    font-weight: 700;
+}

@@ -1,5 +1,5 @@
 using HandWStat.Configuration;
-using HandballManagerCore.Models;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Services.Api;
 
@@ -10,11 +10,11 @@ public sealed class MatchEventsApiClient : ApiClientBase
     {
     }
 
-    public Task<IReadOnlyList<MatchEvent>> GetMatchEventsAsync(int? matchId = null, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<MatchEventAnalyticsDto>> GetMatchEventsAsync(int? matchId = null, CancellationToken cancellationToken = default)
     {
         var query = new ApiQueryBuilder()
             .Add("matchId", matchId);
 
-        return GetListAsync<MatchEvent>("api/MatchEvents", query, cancellationToken);
+        return GetListAsync<MatchEventAnalyticsDto>("api/MatchEvents", query, cancellationToken);
     }
 }
