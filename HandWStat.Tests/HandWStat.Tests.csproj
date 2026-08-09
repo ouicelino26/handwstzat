@@ -50,6 +50,14 @@
     <Compile Include="..\Models\Analytics\GameSeasonBaselineCalculator.cs" Link="Models\Analytics\GameSeasonBaselineCalculator.cs" />
     <Compile Include="..\Models\Analytics\PlayerGameRowBuilder.cs" Link="Models\Analytics\PlayerGameRowBuilder.cs" />
     <Compile Include="..\Models\Analytics\TableHeatToneHelper.cs" Link="Models\Analytics\TableHeatToneHelper.cs" />
+    <Compile Include="..\Models\Matches\MatchScoreFormatter.cs" Link="Models\Matches\MatchScoreFormatter.cs" />
+    <Compile Include="..\Models\Matches\MatchIdentityDisplay.cs" Link="Models\Matches\MatchIdentityDisplay.cs" />
+    <Compile Include="..\Models\Matches\MatchComparisonModels.cs" Link="Models\Matches\MatchComparisonModels.cs" />
+    <Compile Include="..\Models\Matches\MatchComparisonBuilder.cs" Link="Models\Matches\MatchComparisonBuilder.cs" />
+    <Compile Include="..\Models\Matches\MatchScenarioAnalyzerV2.cs" Link="Models\Matches\MatchScenarioAnalyzerV2.cs" />
+    <Compile Include="..\Models\Analytics\ExportModels.cs" Link="Models\Analytics\ExportModels.cs" />
+    <Compile Include="..\Models\Analytics\SmartFilterCatalog.cs" Link="Models\Analytics\SmartFilterCatalog.cs" />
+    <Compile Include="..\Services\Api\ExportApiClient.cs" Link="Services\Api\ExportApiClient.cs" />
     <Compile Include="..\Services\AnalysisScopeService.cs" Link="Services\AnalysisScopeService.cs" />
     <Compile Include="..\Services\Analytics\ILeagueAnalyticsGateway.cs" Link="Services\Analytics\ILeagueAnalyticsGateway.cs" />
     <Compile Include="..\Services\Analytics\LeagueAnalyticsContractValidator.cs" Link="Services\Analytics\LeagueAnalyticsContractValidator.cs" />
