@@ -22,6 +22,18 @@ publish-*/
 audit_reports/
 *_backup_*.json
 .ai-context/
+.artifacts/
+
+# Compiled Android / Windows packages — never commit binaries
+*.apk
+*.aab
+*.msix
+*.appx
+*.appxbundle
+*.pfx
+*.p12
+*.keystore
+*.jks
 
 # Local release/deployment secrets
 deployment/release-settings.json

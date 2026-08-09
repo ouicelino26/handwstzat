@@ -1,18 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <HandballManagerCorePath Condition="'$(HandballManagerCorePath)' == ''">C:\Users\donovan.bierque\source\repos\ouicelino26\HandballManagerMaui</HandballManagerCorePath>
+  </PropertyGroup>
+
+  <!-- Link model source files directly — avoids MAUI multi-TFM incompatibility -->
   <ItemGroup>
     <Compile Include="..\Configuration\ApiSettings.cs" Link="Configuration\ApiSettings.cs" />
     <Compile Include="..\Models\Contracts\ApiContracts.cs" Link="Models\Contracts\ApiContracts.cs" />
@@ -78,7 +86,9 @@
     <RazorComponent Include="..\Components\Shared\RateMetricCard.razor" Link="Components\Shared\RateMetricCard.razor" />
     <RazorComponent Include="..\Components\Shared\UnavailableMetricState.razor" Link="Components\Shared\UnavailableMetricState.razor" />
   </ItemGroup>
+
   <ItemGroup>
-    <Using Include="Xunit" />
+    <ProjectReference Include="$(HandballManagerCorePath)\HandballManagerCore\HandballManagerCore.csproj" />
   </ItemGroup>
+
 </Project>
