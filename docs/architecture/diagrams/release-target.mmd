@@ -1,0 +1,14 @@
+flowchart LR
+    Commit --> PR[Pull Request]
+    PR --> Build
+    Build --> Tests
+    Tests --> Package
+    Package --> Backup[Backup MySQL]
+    Backup --> Migrate[Migration staging]
+    Migrate --> Staging
+    Staging --> Smoke[Smoke tests]
+    Smoke --> Approval[Approbation]
+    Approval --> Production
+    Production --> Verify[Verification]
+    Verify -->|echec| Rollback[Rollback N-1]
+

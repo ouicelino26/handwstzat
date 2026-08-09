@@ -1,0 +1,28 @@
+@using HandWStat.Models.Analytics
+@namespace HandWStat.Components.Shared
+
+<details class="metric-evidence">
+    <summary>Preuves et détails</summary>
+    <dl>
+        <div><dt>Numérateur</dt><dd>@Evidence(Model.Numerator, Model.NumeratorUnit)</dd></div>
+        <div><dt>Dénominateur</dt><dd>@Evidence(Model.Denominator, Model.DenominatorUnit)</dd></div>
+        <div><dt>Volume minimum</dt><dd>@(Model.MinimumSample.HasValue ? HandballKpiHelper.FormatNumber(Model.MinimumSample.Value) : "Non fourni")</dd></div>
+        <div><dt>SampleReliable</dt><dd>@(Model.QualityKnown ? Model.SampleReliable ? "Oui" : "Non" : "Inconnu")</dd></div>
+        <div><dt>Niveau de qualité</dt><dd>@QualityLabel</dd></div>
+        <div><dt>MetricVersion</dt><dd>@(Model.MetricVersion ?? "Non fournie")</dd></div>
+        <div><dt>Provenance API</dt><dd>@(Model.SourceLabel ?? "Non renseignée")</dd></div>
+    </dl>
+</details>
+
+@code {
+    [Parameter, EditorRequired]
+    public RateDisplayModel Model { get; set; } = default!;
+
+    private string QualityLabel => Model.QualityKnown
+        ? $"{Model.QualityLabel} — score {HandballKpiHelper.FormatNumber(Model.QualityScore ?? 0)}"
+        : "Unknown — non fournie par l'API";
+
+    private static string Evidence(double? value, string? unit) => value.HasValue
+        ? $"{HandballKpiHelper.FormatNumber(value.Value)}{(string.IsNullOrWhiteSpace(unit) ? string.Empty : $" {unit}")}"
+        : "Non fourni";
+}

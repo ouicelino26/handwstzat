@@ -1,0 +1,12 @@
+erDiagram
+    COMPETITION ||--o{ MATCH : organise
+    TEAM ||--o{ MATCH : participe
+    MATCH ||--o{ MATCH_EVENT : contient
+    PLAYER ||--o{ MATCH_EVENT : realise
+    TEAM ||--o{ PLAYER : emploie
+    POSITION ||--o{ PLAYER : categorise
+    MATCH ||--o{ TIME_PLAYER : mesure
+    APP_PRODUCT ||--o{ APP_RELEASE : publie
+    APP_RELEASE ||--o{ RELEASE_ARTIFACT : contient
+    APP_RELEASE o|--o{ UPDATE_EVENT : concerne
+

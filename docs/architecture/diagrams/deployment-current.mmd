@@ -1,0 +1,10 @@
+flowchart TB
+    Internet[Internet] -->|HTTPS probable| RP[Reverse proxy / TLS<br/>A CONFIRMER]
+    RP -->|HTTP 5000| API[Kestrel API]
+    RP -->|Port a confirmer| WEB[Blazor Web]
+    API --> MYSQL[(MySQL 8)]
+    API --> RELEASES[/home/opc/api/releases]
+    API --> DOWNLOADS[/home/opc/HandballWeb/site_telechargement]
+    CLIENT[HandWStat] --> RP
+    ADMIN[HandballIntegration] --> RP
+

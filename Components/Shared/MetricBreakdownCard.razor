@@ -1,0 +1,34 @@
+@using HandWStat.Models.Analytics
+@namespace HandWStat.Components.Shared
+
+<article class="metric-breakdown-card"
+         aria-label="@($"{Model.Label} : {Model.CountValue?.ToString() ?? "Non disponible"}")"
+         data-metric-code="@Model.MetricCode">
+    <header>
+        <div>
+            <span>@Model.Label</span>
+            <strong>@(Model.CountValue?.ToString() ?? "—")</strong>
+        </div>
+    </header>
+
+    @if (Model.Breakdown.Count > 0)
+    {
+        <details>
+            <summary>Afficher le détail</summary>
+            <dl>
+                @foreach (var item in Model.Breakdown)
+                {
+                    <div>
+                        <dt>@item.Label</dt>
+                        <dd>@(item.Value?.ToString() ?? "Indisponible")</dd>
+                    </div>
+                }
+            </dl>
+        </details>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public LeagueMetricDisplayModel Model { get; set; } = default!;
+}

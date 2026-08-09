@@ -1,4 +1,4 @@
-using HandballManagerCore.DTO;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Models.Analytics;
 
@@ -16,14 +16,20 @@ public static class HandballKpiHelper
         return matches > 0 ? total / matches : 0;
     }
 
-    public static double Ratio(double numerator, double denominator)
+    public static double? Ratio(double numerator, double denominator)
     {
-        if (denominator <= 0)
+        if (denominator <= 0 || !double.IsFinite(numerator) || !double.IsFinite(denominator))
         {
-            return numerator > 0 ? numerator : 0;
+            return null;
         }
 
         return numerator / denominator;
+    }
+
+    public static double? Percentage(double numerator, double denominator)
+    {
+        var ratio = Ratio(numerator, denominator);
+        return ratio * 100d;
     }
 
     public static double Share(double numerator, double denominator)
@@ -64,7 +70,7 @@ public static class HandballKpiHelper
             return 0;
         }
 
-        return sanctions.Exclusions + sanctions.Avertissements + sanctions.DeuxMinutes + sanctions.PenaltyConcede;
+        return sanctions.Exclusions + sanctions.Avertissements + sanctions.DeuxMinutes;
     }
 
     public static int ShotAttempts(PlayerOffenseStatsDto? offense)
@@ -74,7 +80,7 @@ public static class HandballKpiHelper
             return 0;
         }
 
-        return offense.TotalButs + offense.TirsRates + offense.PenaltyRate + offense.TirContre;
+        return offense.TotalButs + offense.TirsRates + offense.PenaltyRate;
     }
 
     public static int ShotWaste(PlayerOffenseStatsDto? offense)
@@ -84,7 +90,7 @@ public static class HandballKpiHelper
             return 0;
         }
 
-        return offense.TirsRates + offense.PenaltyRate + offense.TirContre;
+        return offense.TirsRates + offense.PenaltyRate;
     }
 
     public static int PenaltyAttempts(PlayerOffenseStatsDto? offense)
@@ -245,17 +251,26 @@ public static class HandballKpiHelper
 
     public static string FieldSuccessRateTone(double value)
     {
-        return HigherIsBetterTone(value, 70d, 55d, 45d);
+        // Médiane ligue : 52% — seuils calés sur la distribution réelle
+        return HigherIsBetterTone(value, 65d, 52d, 40d);
+    }
+
+    public static string FieldPenaltyRateTone(double value)
+    {
+        // Médiane ligue : 39%
+        return HigherIsBetterTone(value, 52d, 39d, 28d);
     }
 
     public static string GoalkeeperSaveRateTone(double value)
     {
-        return HigherIsBetterTone(value, 40d, 34d, 28d);
+        // Médiane ligue : 26% — seuils calés sur la distribution réelle
+        return HigherIsBetterTone(value, 34d, 26d, 20d);
     }
 
     public static string GoalkeeperPenaltyStopRateTone(double value)
     {
-        return HigherIsBetterTone(value, 35d, 25d, 15d);
+        // Médiane ligue : 39%
+        return HigherIsBetterTone(value, 52d, 39d, 28d);
     }
 
     public static string BallRetentionTone(double value, bool isGoalkeeper)
@@ -343,9 +358,11 @@ public static class HandballKpiHelper
         return "neutral";
     }
 
-    public static string FormatRatio(double value)
+    public static string FormatRatio(double? value)
     {
-        return value.ToString("0.00");
+        return value.HasValue && double.IsFinite(value.Value)
+            ? value.Value.ToString("0.00")
+            : "N/A";
     }
 
     public static string FormatBase(double numerator, double denominator, string label)

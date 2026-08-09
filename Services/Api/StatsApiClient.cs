@@ -1,5 +1,5 @@
 using HandWStat.Configuration;
-using HandballManagerCore.DTO;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Services.Api;
 
@@ -110,11 +110,13 @@ public sealed class StatsApiClient : ApiClientBase
     public Task<MatchSpatialStatsDto?> GetMatchSpatialAsync(
         int matchId,
         int? teamId = null,
+        string? attackType = null,
         StatsQueryOptionsDto? options = null,
         CancellationToken cancellationToken = default)
     {
         var query = ApiQueryBuilder.FromStatsOptions(options)
-            .Add("teamId", teamId);
+            .Add("teamId", teamId)
+            .Add("attackType", attackType);
 
         return GetAsync<MatchSpatialStatsDto>($"api/Stats/matches/{matchId}/spatial", query, cancellationToken);
     }

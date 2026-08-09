@@ -3,6 +3,7 @@
 @inject IApiAuthService AuthService
 @inject IAppVersionProvider VersionProvider
 @inject IAppUpdateService UpdateService
+@inject IUpdateCheckCoordinator UpdateCoordinator
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
@@ -174,6 +175,13 @@
                 <small>API @(UpdateService.State.Response?.ApiVersion ?? "indisponible")</small>
             </div>
 
+            <button type="button"
+                    class="studio-logout-button"
+                    disabled="@UpdateService.State.IsChecking"
+                    @onclick="CheckForUpdatesAsync">
+                @(UpdateService.State.IsChecking ? "Verification..." : "Rechercher les mises a jour")
+            </button>
+
             @if (AuthService.Session.IsAuthenticated)
             {
                 <button type="button" class="studio-logout-button" @onclick="Logout">
@@ -332,7 +340,16 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private void HandleSessionChanged() => InvokeAsync(StateHasChanged);
+    private void HandleSessionChanged()
+    {
+        if (AuthService.Session.IsAuthenticated)
+        {
+            _ = UpdateCoordinator.CheckAfterLoginAsync();
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private Task CheckForUpdatesAsync() => UpdateCoordinator.CheckManuallyAsync();
 
     public void Dispose()
     {

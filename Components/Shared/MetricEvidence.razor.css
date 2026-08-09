@@ -1,0 +1,29 @@
+.metric-evidence summary {
+    color: var(--court-400);
+    cursor: pointer;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.metric-evidence dl {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0.65rem 0 0;
+}
+
+.metric-evidence dl > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.metric-evidence dt,
+.metric-evidence dd {
+    margin: 0;
+    color: var(--text-body);
+    font-size: 0.72rem;
+}
+
+.metric-evidence dd {
+    text-align: right;
+}

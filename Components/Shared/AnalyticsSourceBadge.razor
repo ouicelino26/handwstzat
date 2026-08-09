@@ -1,0 +1,24 @@
+@using HandWStat.Models.Analytics
+@namespace HandWStat.Components.Shared
+
+<span class="analytics-source-badge is-@Source.Code().ToLowerInvariant()"
+      role="status"
+      aria-label="@($"Provenance des statistiques : {Source.Label()}")"
+      data-source="@Source.Code()">
+    <span aria-hidden="true">@Icon</span>
+    <span>@Source.Label()</span>
+</span>
+
+@code {
+    [Parameter]
+    public AnalyticsSourceStatus Source { get; set; }
+
+    private string Icon => Source switch
+    {
+        AnalyticsSourceStatus.V2Complete => "✓",
+        AnalyticsSourceStatus.V1Compatible => "↔",
+        AnalyticsSourceStatus.V1Partial => "~",
+        AnalyticsSourceStatus.ContractError => "!",
+        _ => "?"
+    };
+}

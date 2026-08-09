@@ -1,0 +1,23 @@
+@namespace HandWStat.Components.Shared
+
+<div class="unavailable-metric-state"
+     role="status"
+     aria-label="@($"{Label} : {Message}")">
+    <strong>@Label</strong>
+    <span>@Message</span>
+    @if (!string.IsNullOrWhiteSpace(HelpText))
+    {
+        <small>@HelpText</small>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Message { get; set; } = "Donnée non disponible";
+
+    [Parameter]
+    public string? HelpText { get; set; }
+}

@@ -66,7 +66,15 @@ public static class AppNavigationCatalog
             NavLinkMatch.Prefix,
             """<svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7l7-4Zm0 4.2-3.8 2.2v4.4L12 16l3.8-2.2V9.4L12 7.2Z" /></svg>""",
             ShowOnMobile: false,
-            ShowInRail: false)
+            ShowInRail: false),
+        new(
+            "export",
+            "Export",
+            "Data out",
+            "Generer un classeur Excel avec les metriques analytiques du perimetre choisi.",
+            "06",
+            NavLinkMatch.Prefix,
+            """<svg viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"></path><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M12 11v6m-3-3 3 3 3-3"></path></svg>""")
     ];
 
     public static IReadOnlyList<AppNavigationItem> Primary { get; } =

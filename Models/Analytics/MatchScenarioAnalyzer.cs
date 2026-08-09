@@ -1,11 +1,10 @@
-using HandballManagerCore.DTO;
-using HandballManagerCore.Models;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Models.Analytics;
 
 public static class MatchScenarioAnalyzer
 {
-    public static IReadOnlyList<ScoreTimelinePoint> BuildScoreTimeline(IReadOnlyList<MatchEvent> events, MatchListItemDto? match)
+    public static IReadOnlyList<ScoreTimelinePoint> BuildScoreTimeline(IReadOnlyList<MatchEventAnalyticsDto> events, MatchListItemDto? match)
     {
         var points = new List<ScoreTimelinePoint>
         {
@@ -15,26 +14,30 @@ public static class MatchScenarioAnalyzer
         var lastTeam1 = 0;
         var lastTeam2 = 0;
 
-        foreach (var item in events
+        foreach (var raw in events
+            .Where(matchEvent => matchEvent.TeamScore1.HasValue || matchEvent.TeamScore2.HasValue)
             .Select(matchEvent => new
             {
                 Clock = ResolveMatchClock(matchEvent.Time, matchEvent.MiTemps),
                 Minute = ResolveMatchMinute(matchEvent.Time, matchEvent.MiTemps),
-                Team1 = matchEvent.TeamScore1 ?? 0,
-                Team2 = matchEvent.TeamScore2 ?? 0,
-                matchEvent.Id
+                RawTeam1 = matchEvent.TeamScore1,
+                RawTeam2 = matchEvent.TeamScore2,
+                Id = matchEvent.MatchEventId
             })
             .OrderBy(item => item.Minute)
             .ThenBy(item => item.Id))
         {
-            if (item.Team1 == lastTeam1 && item.Team2 == lastTeam2)
+            var team1 = raw.RawTeam1 ?? lastTeam1;
+            var team2 = raw.RawTeam2 ?? lastTeam2;
+
+            if (team1 == lastTeam1 && team2 == lastTeam2)
             {
                 continue;
             }
 
-            points.Add(new(FormatTimelineLabel(item.Clock), item.Minute, item.Team1, item.Team2));
-            lastTeam1 = item.Team1;
-            lastTeam2 = item.Team2;
+            points.Add(new(FormatTimelineLabel(raw.Clock), raw.Minute, team1, team2));
+            lastTeam1 = team1;
+            lastTeam2 = team2;
         }
 
         var halftimeSnapshot = points

@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using HandballManagerCore.DTO;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Services.Api;
 

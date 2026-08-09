@@ -1,0 +1,49 @@
+@namespace HandWStat.Components.Shared
+
+<div class="perf-metric-row @CssClass" @attributes="AdditionalAttributes">
+    <div class="pmr-main">
+        <span class="pmr-label">@Label</span>
+        <span class="pmr-value @ToneClass">@Value</span>
+        @if (!string.IsNullOrEmpty(Evidence))
+        {
+            <span class="pmr-evidence">@Evidence</span>
+        }
+    </div>
+    @if (!string.IsNullOrEmpty(Context))
+    {
+        <div class="pmr-context">@Context</div>
+    }
+    @if (Availability == "DATA_MISSING" || Availability == "UNAVAILABLE_FROM_CURRENT_DATA")
+    {
+        <span class="pmr-unavailable">Donnée non disponible</span>
+    }
+    else if (Availability == "INSUFFICIENT_SAMPLE")
+    {
+        <span class="pmr-sample-warning">Échantillon limité</span>
+    }
+    @if (ChildContent is not null)
+    {
+        <div class="pmr-breakdown">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public string Value { get; set; } = "";
+    [Parameter] public string? Evidence { get; set; }
+    [Parameter] public string? Context { get; set; }
+    [Parameter] public string? Availability { get; set; }
+    [Parameter] public string Tone { get; set; } = "neutral";
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ToneClass => Tone switch {
+        "positive" or "good" => "pmr-value--positive",
+        "warning" => "pmr-value--warning",
+        "danger" => "pmr-value--danger",
+        _ => ""
+    };
+}

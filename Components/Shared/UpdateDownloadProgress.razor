@@ -1,0 +1,23 @@
+@inject IAppUpdateService UpdateService
+
+@if (UpdateService.State.Status is AppUpdateStatus.Downloading
+    or AppUpdateStatus.DownloadVerified
+    or AppUpdateStatus.Installing)
+{
+    <div class="update-download-progress" role="status" aria-live="polite">
+        <div class="update-download-progress__line">
+            <span>@Label</span>
+            <strong>@($"{UpdateService.State.DownloadProgress:0}%")</strong>
+        </div>
+        <progress max="100" value="@UpdateService.State.DownloadProgress"></progress>
+    </div>
+}
+
+@code {
+    private string Label => UpdateService.State.Status switch
+    {
+        AppUpdateStatus.DownloadVerified => "Telechargement verifie",
+        AppUpdateStatus.Installing => "Ouverture du package",
+        _ => "Telechargement securise"
+    };
+}

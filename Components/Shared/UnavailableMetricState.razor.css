@@ -1,0 +1,22 @@
+.unavailable-metric-state {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px dashed color-mix(in srgb, var(--text-muted) 55%, transparent);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
+}
+
+.unavailable-metric-state strong {
+    color: var(--text);
+}
+
+.unavailable-metric-state span,
+.unavailable-metric-state small {
+    color: var(--text-body);
+}
+
+.unavailable-metric-state small {
+    line-height: 1.45;
+}

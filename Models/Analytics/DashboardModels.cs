@@ -1,4 +1,4 @@
-using HandballManagerCore.DTO;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Models.Analytics;
 
@@ -39,27 +39,6 @@ public sealed record DashboardGlobalBoards(
 {
     public static DashboardGlobalBoards Empty { get; } = new([], []);
 }
-
-public sealed record OverviewMetrics(
-    int PlayerCount,
-    int TeamCount,
-    int MatchCount,
-    int EventCount,
-    int GoalCount,
-    int AssistCount,
-    int InterceptionCount,
-    int SaveCount,
-    int TurnoverCount,
-    int SanctionCount);
-
-public sealed record PlayerDirectoryItem(
-    int Id,
-    string FullName,
-    string TeamName,
-    string PositionName,
-    string? CountryName,
-    int? Age,
-    bool IsGoalkeeper);
 
 public sealed record GlobalFieldRankingRow(
     int PlayerId,
@@ -173,7 +152,7 @@ public sealed record PlayerSpotlight
 
     public double PenaltyStopRate => Technical.GoalkeeperPenaltyStopRate;
 
-    public int GoalkeeperConcededGoals => Technical.GoalkeeperConcededGoals + Technical.GoalkeeperPenaltyConcededGoals;
+    public int GoalkeeperConcededGoals => Technical.GoalkeeperConcededGoals;
 }
 
 public sealed record ZoneStat(
@@ -207,3 +186,102 @@ public sealed record MatchRecap(
     string SeasonDayLabel);
 
 public sealed record SliceValue(string Label, int Value);
+
+// ─── Tableau analytique joueuses V2 ─────────────────────────────────────────
+
+/// <summary>Valeur de taux avec preuve numerateur/denominateur.</summary>
+public sealed record TableRateValue(
+    double? Value,
+    double Numerator,
+    double Denominator,
+    bool SampleReliable,
+    string? UnavailableReason = null)
+{
+    public static TableRateValue Unavailable(string reason) =>
+        new(null, 0, 0, false, reason);
+
+    public static TableRateValue FromCounts(double numerator, double denominator) =>
+        denominator > 0
+            ? new(Math.Round(numerator * 100d / denominator, 2, MidpointRounding.AwayFromZero), numerator, denominator, false)
+            : new(null, 0, 0, false, "Aucun tir dans le perimetre");
+
+    public bool IsUnavailable => !Value.HasValue;
+}
+
+/// <summary>Detail de la ligne sanctions (sans PenaltyConcede).</summary>
+public sealed record TableSanctionDetail(int Warnings, int TwoMinutes, int Disqualifications)
+{
+    public int Total => Warnings + TwoMinutes + Disqualifications;
+}
+
+/// <summary>Identite commune joueuse de champ et gardienne.</summary>
+public sealed record TablePlayerIdentity(
+    int PlayerId,
+    string FullName,
+    string TeamName,
+    int? PositionId,
+    string PositionLabel,
+    bool IsGoalkeeper,
+    int MatchesPlayed);
+
+/// <summary>Statistiques offensives joueuses de champ.</summary>
+public sealed record TableFieldOffense(
+    int TotalGoals,
+    int OpenPlayGoals,
+    int PenaltyGoals,
+    int Assists,
+    int? PenaltiesWon,          // null = DATA_UNAVAILABLE en V1
+    int? SanctionsDrawn,        // null = DATA_UNAVAILABLE en V1
+    int TotalTurnovers,
+    int BadPasses,
+    bool FailedPivotPassesAvailable, // toujours false en V1
+    TableRateValue TotalShotRate,
+    TableRateValue OpenPlayShotRate,
+    TableRateValue PenaltyShotRate);
+
+/// <summary>Statistiques defensives joueuses de champ.</summary>
+public sealed record TableFieldDefense(
+    int Interceptions,
+    int Blocks,
+    int OffensiveFoulsDrawn,
+    int Neutralizations,
+    int PenaltiesConceded,
+    TableSanctionDetail SanctionsConceded);
+
+/// <summary>Statistiques gardienne.</summary>
+public sealed record TableGoalkeeperStats(
+    int TotalSaves,
+    int OpenPlaySaves,
+    int PenaltySaves,
+    int TotalShotsFaced,
+    int OpenPlayShotsFaced,
+    int PenaltyShotsFaced,
+    TableRateValue TotalSaveRate,
+    TableRateValue OpenPlaySaveRate,
+    TableRateValue PenaltySaveRate,
+    int Assists,
+    int Goals,
+    int TotalTurnovers,
+    int MissedShots);
+
+/// <summary>Ligne tableau joueuse de champ V2.</summary>
+public sealed record DashboardFieldPlayerRow(
+    TablePlayerIdentity Identity,
+    TableFieldOffense Offense,
+    TableFieldDefense Defense);
+
+/// <summary>Ligne tableau gardienne V2.</summary>
+public sealed record DashboardGoalkeeperRow(
+    TablePlayerIdentity Identity,
+    TableGoalkeeperStats Goalkeeper);
+
+/// <summary>
+/// Tableau analytique complet V2.
+/// Remplace DashboardGlobalBoards pour l'affichage mais laisse l'ancien intact pour compatibilite.
+/// </summary>
+public sealed record DashboardPlayerTable(
+    IReadOnlyList<DashboardFieldPlayerRow> FieldPlayers,
+    IReadOnlyList<DashboardGoalkeeperRow> Goalkeepers)
+{
+    public static DashboardPlayerTable Empty { get; } = new([], []);
+}

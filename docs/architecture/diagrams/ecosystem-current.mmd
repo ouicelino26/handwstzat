@@ -1,0 +1,14 @@
+flowchart TB
+    Analyste[Analyste / staff] --> HandWStat[HandWStat<br/>MAUI Blazor Hybrid]
+    Visiteur[Visiteur] --> Web[HandballManagerWeb<br/>Blazor Server]
+    Admin[Administrateur] --> Integration[HandballIntegration<br/>WPF]
+    HandWStat -->|HTTPS + JSON + JWT| API[HandballManagerAPI<br/>ASP.NET Core]
+    Web -->|HTTP + JSON| API
+    Integration -->|HTTPS + JSON + JWT Admin| API
+    API -->|EF Core / Pomelo| DB[(MySQL 8)]
+    API --> Storage[(Artefacts locaux)]
+    HandWStat -. compilation .-> Core[HandballManagerCore]
+    Web -. compilation .-> Core
+    Integration -. compilation .-> Core
+    API -. compilation .-> Core
+

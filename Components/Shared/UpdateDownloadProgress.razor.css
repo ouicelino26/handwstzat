@@ -1,0 +1,17 @@
+.update-download-progress {
+    display: grid;
+    gap: .5rem;
+    margin: 1rem 0;
+}
+
+.update-download-progress__line {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: .8rem;
+}
+
+.update-download-progress progress {
+    width: 100%;
+    accent-color: #6fe9b9;
+}

@@ -1,5 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -13,9 +12,8 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
-
   <ItemGroup>
-    <Using Include="Xunit" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -24,11 +22,69 @@
 
   <!-- Link model source files directly — avoids MAUI multi-TFM incompatibility -->
   <ItemGroup>
-    <Compile Include="..\Models\Analytics\ChartModels.cs" Link="Analytics\ChartModels.cs" />
-    <Compile Include="..\Models\Analytics\KpiModels.cs" Link="Analytics\KpiModels.cs" />
-    <Compile Include="..\Models\Analytics\MatchScenarioAnalyzer.cs" Link="Analytics\MatchScenarioAnalyzer.cs" />
-    <Compile Include="..\Models\Analytics\SpatialZoneVisuals.cs" Link="Analytics\SpatialZoneVisuals.cs" />
-    <Compile Include="..\Models\Analytics\TableHeatToneHelper.cs" Link="Analytics\TableHeatToneHelper.cs" />
+    <Compile Include="..\Configuration\ApiSettings.cs" Link="Configuration\ApiSettings.cs" />
+    <Compile Include="..\Models\Contracts\ApiContracts.cs" Link="Models\Contracts\ApiContracts.cs" />
+    <Compile Include="..\Models\Contracts\ReleaseArtifactValidator.cs" Link="Models\Contracts\ReleaseArtifactValidator.cs" />
+    <Compile Include="..\Configuration\UpdateSettings.cs" Link="Configuration\UpdateSettings.cs" />
+    <Compile Include="..\Models\Analytics\CourtZoneModels.cs" Link="Models\Analytics\CourtZoneModels.cs" />
+    <Compile Include="..\Models\Analytics\CourtZoneMapper.cs" Link="Models\Analytics\CourtZoneMapper.cs" />
+    <Compile Include="..\Models\Analytics\SpatialZoneVisuals.cs" Link="Models\Analytics\SpatialZoneVisuals.cs" />
+    <Compile Include="..\Models\Analytics\DashboardFoundationModels.cs" Link="Models\Analytics\DashboardFoundationModels.cs" />
+    <Compile Include="..\Models\Analytics\DashboardModels.cs" Link="Models\Analytics\DashboardModels.cs" />
+    <Compile Include="..\Services\PlayerTableMapper.cs" Link="Services\PlayerTableMapper.cs" />
+    <Compile Include="..\Models\Analytics\KpiModels.cs" Link="Models\Analytics\KpiModels.cs" />
+    <Compile Include="..\Models\Analytics\MetricDisplayModels.cs" Link="Models\Analytics\MetricDisplayModels.cs" />
+    <Compile Include="..\Models\Analytics\LeagueAnalyticsModels.cs" Link="Models\Analytics\LeagueAnalyticsModels.cs" />
+    <Compile Include="..\Services\Api\ApiClientBase.cs" Link="Services\Api\ApiClientBase.cs" />
+    <Compile Include="..\Services\Api\ApiQueryBuilder.cs" Link="Services\Api\ApiQueryBuilder.cs" />
+    <Compile Include="..\Services\Api\ApiRequestException.cs" Link="Services\Api\ApiRequestException.cs" />
+    <Compile Include="..\Services\Api\StatsApiClient.cs" Link="Services\Api\StatsApiClient.cs" />
+    <Compile Include="..\Services\Api\MatchesApiClient.cs" Link="Services\Api\MatchesApiClient.cs" />
+    <Compile Include="..\Services\Api\PlayersApiClient.cs" Link="Services\Api\PlayersApiClient.cs" />
+    <Compile Include="..\Models\Analytics\TeamOfTheDayModels.cs" Link="Models\Analytics\TeamOfTheDayModels.cs" />
+    <Compile Include="..\Models\Analytics\FilterModels.cs" Link="Models\Analytics\FilterModels.cs" />
+    <Compile Include="..\Models\Analytics\ChartModels.cs" Link="Models\Analytics\ChartModels.cs" />
+    <Compile Include="..\Models\Analytics\MatchScenarioAnalyzer.cs" Link="Models\Analytics\MatchScenarioAnalyzer.cs" />
+    <Compile Include="..\Models\Analytics\MatchFilterCatalog.cs" Link="Models\Analytics\MatchFilterCatalog.cs" />
+    <Compile Include="..\Models\Analytics\TrajectoryModels.cs" Link="Models\Analytics\TrajectoryModels.cs" />
+    <Compile Include="..\Models\Analytics\PlayerTrajectoryMetricCatalog.cs" Link="Models\Analytics\PlayerTrajectoryMetricCatalog.cs" />
+    <Compile Include="..\Models\Analytics\TrajectoryAggregator.cs" Link="Models\Analytics\TrajectoryAggregator.cs" />
+    <Compile Include="..\Models\Analytics\TrajectoryPointBuilder.cs" Link="Models\Analytics\TrajectoryPointBuilder.cs" />
+    <Compile Include="..\Models\Analytics\GameAnalysisModels.cs" Link="Models\Analytics\GameAnalysisModels.cs" />
+    <Compile Include="..\Models\Analytics\PlayerMatchResultResolver.cs" Link="Models\Analytics\PlayerMatchResultResolver.cs" />
+    <Compile Include="..\Models\Analytics\GameSeasonBaselineCalculator.cs" Link="Models\Analytics\GameSeasonBaselineCalculator.cs" />
+    <Compile Include="..\Models\Analytics\PlayerGameRowBuilder.cs" Link="Models\Analytics\PlayerGameRowBuilder.cs" />
+    <Compile Include="..\Services\AnalysisScopeService.cs" Link="Services\AnalysisScopeService.cs" />
+    <Compile Include="..\Services\Analytics\ILeagueAnalyticsGateway.cs" Link="Services\Analytics\ILeagueAnalyticsGateway.cs" />
+    <Compile Include="..\Services\Analytics\LeagueAnalyticsContractValidator.cs" Link="Services\Analytics\LeagueAnalyticsContractValidator.cs" />
+    <Compile Include="..\Services\Analytics\LeaguePlayerAnalyticsService.cs" Link="Services\Analytics\LeaguePlayerAnalyticsService.cs" />
+    <Compile Include="..\Services\Analytics\V2AnalyticsGateway.cs" Link="Services\Analytics\V2AnalyticsGateway.cs" />
+    <Compile Include="..\Services\DashboardSnapshotBuilder.cs" Link="Services\DashboardSnapshotBuilder.cs" />
+    <Compile Include="..\Services\IApiAuthService.cs" Link="Services\IApiAuthService.cs" />
+    <Compile Include="..\Models\Updates\*.cs" Link="Models\Updates\%(Filename)%(Extension)" />
+    <Compile Include="..\Services\Updates\AppUpdateService.cs" Link="Services\Updates\AppUpdateService.cs" />
+    <Compile Include="..\Services\Updates\AppVersionProvider.cs" Link="Services\Updates\AppVersionProvider.cs" />
+    <Compile Include="..\Services\Updates\HandWStatVersionHandler.cs" Link="Services\Updates\HandWStatVersionHandler.cs" />
+    <Compile Include="..\Services\Updates\IAppUpdateService.cs" Link="Services\Updates\IAppUpdateService.cs" />
+    <Compile Include="..\Services\Updates\IAppVersionProvider.cs" Link="Services\Updates\IAppVersionProvider.cs" />
+    <Compile Include="..\Services\Updates\IDeviceIdentifierProvider.cs" Link="Services\Updates\IDeviceIdentifierProvider.cs" />
+    <Compile Include="..\Services\Updates\IExternalLauncher.cs" Link="Services\Updates\IExternalLauncher.cs" />
+    <Compile Include="..\Services\Updates\IUpdateArtifactDownloader.cs" Link="Services\Updates\IUpdateArtifactDownloader.cs" />
+    <Compile Include="..\Services\Updates\IUpdateCheckCoordinator.cs" Link="Services\Updates\IUpdateCheckCoordinator.cs" />
+    <Compile Include="..\Services\Updates\IUpdatePreferenceStore.cs" Link="Services\Updates\IUpdatePreferenceStore.cs" />
+    <Compile Include="..\Services\Updates\UpdateArtifactDownloader.cs" Link="Services\Updates\UpdateArtifactDownloader.cs" />
+    <Compile Include="..\Services\Updates\UpdateCheckCoordinator.cs" Link="Services\Updates\UpdateCheckCoordinator.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <RazorComponent Include="..\Components\Shared\AnalysisScopeSummary.razor" Link="Components\Shared\AnalysisScopeSummary.razor" />
+    <RazorComponent Include="..\Components\Shared\AnalyticsSourceBadge.razor" Link="Components\Shared\AnalyticsSourceBadge.razor" />
+    <RazorComponent Include="..\Components\Shared\DataQualityBadge.razor" Link="Components\Shared\DataQualityBadge.razor" />
+    <RazorComponent Include="..\Components\Shared\LeaguePlayerStatsPanel.razor" Link="Components\Shared\LeaguePlayerStatsPanel.razor" />
+    <RazorComponent Include="..\Components\Shared\MetricBreakdownCard.razor" Link="Components\Shared\MetricBreakdownCard.razor" />
+    <RazorComponent Include="..\Components\Shared\MetricEvidence.razor" Link="Components\Shared\MetricEvidence.razor" />
+    <RazorComponent Include="..\Components\Shared\MetricValueCard.razor" Link="Components\Shared\MetricValueCard.razor" />
+    <RazorComponent Include="..\Components\Shared\RateMetricCard.razor" Link="Components\Shared\RateMetricCard.razor" />
+    <RazorComponent Include="..\Components\Shared\UnavailableMetricState.razor" Link="Components\Shared\UnavailableMetricState.razor" />
   </ItemGroup>
 
   <ItemGroup>

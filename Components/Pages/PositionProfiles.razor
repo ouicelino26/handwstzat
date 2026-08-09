@@ -109,11 +109,6 @@
                         </header>
 
                         <div class="position-profile-summary-stack">
-                            <ScopeSummaryBar Kicker="Cadre commun"
-                                             Title="Le contexte filtre la joueuse, la mediane agrege le poste"
-                                             Subtitle="La joueuse reste dans le repertoire filtre, tandis que la mediane du poste se calcule sur toutes les joueuses du meme poste sur la periode choisie."
-                                             Items="@PositionProfileScopeItems" />
-
                             @if (!string.IsNullOrWhiteSpace(insights.QuickSummary))
                             {
                                 <article class="mini-card position-profile-quick-insight">

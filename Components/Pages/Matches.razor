@@ -377,18 +377,24 @@
                                     </div>
 
                                     <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="340" Options="@GetMatchComparisonChartOptions()">
-                                        <ApexPointSeries TItem="MetricPlotPoint"
-                                                         Items="@MatchTeam1ComparisonSeries"
-                                                         Name="@(SelectedMatch?.Team1Name ?? "Equipe 1")"
-                                                         SeriesType="SeriesType.Bar"
-                                                         XValue="point => point.Label"
-                                                         YValue="point => (decimal?)point.Value" />
-                                        <ApexPointSeries TItem="MetricPlotPoint"
-                                                         Items="@MatchTeam2ComparisonSeries"
-                                                         Name="@(SelectedMatch?.Team2Name ?? "Equipe 2")"
-                                                         SeriesType="SeriesType.Bar"
-                                                         XValue="point => point.Label"
-                                                         YValue="point => (decimal?)point.Value" />
+                                        @if (ShowTeam1TimelineSeries)
+                                        {
+                                            <ApexPointSeries TItem="MetricPlotPoint"
+                                                             Items="@MatchTeam1ComparisonSeries"
+                                                             Name="@(SelectedMatch?.Team1Name ?? "Equipe 1")"
+                                                             SeriesType="SeriesType.Bar"
+                                                             XValue="point => point.Label"
+                                                             YValue="point => (decimal?)point.Value" />
+                                        }
+                                        @if (ShowTeam2TimelineSeries)
+                                        {
+                                            <ApexPointSeries TItem="MetricPlotPoint"
+                                                             Items="@MatchTeam2ComparisonSeries"
+                                                             Name="@(SelectedMatch?.Team2Name ?? "Equipe 2")"
+                                                             SeriesType="SeriesType.Bar"
+                                                             XValue="point => point.Label"
+                                                             YValue="point => (decimal?)point.Value" />
+                                        }
                                     </ApexChart>
                                 </section>
                             }
@@ -468,6 +474,30 @@
                                                 La lecture spatiale s'ouvre sur @MatchSpatialLabel. Utilisez les boutons d'equipe pour basculer vers l'autre camp.
                                             </p>
                                         }
+
+                                        <div class="match-scope-toolbar spatial-attack-filter">
+                                            <div class="match-scope-copy">
+                                                <p class="section-kicker">Type d'attaque</p>
+                                            </div>
+                                            <button type="button"
+                                                    class="match-scope-button @(MatchAttackTypeFilter == "all" ? "is-active" : string.Empty)"
+                                                    @onclick='() => SetMatchAttackTypeFilterAsync("all")'
+                                                    disabled="@IsSpatialLoading">
+                                                Toutes
+                                            </button>
+                                            <button type="button"
+                                                    class="match-scope-button @(MatchAttackTypeFilter == "openplay" ? "is-active" : string.Empty)"
+                                                    @onclick='() => SetMatchAttackTypeFilterAsync("openplay")'
+                                                    disabled="@IsSpatialLoading">
+                                                Jeu ouvert
+                                            </button>
+                                            <button type="button"
+                                                    class="match-scope-button @(MatchAttackTypeFilter == "sevenm" ? "is-active" : string.Empty)"
+                                                    @onclick='() => SetMatchAttackTypeFilterAsync("sevenm")'
+                                                    disabled="@IsSpatialLoading">
+                                                7 metres
+                                            </button>
+                                        </div>
 
                                         @if (HasSpatialFocus)
                                         {
@@ -644,6 +674,7 @@
     private string ActiveSection { get; set; } = "summary";
     private string ActiveLens { get; set; } = AudienceLens.Club;
     private string MatchTeamScope { get; set; } = MatchTeamScopeBoth;
+    private string MatchAttackTypeFilter { get; set; } = "all";
     private string MatchSearch { get; set; } = string.Empty;
     private string MatchPlayerSearch { get; set; } = string.Empty;
     private TableSortState MatchPlayerSort { get; set; } = new("goals", SortDirection.Desc);
@@ -653,8 +684,8 @@
     private bool ShowMatchDetailView => MatchIdFromQuery.HasValue;
     private string? SpatialFocusKey { get; set; }
 
-    private IReadOnlyList<ZoneStat> GoalZones => MatchSpatial?.Zones.Select(MapZone).ToList() ?? [];
-    private IReadOnlyList<ZoneStat> TriggerZones => MatchSpatial?.Triggers.Select(MapTrigger).ToList() ?? [];
+    private IReadOnlyList<CourtZoneStat> GoalZones => MatchSpatial?.Zones.Select(CourtZoneMapper.MapShotZone).ToList() ?? [];
+    private IReadOnlyList<CourtZoneStat> TriggerZones => MatchSpatial?.Triggers.Select(CourtZoneMapper.MapTriggerZone).ToList() ?? [];
     private bool HasSpatialFocus => !string.IsNullOrWhiteSpace(SpatialFocusKey);
     private string MatchSpatialScopeKey => MatchTeamScope switch
     {
@@ -732,7 +763,7 @@
     private bool ShowMatchAnalystPanels => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
     private bool ShowTeam1TimelineSeries => MatchTeamScope is MatchTeamScopeBoth or MatchTeamScopeTeam1;
     private bool ShowTeam2TimelineSeries => MatchTeamScope is MatchTeamScopeBoth or MatchTeamScopeTeam2;
-    private ZoneStat? CurrentZone => GoalZones.Concat(TriggerZones).FirstOrDefault(zone => zone.Key == ActiveZoneKey)
+    private CourtZoneStat? CurrentZone => GoalZones.Concat(TriggerZones).FirstOrDefault(zone => zone.Key == ActiveZoneKey)
         ?? GoalZones.FirstOrDefault(zone => zone.Attempts > 0)
         ?? TriggerZones.FirstOrDefault(zone => zone.Attempts > 0)
         ?? GoalZones.FirstOrDefault()
@@ -833,6 +864,7 @@
         MatchPlayerSearch = string.Empty;
         MatchPlayerSort = new TableSortState("goals", SortDirection.Desc);
         MatchTeamScope = MatchTeamScopeBoth;
+        MatchAttackTypeFilter = "all";
         ActiveSection = "summary";
         PublishGlobalScope();
         await ApplyFiltersAsync();
@@ -1026,7 +1058,7 @@
         Task<MatchListItemDto?>? matchTask = null;
         Task<MatchSummaryDto?>? summaryTask = null;
         Task<IReadOnlyList<PlayerGlobalStatsDto>>? playersTask = null;
-        Task<IReadOnlyList<MatchEvent>>? eventsTask = null;
+        Task<IReadOnlyList<MatchEventAnalyticsDto>>? eventsTask = null;
 
         if (cache.Match is null)
         {
@@ -1180,7 +1212,7 @@
 
         try
         {
-            var spatial = await StatsApiClient.GetMatchSpatialAsync(matchId, teamId, BuildMatchSpatialQueryOptions(focusZoneKey));
+            var spatial = await StatsApiClient.GetMatchSpatialAsync(matchId, teamId, MatchAttackTypeFilter is "all" or "" ? null : MatchAttackTypeFilter, BuildMatchSpatialQueryOptions(focusZoneKey));
 
             if (loadToken != SpatialLoadToken || !SelectedMatchId.HasValue || SelectedMatchId.Value != matchId || !string.Equals(scopeKey, MatchSpatialScopeKey, StringComparison.OrdinalIgnoreCase))
             {
@@ -1221,12 +1253,13 @@
 
     private string GetMatchSpatialCacheKey(string scopeKey, string? focusZoneKey)
     {
+        var attackSuffix = MatchAttackTypeFilter is "all" or "" ? string.Empty : $"|{MatchAttackTypeFilter}";
         if (string.IsNullOrWhiteSpace(focusZoneKey))
         {
-            return scopeKey;
+            return $"{scopeKey}{attackSuffix}";
         }
 
-        return $"{scopeKey}|{focusZoneKey.Trim().ToUpperInvariant()}";
+        return $"{scopeKey}|{focusZoneKey.Trim().ToUpperInvariant()}{attackSuffix}";
     }
 
     private StatsQueryOptionsDto BuildMatchSpatialQueryOptions(string? focusZoneKey)
@@ -1312,27 +1345,7 @@
         MatchList = ScopedMatches;
     }
 
-    private static ZoneStat MapZone(ZoneStatDto zone)
-    {
-        return new ZoneStat(
-            zone.ZoneCode,
-            zone.ZoneCode,
-            zone.SuccessRate,
-            zone.Attempts,
-            zone.SuccessCount,
-            zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList());
-    }
-
-    private static ZoneStat MapTrigger(TriggerZoneStatDto zone)
-    {
-        return new ZoneStat(
-            SpatialZoneVisuals.ToVisualTriggerKey(zone.TriggerCode),
-            SpatialZoneVisuals.ToVisualTriggerKey(zone.TriggerCode),
-            zone.SuccessRate,
-            zone.Attempts,
-            zone.SuccessCount,
-            zone.Outcomes.Select(outcome => new OutcomeCount(outcome.EventName, outcome.Count)).ToList());
-    }
+    // MapZone and MapTrigger replaced by CourtZoneMapper.MapShotZone / MapTriggerZone
 
     private IReadOnlyList<KpiTile> BuildMatchKpis()
     {
@@ -1341,19 +1354,20 @@
 
     private IReadOnlyList<MetricPlotPoint> BuildMatchProfileSeries()
     {
-        if (MatchSummary is null)
+        var players = GetScopedMatchPlayers().ToList();
+        if (players.Count == 0)
         {
             return [];
         }
 
         return
         [
-            new MetricPlotPoint("Buts", MatchSummary.GoalCount + MatchSummary.PenaltyGoalCount),
-            new MetricPlotPoint("Passes", MatchSummary.AssistCount),
-            new MetricPlotPoint("Interceptions", MatchSummary.InterceptionCount),
-            new MetricPlotPoint("Arrets", MatchSummary.SaveCount),
-            new MetricPlotPoint("Pertes", MatchSummary.TurnoverCount),
-            new MetricPlotPoint("Sanctions", MatchSummary.SanctionCount)
+            new MetricPlotPoint("Buts", players.Sum(p => p.TotalGoals + p.PenaltyGoalCount)),
+            new MetricPlotPoint("Passes", players.Sum(p => p.AssistCount)),
+            new MetricPlotPoint("Interceptions", players.Sum(p => p.InterceptionCount)),
+            new MetricPlotPoint("Arrets", players.Sum(p => p.SaveCount)),
+            new MetricPlotPoint("Pertes", players.Sum(p => p.TurnoverCount)),
+            new MetricPlotPoint("Sanctions", players.Sum(p => p.SanctionCount))
         ];
     }
 
@@ -1652,6 +1666,20 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private async Task SetMatchAttackTypeFilterAsync(string attackType)
+    {
+        MatchAttackTypeFilter = attackType;
+        SpatialFocusKey = null;
+        ActiveZoneKey = null;
+
+        if (ActiveSection == "zones")
+        {
+            await EnsureMatchSpatialLoadedAsync();
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
     private void SetMatchPlayerSort(string column)
     {
         MatchPlayerSort = MatchPlayerSort.Toggle(column, column is "name" or "team" or "position" ? SortDirection.Asc : SortDirection.Desc);
@@ -1697,6 +1725,7 @@
             MatchSpatial = null;
             ActiveZoneKey = null;
             SpatialFocusKey = null;
+            MatchAttackTypeFilter = "all";
             IsSpatialLoading = false;
             ErrorMessage = null;
             BeginSelectedMatchLoad();
