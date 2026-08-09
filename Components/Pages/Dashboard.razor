@@ -966,36 +966,36 @@ else if (Snapshot is not null)
                                                 <td>@row.Identity.MatchesPlayed</td>
                                                 @if (FieldView == "summary" || FieldView == "attack")
                                                 {
-                                                    <td><strong>@row.Offense.TotalGoals</strong></td>
-                                                    <td>@row.Offense.OpenPlayGoals</td>
-                                                    <td>@row.Offense.PenaltyGoals</td>
-                                                    <td>@row.Offense.Assists</td>
+                                                    <td><strong class="@CountToneClass(row.Offense.TotalGoals, 50, 20)">@row.Offense.TotalGoals</strong></td>
+                                                    <td><span class="@CountToneClass(row.Offense.OpenPlayGoals, 40, 15)">@row.Offense.OpenPlayGoals</span></td>
+                                                    <td><span class="@CountToneClass(row.Offense.PenaltyGoals, 8, 3)">@row.Offense.PenaltyGoals</span></td>
+                                                    <td><span class="@CountToneClass(row.Offense.Assists, 30, 10)">@row.Offense.Assists</span></td>
                                                 }
                                                 @if (FieldView == "attack")
                                                 {
                                                     <td><span class="data-unavailable" title="Non disponible en source V1">—</span></td>
-                                                    <td>@row.Offense.TotalTurnovers</td>
-                                                    <td>@row.Offense.BadPasses</td>
+                                                    <td><span class="@CountToneClass(row.Offense.TotalTurnovers, 15, 30, lowerIsBetter: true)">@row.Offense.TotalTurnovers</span></td>
+                                                    <td><span class="@CountToneClass(row.Offense.BadPasses, 10, 20, lowerIsBetter: true)">@row.Offense.BadPasses</span></td>
                                                     <td><span class="data-missing" title="Donnee non disponible en V1">—</span></td>
-                                                    <td>@RenderRateCell(row.Offense.OpenPlayShotRate)</td>
-                                                    <td>@RenderRateCell(row.Offense.PenaltyShotRate)</td>
-                                                    <td>@RenderRateCell(row.Offense.TotalShotRate)</td>
+                                                    <td>@RenderRateCell(row.Offense.OpenPlayShotRate, HandballKpiHelper.FieldSuccessRateTone(row.Offense.OpenPlayShotRate.Value ?? 0))</td>
+                                                    <td>@RenderRateCell(row.Offense.PenaltyShotRate, HandballKpiHelper.FieldPenaltyRateTone(row.Offense.PenaltyShotRate.Value ?? 0))</td>
+                                                    <td>@RenderRateCell(row.Offense.TotalShotRate, HandballKpiHelper.FieldSuccessRateTone(row.Offense.TotalShotRate.Value ?? 0))</td>
                                                 }
                                                 @if (FieldView == "summary")
                                                 {
-                                                    <td>@RenderRateCell(row.Offense.TotalShotRate)</td>
-                                                    <td>@row.Defense.Interceptions</td>
-                                                    <td>@row.Offense.TotalTurnovers</td>
+                                                    <td>@RenderRateCell(row.Offense.TotalShotRate, HandballKpiHelper.FieldSuccessRateTone(row.Offense.TotalShotRate.Value ?? 0))</td>
+                                                    <td><span class="@CountToneClass(row.Defense.Interceptions, 15, 5)">@row.Defense.Interceptions</span></td>
+                                                    <td><span class="@CountToneClass(row.Offense.TotalTurnovers, 15, 30, lowerIsBetter: true)">@row.Offense.TotalTurnovers</span></td>
                                                 }
                                                 @if (FieldView == "defense")
                                                 {
-                                                    <td>@row.Defense.Interceptions</td>
-                                                    <td>@row.Defense.Blocks</td>
-                                                    <td>@row.Defense.Neutralizations</td>
-                                                    <td>@row.Defense.OffensiveFoulsDrawn</td>
-                                                    <td>@row.Defense.PenaltiesConceded</td>
+                                                    <td><span class="@CountToneClass(row.Defense.Interceptions, 15, 5)">@row.Defense.Interceptions</span></td>
+                                                    <td><span class="@CountToneClass(row.Defense.Blocks, 10, 3)">@row.Defense.Blocks</span></td>
+                                                    <td><span class="@CountToneClass(row.Defense.Neutralizations, 8, 2)">@row.Defense.Neutralizations</span></td>
+                                                    <td><span class="@CountToneClass(row.Defense.OffensiveFoulsDrawn, 5, 1)">@row.Defense.OffensiveFoulsDrawn</span></td>
+                                                    <td><span class="@CountToneClass(row.Defense.PenaltiesConceded, 3, 7, lowerIsBetter: true)">@row.Defense.PenaltiesConceded</span></td>
                                                     <td>
-                                                        @row.Defense.SanctionsConceded.Total
+                                                        <span class="@CountToneClass(row.Defense.SanctionsConceded.Total, 3, 8, lowerIsBetter: true)">@row.Defense.SanctionsConceded.Total</span>
                                                         <span class="sanction-detail"
                                                               title="Avert. @row.Defense.SanctionsConceded.Warnings · 2min @row.Defense.SanctionsConceded.TwoMinutes · DQ @row.Defense.SanctionsConceded.Disqualifications">
                                                             &#9432;
@@ -1146,15 +1146,15 @@ else if (Snapshot is not null)
                                                 <td>@row.Identity.MatchesPlayed</td>
                                                 @if (GoalkeeperView == "summary" || GoalkeeperView == "saves")
                                                 {
-                                                    <td><strong>@row.Goalkeeper.TotalSaves</strong></td>
-                                                    <td>@row.Goalkeeper.PenaltySaves</td>
-                                                    <td>@RenderRateCell(row.Goalkeeper.TotalSaveRate)</td>
+                                                    <td><strong class="@CountToneClass(row.Goalkeeper.TotalSaves, 100, 40)">@row.Goalkeeper.TotalSaves</strong></td>
+                                                    <td><span class="@CountToneClass(row.Goalkeeper.PenaltySaves, 8, 3)">@row.Goalkeeper.PenaltySaves</span></td>
+                                                    <td>@RenderRateCell(row.Goalkeeper.TotalSaveRate, HandballKpiHelper.GoalkeeperSaveRateTone(row.Goalkeeper.TotalSaveRate.Value ?? 0))</td>
                                                 }
                                                 @if (GoalkeeperView == "saves")
                                                 {
-                                                    <td>@row.Goalkeeper.OpenPlaySaves</td>
-                                                    <td>@RenderRateCell(row.Goalkeeper.OpenPlaySaveRate)</td>
-                                                    <td>@RenderRateCell(row.Goalkeeper.PenaltySaveRate)</td>
+                                                    <td><span class="@CountToneClass(row.Goalkeeper.OpenPlaySaves, 80, 30)">@row.Goalkeeper.OpenPlaySaves</span></td>
+                                                    <td>@RenderRateCell(row.Goalkeeper.OpenPlaySaveRate, HandballKpiHelper.GoalkeeperSaveRateTone(row.Goalkeeper.OpenPlaySaveRate.Value ?? 0))</td>
+                                                    <td>@RenderRateCell(row.Goalkeeper.PenaltySaveRate, HandballKpiHelper.GoalkeeperPenaltyStopRateTone(row.Goalkeeper.PenaltySaveRate.Value ?? 0))</td>
                                                     <td>@row.Goalkeeper.TotalShotsFaced</td>
                                                 }
                                                 @if (GoalkeeperView == "summary")
@@ -1163,10 +1163,10 @@ else if (Snapshot is not null)
                                                 }
                                                 @if (GoalkeeperView == "ball")
                                                 {
-                                                    <td>@row.Goalkeeper.Assists</td>
-                                                    <td>@row.Goalkeeper.Goals</td>
-                                                    <td>@row.Goalkeeper.TotalTurnovers</td>
-                                                    <td>@row.Goalkeeper.MissedShots</td>
+                                                    <td><span class="@CountToneClass(row.Goalkeeper.Assists, 10, 3)">@row.Goalkeeper.Assists</span></td>
+                                                    <td><span class="@CountToneClass(row.Goalkeeper.Goals, 5, 1)">@row.Goalkeeper.Goals</span></td>
+                                                    <td><span class="@CountToneClass(row.Goalkeeper.TotalTurnovers, 10, 20, lowerIsBetter: true)">@row.Goalkeeper.TotalTurnovers</span></td>
+                                                    <td><span class="@CountToneClass(row.Goalkeeper.MissedShots, 15, 30, lowerIsBetter: true)">@row.Goalkeeper.MissedShots</span></td>
                                                 }
                                             </tr>
                                         }
@@ -1570,7 +1570,7 @@ else if (Snapshot is not null)
     private string GkSortGlyph(string key) =>
         GoalkeeperTableSortKey != key ? "▼▲" : GoalkeeperTableSortAsc ? "▲" : "▼";
 
-    private static RenderFragment RenderRateCell(TableRateValue rate) => builder =>
+    private static RenderFragment RenderRateCell(TableRateValue rate, string tone = "neutral") => builder =>
     {
         if (rate.IsUnavailable)
         {
@@ -1586,8 +1586,16 @@ else if (Snapshot is not null)
         }
         else
         {
+            var toneClass = tone switch
+            {
+                "positive" => "rate-value--positive",
+                "good"     => "rate-value--good",
+                "warning"  => "rate-value--warning",
+                "danger"   => "rate-value--danger",
+                _          => string.Empty
+            };
             builder.OpenElement(0, "span");
-            builder.AddAttribute(1, "class", "rate-value");
+            builder.AddAttribute(1, "class", $"rate-value {toneClass}".TrimEnd());
             builder.AddContent(2, $"{rate.Value:0.##}%");
             builder.CloseElement();
             builder.OpenElement(3, "span");
@@ -1596,6 +1604,22 @@ else if (Snapshot is not null)
             builder.CloseElement();
         }
     };
+
+    private static string CountTone(int value, int goodThreshold, int warningThreshold, bool lowerIsBetter = false)
+    {
+        if (!lowerIsBetter)
+            return value >= goodThreshold ? "positive" : value >= warningThreshold ? "warning" : "danger";
+        return value <= goodThreshold ? "positive" : value <= warningThreshold ? "warning" : "danger";
+    }
+
+    private static string CountToneClass(int value, int goodThreshold, int warningThreshold, bool lowerIsBetter = false)
+        => CountTone(value, goodThreshold, warningThreshold, lowerIsBetter) switch
+        {
+            "positive" => "count-value--positive",
+            "warning"  => "count-value--warning",
+            "danger"   => "count-value--danger",
+            _          => string.Empty
+        };
 
     private async Task LoadPlayerTableAsync()
     {

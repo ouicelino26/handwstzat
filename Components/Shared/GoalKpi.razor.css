@@ -101,6 +101,28 @@
 .heat-legend > span:nth-child(2) { order: 2; }
 .heat-legend > span:last-child   { order: 3; }
 
+/* ── Panneau combiné but + déclenchements ───────────── */
+.court-stage--combined .goal-map-wrap {
+    padding-bottom: 0;
+}
+
+.court-stage__sub-head {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0.8rem;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.court-stage__sub-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
 /* ── Maps ───────────────────────────────────────────── */
 .goal-map-wrap,
 .pitch-map-wrap {

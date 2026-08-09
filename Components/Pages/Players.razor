@@ -225,7 +225,7 @@
                                         <p class="section-kicker">Global</p>
                                         <h4>@profile.MatchesPlayed matchs</h4>
                                     </header>
-                                    <div class="brief-kpi-grid">
+                                    <div class="brief-kpi-grid brief-kpi-grid--compact">
                                         @foreach (var kpi in BriefGlobalKpis)
                                         {
                                             <BarGaugeKpiCard Item="@kpi" />
@@ -238,10 +238,13 @@
                                     @* ── OFFENSIF ── *@
                                     <section class="brief-section brief-section--offense">
                                         <header class="brief-section__head">
-                                            <p class="section-kicker">Offensif</p>
+                                            <p class="section-kicker">Stats offensives</p>
                                             <h4>@offense.TotalButs buts · @passing.PasseDecisive passes</h4>
+                                            <button type="button" class="brief-see-details" @onclick='() => SetActiveSection("analysis")'>
+                                                Voir détails →
+                                            </button>
                                         </header>
-                                        <div class="brief-kpi-grid">
+                                        <div class="brief-kpi-grid brief-kpi-grid--compact">
                                             @foreach (var kpi in BriefOffenseKpis)
                                             {
                                                 <BarGaugeKpiCard Item="@kpi" />
@@ -252,10 +255,13 @@
                                     @* ── DÉFENSIF ── *@
                                     <section class="brief-section brief-section--defense">
                                         <header class="brief-section__head">
-                                            <p class="section-kicker">Défensif</p>
+                                            <p class="section-kicker">Stats défensives</p>
                                             <h4>@defense.Interceptions interceptions · @(defense.Contres + defense.Neutralisations) blocs</h4>
+                                            <button type="button" class="brief-see-details" @onclick='() => SetActiveSection("analysis")'>
+                                                Voir détails →
+                                            </button>
                                         </header>
-                                        <div class="brief-kpi-grid">
+                                        <div class="brief-kpi-grid brief-kpi-grid--compact">
                                             @foreach (var kpi in BriefDefenseKpis)
                                             {
                                                 <BarGaugeKpiCard Item="@kpi" />
@@ -268,10 +274,13 @@
                                     @* ── GARDIENNE ── *@
                                     <section class="brief-section brief-section--goalkeeper">
                                         <header class="brief-section__head">
-                                            <p class="section-kicker">Gardienne</p>
-                                            <h4>@(goalkeeper.Arrets + goalkeeper.ArretsPenalty) arrets · @goalkeeper.TirsSubis tirs subis</h4>
+                                            <p class="section-kicker">Stats arrêts</p>
+                                            <h4>@(goalkeeper.Arrets + goalkeeper.ArretsPenalty) arrêts · @goalkeeper.TirsSubis tirs subis</h4>
+                                            <button type="button" class="brief-see-details" @onclick='() => SetActiveSection("analysis")'>
+                                                Voir détails →
+                                            </button>
                                         </header>
-                                        <div class="brief-kpi-grid">
+                                        <div class="brief-kpi-grid brief-kpi-grid--compact">
                                             @foreach (var kpi in BriefGoalkeeperKpis)
                                             {
                                                 <BarGaugeKpiCard Item="@kpi" />
@@ -284,8 +293,11 @@
                                         <header class="brief-section__head">
                                             <p class="section-kicker">Avec ballon</p>
                                             <h4>@goalkeeper.PasseDecisives passes · @goalkeeper.Buts buts</h4>
+                                            <button type="button" class="brief-see-details" @onclick='() => SetActiveSection("analysis")'>
+                                                Voir détails →
+                                            </button>
                                         </header>
-                                        <div class="brief-kpi-grid">
+                                        <div class="brief-kpi-grid brief-kpi-grid--compact">
                                             @foreach (var kpi in BriefBallKpis)
                                             {
                                                 <BarGaugeKpiCard Item="@kpi" />
@@ -421,7 +433,7 @@
                                         </header>
                                         <div class="perf-metric-list perf-metric-list--rates">
                                             <PerformanceMetricRow
-                                                Label="Taux total"
+                                                Label="Taux total"db
                                                 Value="@(FormatRate(totalRate) + "%")"
                                                 Evidence="@(totalRateModel != null ? $"{totalRateModel.Numerator?.ToString("0") ?? "?"} / {totalRateModel.Denominator?.ToString("0") ?? "?"}" : $"{totalGoals} / {totalShots}")"
                                                 Availability="@(totalRateModel != null && !totalRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)"
@@ -2107,7 +2119,9 @@
         finally
         {
             await BusyUiHelper.ExitAsync(() => IsPlayerSheetExportBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
+            
         }
+        
     }
 
     private async Task LoadAsync(bool refreshReferenceData)
@@ -3654,6 +3668,7 @@
         var glyph = PlayerMatchSort.Glyph(column);
         if (!string.IsNullOrWhiteSpace(glyph))
         {
+            
             builder.OpenElement(7, "span");
             builder.AddAttribute(8, "class", "sort-indicator");
             builder.AddAttribute(9, "aria-hidden", "true");

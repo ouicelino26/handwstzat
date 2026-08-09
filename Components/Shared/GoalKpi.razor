@@ -40,13 +40,14 @@
         <p class="tiny-note spatial-loading-note">Chargement des zones associees...</p>
     }
 
-    @if (ShowGoalMap)
+    @if (ShowGoalMap && ShowTriggerMap)
     {
-        <section class="court-stage">
+        @* Mode "Les deux" : but en haut, terrain de déclenchement en dessous dans le même panneau *@
+        <section class="court-stage court-stage--combined">
             <header class="court-stage__head">
                 <div>
-                    <span>Goal frame</span>
-                    <h4>Precision par secteur</h4>
+                    <span>Vue combinée</span>
+                    <h4>But · Déclenchements</h4>
                 </div>
 
                 <div class="heat-legend">
@@ -55,6 +56,10 @@
                     <span>@LegendEndLabel</span>
                 </div>
             </header>
+
+            <div class="court-stage__sub-head" aria-hidden="true">
+                <span class="court-stage__sub-label">Précision par secteur du but</span>
+            </div>
 
             <div class="goal-map-wrap">
                 <svg class="goal-map" viewBox="0 0 804 440" role="img" aria-label="Carte de precision du but">
@@ -134,18 +139,10 @@
                     }
                 </svg>
             </div>
-        </section>
-    }
 
-    @if (ShowTriggerMap)
-    {
-        <section class="court-stage">
-            <header class="court-stage__head">
-                <div>
-                    <span>Court map</span>
-                    <h4>Declenchements et angles</h4>
-                </div>
-            </header>
+            <div class="court-stage__sub-head" aria-hidden="true">
+                <span class="court-stage__sub-label">Zones de déclenchement</span>
+            </div>
 
             <div class="pitch-map-wrap">
                 <svg class="pitch-map" viewBox="0 0 706 464" role="img" aria-label="Carte terrain des declenchements">
@@ -179,11 +176,157 @@
                               @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
                             <title>@GetTooltip(zone.Key, stat)</title>
                         </path>
-
                     }
                 </svg>
             </div>
         </section>
+    }
+    else
+    {
+        @if (ShowGoalMap)
+        {
+            <section class="court-stage">
+                <header class="court-stage__head">
+                    <div>
+                        <span>Goal frame</span>
+                        <h4>Precision par secteur</h4>
+                    </div>
+
+                    <div class="heat-legend">
+                        <span>@LegendStartLabel</span>
+                        <span>@LegendMiddleLabel</span>
+                        <span>@LegendEndLabel</span>
+                    </div>
+                </header>
+
+                <div class="goal-map-wrap">
+                    <svg class="goal-map" viewBox="0 0 804 440" role="img" aria-label="Carte de precision du but">
+                        <title>Carte de precision du but</title>
+                        <desc>Zones de tir avec taux de reussite par secteur du but</desc>
+                        <rect x="0" y="0" width="804" height="440" rx="24" class="goal-bg" fill="#0f2520" />
+
+                        @foreach (var zone in GoalGeometries)
+                        {
+                            var stat = GetGoalZone(zone.Key);
+                            if (!ShouldRenderZone(zone.Key, stat))
+                            {
+                                continue;
+                            }
+
+                            if (zone.Shape == SvgShape.Rect)
+                            {
+                                <rect x="@Format(zone.X)"
+                                      y="@Format(zone.Y)"
+                                      width="@Format(zone.Width)"
+                                      height="@Format(zone.Height)"
+                                      rx="6"
+                                      class="zone-shape @(IsActive(zone.Key) ? "zone-active" : string.Empty)"
+                                      fill="@GetGoalFillColor(stat)"
+                                      stroke="@GetStrokeColor(zone.Key)"
+                                      stroke-width="@GetStrokeWidth(zone.Key)"
+                                      role="button"
+                                      tabindex="0"
+                                      aria-label="@GetZoneAccessibleLabel(zone.Key)"
+                                      aria-pressed="@IsZoneActive(zone.Key).ToString().ToLowerInvariant()"
+                                      @onclick="() => SelectZoneAsync(zone.Key)"
+                                      @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
+                                    <title>@GetTooltip(zone.Key, stat)</title>
+                                </rect>
+                            }
+                            else if (zone.Shape == SvgShape.Path)
+                            {
+                                <path d="@zone.Data"
+                                      class="zone-shape @(IsActive(zone.Key) ? "zone-active" : string.Empty)"
+                                      fill="@GetGoalFillColor(stat)"
+                                      stroke="@GetStrokeColor(zone.Key)"
+                                      stroke-width="@GetStrokeWidth(zone.Key)"
+                                      role="button"
+                                      tabindex="0"
+                                      aria-label="@GetZoneAccessibleLabel(zone.Key)"
+                                      aria-pressed="@IsZoneActive(zone.Key).ToString().ToLowerInvariant()"
+                                      @onclick="() => SelectZoneAsync(zone.Key)"
+                                      @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
+                                    <title>@GetTooltip(zone.Key, stat)</title>
+                                </path>
+                            }
+                            else
+                            {
+                                <polygon points="@zone.Data"
+                                         class="zone-shape @(IsActive(zone.Key) ? "zone-active" : string.Empty)"
+                                         fill="@GetGoalFillColor(stat)"
+                                         stroke="@GetStrokeColor(zone.Key)"
+                                         stroke-width="@GetStrokeWidth(zone.Key)"
+                                         role="button"
+                                         tabindex="0"
+                                         aria-label="@GetZoneAccessibleLabel(zone.Key)"
+                                         aria-pressed="@IsZoneActive(zone.Key).ToString().ToLowerInvariant()"
+                                         @onclick="() => SelectZoneAsync(zone.Key)"
+                                         @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
+                                    <title>@GetTooltip(zone.Key, stat)</title>
+                                </polygon>
+                            }
+
+                            <foreignObject x="@Format(zone.LabelX - 24)"
+                                           y="@Format(zone.LabelY - 10)"
+                                           width="48"
+                                           height="20">
+                                <div xmlns="http://www.w3.org/1999/xhtml" class="zone-label">
+                                    @GetLabel(stat)
+                                </div>
+                            </foreignObject>
+                        }
+                    </svg>
+                </div>
+            </section>
+        }
+
+        @if (ShowTriggerMap)
+        {
+            <section class="court-stage">
+                <header class="court-stage__head">
+                    <div>
+                        <span>Court map</span>
+                        <h4>Declenchements et angles</h4>
+                    </div>
+                </header>
+
+                <div class="pitch-map-wrap">
+                    <svg class="pitch-map" viewBox="0 0 706 464" role="img" aria-label="Carte terrain des declenchements">
+                        <title>Carte terrain des declenchements</title>
+                        <desc>Zones de declenchement des tirs avec volume et efficacite par secteur</desc>
+                        <image href="/design/pitch-map-template.svg"
+                               x="0"
+                               y="0"
+                               width="706"
+                               height="464"
+                               preserveAspectRatio="none" />
+
+                        @foreach (var zone in TriggerGeometries)
+                        {
+                            var stat = GetTriggerZone(zone.Key);
+                            if (!ShouldRenderZone(zone.Key, stat))
+                            {
+                                continue;
+                            }
+
+                            <path d="@zone.Data"
+                                  class="zone-shape trigger-zone @(IsActive(zone.Key) ? "zone-active" : string.Empty)"
+                                  fill="@GetTriggerFillColor(stat)"
+                                  stroke="@GetStrokeColor(zone.Key)"
+                                  stroke-width="@GetStrokeWidth(zone.Key)"
+                                  role="button"
+                                  tabindex="0"
+                                  aria-label="@GetZoneAccessibleLabel(zone.Key)"
+                                  aria-pressed="@IsZoneActive(zone.Key).ToString().ToLowerInvariant()"
+                                  @onclick="() => SelectZoneAsync(zone.Key)"
+                                  @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
+                                <title>@GetTooltip(zone.Key, stat)</title>
+                            </path>
+                        }
+                    </svg>
+                </div>
+            </section>
+        }
     }
 </div>
 

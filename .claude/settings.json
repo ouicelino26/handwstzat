@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l \"Classements\\\\|RankingList\\\\|classement\\\\|ranking\")",
+      "Bash(start \"\" \"C:\\\\Users\\\\donovan.bierque\\\\source\\\\repos\\\\ouicelino26\\\\handwstzat\\\\bin\\\\Debug\\\\net10.0-windows10.0.19041.0\\\\win-x64\\\\HandWStat.exe\")",
+      "Bash(git checkout *)",
+      "Bash(xargs grep -l \"bulk\\\\|compare\\\\|v2.*analytics\\\\|analytics.*v2\\\\|BulkAnalytics\\\\|CompareAnalytics\")",
+      "Bash(xargs grep -l \"class HandballKpiHelper\")",
+      "Bash(xargs grep -l \"IStatEventClassifier\\\\|EventClassification\")",
+      "Bash(grep -v \"//\\\\|^\\\\s*//\\\\|GetPlayer\\\\|Build\\\\|Load\\\\|Task\\\\|Async\\\\|StatsApi\\\\|LeagueAnalytic\")"
+    ]
+  }
+}
