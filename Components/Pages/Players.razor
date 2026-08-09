@@ -2106,11 +2106,26 @@
                 positionProfile = null;
             }
 
+            // Attempt to embed photo as base64 data URI so the exported SVG is self-contained.
+            string? photoDataUri = null;
+            try
+            {
+                var rawUrl = ResolvePlayerPhotoUrl(Profile!.PlayerPhoto, Profile.PlayerId, Profile.FullName, Profile.TeamName);
+                if (!string.IsNullOrWhiteSpace(rawUrl))
+                {
+                    photoDataUri = await LoadPhotoAsDataUriAsync(rawUrl);
+                }
+            }
+            catch
+            {
+                photoDataUri = null; // fallback to initials
+            }
+
             await JS.InvokeVoidAsync(
                 "handwstatExports.downloadTextFile",
                 BuildPlayerSheetFileName("svg"),
                 "image/svg+xml;charset=utf-8",
-                BuildPlayerSheetSvg(positionProfile));
+                BuildPlayerSheetSvg(positionProfile, photoDataUri));
         }
         catch (Exception ex)
         {
@@ -2122,6 +2137,55 @@
             
         }
         
+    }
+
+    /// <summary>
+    /// Load a player photo and return a base64 data URI suitable for embedding in SVG.
+    /// Supports package-bundled assets (wwwroot relative paths) and absolute HTTPS URLs.
+    /// Returns null on failure — caller falls back to initials.
+    /// </summary>
+    private static async Task<string?> LoadPhotoAsDataUriAsync(string photoUrl)
+    {
+        byte[]? bytes = null;
+
+        if (photoUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || photoUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            // Remote URL — download via HttpClient would require injecting it here.
+            // For now, return null (initials fallback) for remote URLs in exported SVG.
+            return null;
+        }
+
+        // Local asset bundled in the MAUI package (wwwroot/* path).
+        // On Windows MAUI, assets live under wwwroot/ in the app package.
+        var relativePath = photoUrl.TrimStart('/');
+        var candidates = new[] { "wwwroot/" + relativePath, relativePath };
+        foreach (var candidate in candidates)
+        {
+            try
+            {
+                using var stream = await FileSystem.OpenAppPackageFileAsync(candidate);
+                using var ms = new System.IO.MemoryStream();
+                await stream.CopyToAsync(ms);
+                bytes = ms.ToArray();
+                if (bytes.Length > 0) break;
+            }
+            catch { }
+        }
+
+        if (bytes is null || bytes.Length == 0)
+        {
+            return null;
+        }
+
+        // Detect MIME type from first bytes (JPEG: FF D8 / PNG: 89 50 4E 47)
+        var mime = bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xD8
+            ? "image/jpeg"
+            : bytes.Length >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47
+                ? "image/png"
+                : "image/jpeg"; // default
+
+        return $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
     }
 
     private async Task LoadAsync(bool refreshReferenceData)
@@ -3328,227 +3392,461 @@
         return $"feuille-joueuse-{playerSlug}-{positionSlug}-{seasonSlug}.{extension}";
     }
 
-    private string BuildPlayerSheetSvg(PositionProfileResponseDto? positionProfile)
+    private string BuildPlayerSheetSvg(PositionProfileResponseDto? positionProfile, string? photoDataUri = null)
     {
         var profile = Profile!;
-        var rows = BuildPlayerSheetRows();
         var width = 1600;
-        var height = 1120;
-        var headerNote = BuildPlayerSheetHeaderNote(positionProfile);
-        var summaryCards = BuildPlayerSheetSummaryCards();
-        var tableMarkup = BuildPlayerSheetTableMarkup(rows, 36, 272, 720, 780);
-        var radarMarkup = BuildPlayerSheetRadarMarkup(positionProfile, 760, 272, 804, 780);
-        var footerNote = "La table resume les volumes et l'efficacite. Le radar compare la joueuse a la mediane du poste sur la cohorte courante.";
+        var height = 1140;
+
+        // Header zone: identity (y=34–192) + 4 KPI cards (y=202–246)
+        var headerMarkup = BuildPlayerSheetHeaderMarkup(profile, positionProfile, width, photoDataUri);
+
+        // Separator line below KPI cards
+        var separatorY = 258;
+
+        // Two-column content area: y=268
+        var contentY = 268;
+        var contentH = 832;
+        var tableX = 36d;
+        var tableW = 720d;
+        var radarX = 768d;
+        var radarW = 796d;
+
+        var offensiveRows = BuildPlayerSheetOffensiveRows(positionProfile);
+        var defensiveRows = BuildPlayerSheetDefensiveRows(positionProfile);
+        var tableMarkup = BuildPlayerSheetTableMarkup(offensiveRows, defensiveRows, tableX, contentY, tableW, contentH);
+        var radarMarkup = BuildPlayerSheetRadarMarkup(profile, positionProfile, radarX, contentY, radarW, contentH);
+
+        var footerY = contentY + contentH + 18;
+        var footerScopeParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(Season)) footerScopeParts.Add(Season!);
+        if (!string.IsNullOrWhiteSpace(Day))    footerScopeParts.Add(Day!);
+        var footerScope = footerScopeParts.Count > 0 ? string.Join(" · ", footerScopeParts) : "Toutes saisons";
+        var footerNote = "Données HandWStat · Statistiques sur la cohorte du poste · " + footerScope;
 
         return $"""
 <svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
   <rect width="{width}" height="{height}" rx="30" fill="#eef4fb" />
   <rect x="14" y="14" width="{width - 28}" height="{height - 28}" rx="26" fill="#ffffff" stroke="#d8e2ef" />
-  <text x="36" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="{ChartPalette.Player}">FICHE JOUEUSE</text>
-  <text x="36" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="800" fill="#0f172a">{EscapeXml(profile.FullName)}</text>
-  <text x="36" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#475569">{EscapeXml((profile.PositionName ?? "Poste") + " - " + (profile.TeamName ?? "Equipe"))}</text>
-  <text x="36" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">{SvgExportHelpers.EscapeXml(headerNote)}</text>
-  <rect x="1360" y="34" width="204" height="40" rx="20" fill="{ChartPalette.Primary}" />
-  <text x="1462" y="60" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#ffffff">Cohorte {positionProfile?.CohortPlayerCount ?? 0}</text>
-  {summaryCards}
+  {headerMarkup}
+  <line x1="36" y1="{separatorY}" x2="{width - 36}" y2="{separatorY}" stroke="#d8e2ef" stroke-width="1" />
   {tableMarkup}
   {radarMarkup}
-  <rect x="36" y="1074" width="1528" height="28" rx="14" fill="#f8fafc" stroke="#d8e2ef" />
-  <text x="54" y="1093" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">{SvgExportHelpers.EscapeXml(footerNote)}</text>
-  <text x="36" y="{height - 14}" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="{ChartPalette.Reference}">HandWStat - export fiche joueuse</text>
+  <text x="54" y="{footerY + 14}" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#94a3b8">{SvgExportHelpers.EscapeXml(footerNote)}</text>
 </svg>
 """;
     }
 
-    private string BuildPlayerSheetSummaryCards()
+    private string BuildPlayerSheetHeaderMarkup(
+        PlayerProfileDto profile,
+        PositionProfileResponseDto? positionProfile,
+        int canvasWidth,
+        string? photoDataUri = null)
     {
-        var cards = Profile?.IsGoalkeeper == true
-            ? new (string Label, string Value, string Note, string Tone)[]
-            {
-                ("Matchs", Profile!.MatchesPlayed.ToString(), "Volume de rencontres analysees.", "info"),
-                ("Arrets", (Goalkeeper!.Arrets + Goalkeeper.ArretsPenalty).ToString(), "Parades totales sur la saison.", "positive"),
-                ("Arrets 7m", Goalkeeper.ArretsPenalty.ToString(), "Impact sur les sequences decisives.", "good"),
-                ("Taux d'arret", $"{FormatRate(Goalkeeper!.TauxArret)}%", "Lecture gardienne sur les tirs subis.", Goalkeeper.TauxArret >= 45 ? "positive" : "warning")
-            }
-            : new (string Label, string Value, string Note, string Tone)[]
-            {
-                ("Matchs", Profile!.MatchesPlayed.ToString(), "Volume de rencontres analysees.", "info"),
-                ("Buts", Global!.TotalGoals.ToString(), "Production offensive directe.", "positive"),
-                ("Passes decisives", Global.AssistCount.ToString(), "Creation et finition du collectif.", "good"),
-                ("Taux de tir ouvert", $"{FormatRate(Technical!.OpenShotSuccessRate)}%", "Conversion hors 7m.", Technical.OpenShotSuccessRate >= 50 ? "positive" : "warning")
-            };
-
-        var xPositions = new double[] { 36d, 416d, 796d, 1176d };
-
-        return string.Join("\n", cards.Select((card, index) =>
-            SvgExportHelpers.BuildMetricCard(xPositions[index], 162, 360, 92, card.Label, card.Value, card.Note, card.Tone)));
-    }
-
-    private string BuildPlayerSheetTableMarkup(IReadOnlyList<PlayerSheetRow> rows, double x, double y, double width, double height)
-    {
-        var headerHeight = 36d;
-        var rowHeight = 58d;
-        var tableX = x + 24d;
-        var tableY = y + 74d;
-        var tableWidth = width - 48d;
-        var labelWidth = 168d;
-        var valueWidth = 120d;
-        var noteX = tableX + labelWidth + valueWidth + 18d;
-        var noteWidth = tableWidth - labelWidth - valueWidth - 34d;
-
-        var bodyRows = string.Join("\n", rows.Select((row, index) =>
+        // Use pre-fetched base64 data URI when available; otherwise resolve URL for initials fallback.
+        string? effectivePhotoSrc = null;
+        if (!string.IsNullOrWhiteSpace(photoDataUri))
         {
-            var rowY = tableY + headerHeight + (index * rowHeight);
-            var background = index % 2 == 0 ? "#f8fafc" : "#ffffff";
-            var accent = GetSheetToneColor(row.Tone);
+            effectivePhotoSrc = photoDataUri;
+        }
+        else
+        {
+            var resolvedUrl = ResolvePlayerPhotoUrl(profile.PlayerPhoto, profile.PlayerId, profile.FullName, profile.TeamName);
+            // Only use the resolved URL in SVG if it's an absolute http(s) URL; relative paths don't work in exported files.
+            if (!string.IsNullOrWhiteSpace(resolvedUrl)
+                && (resolvedUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                    || resolvedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+            {
+                effectivePhotoSrc = resolvedUrl;
+            }
+        }
 
+        // Photo area: top-right, 150×175
+        var photoAreaX = canvasWidth - 190d;
+        var photoAreaY = 24d;
+        var photoW = 150d;
+        var photoH = 175d;
+        var photoBlock = BuildPlayerSheetPhotoMarkup(effectivePhotoSrc, profile.FullName, photoAreaX, photoAreaY, photoW, photoH);
+
+        // Layout :
+        //   kicker       y=34
+        //   nom          y=78
+        //   poste        y=112
+        //   équipe       y=134
+        //   nationalité  y=154
+        //   saison       y=172
+        //   photo        top-right (inchangé)
+        //   ─── séparateur fin identité y=192 ───
+        //   4 KPI cards  y=202..248
+        var textX = 48d;
+        var kickerY = 34d;
+        var nameY   = 78d;
+        var positionY   = nameY + 34d;   // 112
+        var teamY       = positionY + 22d; // 134
+        var nationalityY = teamY + 20d;   // 154
+        var scopeY      = nationalityY + 18d; // 172
+
+        var positionLabel = profile.PositionName ?? "Poste non renseigne";
+        var teamLabel = profile.TeamName ?? "Equipe non renseignee";
+        var nationalityLabel = !string.IsNullOrWhiteSpace(profile.Nationality) ? profile.Nationality : null;
+        // Scope label : "2025-2026 · J18" ou juste "2025-2026" ou vide
+        var scopeParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(Season)) scopeParts.Add(Season!);
+        if (!string.IsNullOrWhiteSpace(Day))    scopeParts.Add(Day!);
+        var scopeLabel = scopeParts.Count > 0 ? string.Join(" · ", scopeParts) : string.Empty;
+
+        var nationalityLine = nationalityLabel is not null
+            ? $"""<text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(nationalityY)}" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">{EscapeXml(nationalityLabel)}</text>"""
+            : string.Empty;
+
+        var scopeLine2 = !string.IsNullOrWhiteSpace(scopeLabel)
+            ? $"""<text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(scopeY)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#94a3b8">{EscapeXml(scopeLabel)}</text>"""
+            : string.Empty;
+
+        // ── 4 compact KPI badges sous l'identité ──────────────────────────────
+        var kpiRowY = 202d;
+        var kpiH   = 44d;
+        var kpiW   = 148d;
+        var kpiGap = 14d;
+        var kpiRx  = 8d;
+
+        var matchesVal = profile.MatchesPlayed.ToString();
+        var goalsVal   = profile.TotalGoals.ToString();
+
+        var overallRate  = Technical?.OverallShotSuccessRate ?? profile.ShotSuccessRate;
+        var shotAttempts = Technical?.ShotAttempts ?? 0;
+        var shotRateVal  = shotAttempts > 0
+            ? PlayerSheetExportHelper.FormatRateOrDash(overallRate, shotAttempts)
+            : (overallRate > 0 ? $"{overallRate.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} %" : "—");
+
+        var avgTime     = profile.AveragePlayingTimePerMatchMinutes;
+        var playTimeVal = avgTime > 0
+            ? $"{avgTime.ToString("0", System.Globalization.CultureInfo.InvariantCulture)} min/m"
+            : "—";
+
+        var kpiCards = new[] {
+            ("Matchs",    matchesVal),
+            ("Buts",      goalsVal),
+            ("% tir",     shotRateVal),
+            ("Tps de jeu", playTimeVal),
+        };
+
+        var kpiBadges = string.Join("\n", kpiCards.Select((card, i) =>
+        {
+            var cardX  = textX + i * (kpiW + kpiGap);
+            var lY     = kpiRowY + 15d;
+            var vY     = kpiRowY + 33d;
             return $"""
-      <rect x="{FormatSvgNumber(tableX)}" y="{FormatSvgNumber(rowY)}" width="{FormatSvgNumber(tableWidth)}" height="{FormatSvgNumber(rowHeight - 4d)}" rx="14" fill="{background}" stroke="#d8e2ef" />
-      <rect x="{FormatSvgNumber(tableX)}" y="{FormatSvgNumber(rowY)}" width="6" height="{FormatSvgNumber(rowHeight - 4d)}" rx="14" fill="{accent}" />
-      {SvgExportHelpers.BuildWrappedText(tableX + 18d, rowY + 22d, labelWidth - 24d, row.Label, "#64748b", 13, 700, "start", 1.08, 1)}
-      <text x="{FormatSvgNumber(tableX + labelWidth + 18d)}" y="{FormatSvgNumber(rowY + 36d)}" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#0f172a">{SvgExportHelpers.EscapeXml(row.Value)}</text>
-      {SvgExportHelpers.BuildWrappedText(noteX, rowY + 21d, noteWidth, row.Note, "#475569", 12, 400, "start", 1.16, 2)}
+  <rect x="{FormatSvgNumber(cardX)}" y="{FormatSvgNumber(kpiRowY)}" width="{FormatSvgNumber(kpiW)}" height="{FormatSvgNumber(kpiH)}" rx="{FormatSvgNumber(kpiRx)}" fill="#eef4fb" stroke="#d8e2ef" />
+  <text x="{FormatSvgNumber(cardX + 12d)}" y="{FormatSvgNumber(lY)}" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="0.8" fill="#94a3b8">{EscapeXml(card.Item1.ToUpperInvariant())}</text>
+  <text x="{FormatSvgNumber(cardX + 12d)}" y="{FormatSvgNumber(vY)}" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="800" fill="#0f172a">{EscapeXml(card.Item2)}</text>
 """;
         }));
 
         return $"""
-  <rect x="{FormatSvgNumber(x)}" y="{FormatSvgNumber(y)}" width="{FormatSvgNumber(width)}" height="{FormatSvgNumber(height)}" rx="24" fill="#ffffff" stroke="#d8e2ef" />
-  <text x="{FormatSvgNumber(x + 24d)}" y="{FormatSvgNumber(y + 36d)}" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" fill="{ChartPalette.Player}">TABLEAU DE SYNTHESE</text>
-  <text x="{FormatSvgNumber(x + 24d)}" y="{FormatSvgNumber(y + 58d)}" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">{SvgExportHelpers.EscapeXml(BuildPlayerSheetSummarySubtitle())}</text>
-  <rect x="{FormatSvgNumber(tableX)}" y="{FormatSvgNumber(tableY)}" width="{FormatSvgNumber(tableWidth)}" height="{FormatSvgNumber(headerHeight)}" rx="12" fill="#f8fafc" stroke="#d8e2ef" />
-  <text x="{FormatSvgNumber(tableX + 16d)}" y="{FormatSvgNumber(tableY + 23d)}" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#64748b">INDICATEUR</text>
-  <text x="{FormatSvgNumber(tableX + labelWidth + 18d)}" y="{FormatSvgNumber(tableY + 23d)}" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#64748b">VALEUR</text>
-  <text x="{FormatSvgNumber(noteX)}" y="{FormatSvgNumber(tableY + 23d)}" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#64748b">LECTURE</text>
-  {bodyRows}
+  <text x="48" y="{FormatSvgNumber(kickerY)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.5" fill="{ChartPalette.Player}">FICHE JOUEUSE</text>
+  <text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(nameY)}" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="800" fill="#0f172a">{EscapeXml(profile.FullName)}</text>
+  <text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(positionY)}" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="600" fill="#334155">{EscapeXml(positionLabel)}</text>
+  <text x="{FormatSvgNumber(textX)}" y="{FormatSvgNumber(teamY)}" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#475569">{EscapeXml(teamLabel)}</text>
+  {nationalityLine}
+  {scopeLine2}
+  {photoBlock}
+  {kpiBadges}
 """;
     }
 
-    private string BuildPlayerSheetHeaderNote(PositionProfileResponseDto? positionProfile)
+    private static string BuildPlayerSheetPhotoMarkup(
+        string? photoUrl,
+        string? fullName,
+        double x,
+        double y,
+        double w,
+        double h)
     {
-        var seasonLabel = string.IsNullOrWhiteSpace(Season) ? "Toutes saisons" : Season!;
-        var positionLabel = positionProfile?.PositionName ?? Profile?.PositionName ?? "Poste";
-        return $"Filtre: {positionLabel} - {seasonLabel} | Cohorte poste: {positionProfile?.CohortPlayerCount ?? 0}";
-    }
+        var rx = 14d;
+        var cx = x + (w / 2d);
+        var cy = y + (h / 2d);
 
-    private string BuildPlayerSheetSummarySubtitle()
-    {
-        return Profile?.IsGoalkeeper == true
-            ? "Lecture gardienne condensant la production, la charge defensive et le niveau d'efficacite."
-            : "Lecture de champ condensant la production, la creation et la maitrise technique.";
-    }
-
-    private IReadOnlyList<PlayerSheetRow> BuildPlayerSheetRows()
-    {
-        if (Profile is null || Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null || Technical is null)
+        if (!string.IsNullOrWhiteSpace(photoUrl))
         {
-            return [];
-        }
-
-        if (Profile.IsGoalkeeper)
-        {
-            return
-            [
-                new PlayerSheetRow("Matchs", Profile.MatchesPlayed.ToString(), "Volume total de rencontres analysees.", "info"),
-                new PlayerSheetRow("Arrets", (Goalkeeper.Arrets + Goalkeeper.ArretsPenalty).ToString(), "Arrets classiques et penalties.", "positive"),
-                new PlayerSheetRow("Arrets 7m", Goalkeeper.ArretsPenalty.ToString(), "Impact direct sur les phases decisives.", "good"),
-                new PlayerSheetRow("Tirs subis", Goalkeeper.TirsSubis.ToString(), "Charge defensive absorbee.", "warning"),
-                new PlayerSheetRow("Taux d'arret", $"{FormatRate(Goalkeeper.TauxArret)}%", "Lecture gardienne sur la ligne.", Goalkeeper.TauxArret >= 45 ? "positive" : "warning"),
-                new PlayerSheetRow("Stop 7m", $"{FormatRate(Technical.GoalkeeperPenaltyStopRate)}%", "Efficacite sur penalties.", Technical.GoalkeeperPenaltyStopRate >= 40 ? "good" : "warning"),
-                new PlayerSheetRow("Pertes techniques", Technical.TechnicalLosses.ToString(), "Mauvaises passes, pertes et fautes.", "danger"),
-                new PlayerSheetRow("Sanctions", Technical.Sanctions.ToString(), "Charge disciplinaire individuelle.", "danger")
-            ];
-        }
-
-        return
-        [
-            new PlayerSheetRow("Matchs", Profile.MatchesPlayed.ToString(), "Volume total de rencontres analysees.", "info"),
-            new PlayerSheetRow("Buts", Global.TotalGoals.ToString(), "Production offensive directe.", "positive"),
-            new PlayerSheetRow("Passes decisives", Global.AssistCount.ToString(), "Creation et finalisation du collectif.", "good"),
-            new PlayerSheetRow("Interceptions", Defense.Interceptions.ToString(), "Impact defensif au contact.", "good"),
-            new PlayerSheetRow("Tirs engages", Technical.ShotAttempts.ToString(), "Tirs rates, contres et penalties engages.", "warning"),
-            new PlayerSheetRow("Taux de tir ouvert", $"{FormatRate(Technical.OpenShotSuccessRate)}%", "Conversion hors 7m.", Technical.OpenShotSuccessRate >= 50 ? "positive" : "warning"),
-            new PlayerSheetRow("Pertes techniques", Technical.TechnicalLosses.ToString(), "Ballons rendus et fautes techniques.", "danger"),
-            new PlayerSheetRow("Sanctions", Technical.Sanctions.ToString(), "Charge disciplinaire individuelle.", "danger")
-        ];
-    }
-
-    private string BuildPlayerSheetRadarMarkup(PositionProfileResponseDto? positionProfile, int panelX, int panelY, int panelWidth, int panelHeight)
-    {
-        var axes = BuildRadarAxes(positionProfile);
-        if (axes.Count == 0)
-        {
+            // SVG does not support object-fit:cover natively; use clipPath + preserveAspectRatio="xMidYMid slice"
+            var clipId = "photo-clip";
             return $"""
-  <rect x="{panelX + 24}" y="{panelY + 74}" width="{panelWidth - 48}" height="{panelHeight - 120}" rx="22" fill="#f8fafc" stroke="#d8e2ef" />
-  <text x="{panelX + (panelWidth / 2)}" y="{panelY + 360}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#0f172a">Radar poste indisponible</text>
-  <text x="{panelX + (panelWidth / 2)}" y="{panelY + 388}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">La fiche reste exportee, mais la cohorte du poste n'a pas pu etre chargee.</text>
+  <defs>
+    <clipPath id="{clipId}">
+      <rect x="{FormatSvgNumber(x)}" y="{FormatSvgNumber(y)}" width="{FormatSvgNumber(w)}" height="{FormatSvgNumber(h)}" rx="{FormatSvgNumber(rx)}" />
+    </clipPath>
+  </defs>
+  <rect x="{FormatSvgNumber(x)}" y="{FormatSvgNumber(y)}" width="{FormatSvgNumber(w)}" height="{FormatSvgNumber(h)}" rx="{FormatSvgNumber(rx)}" fill="#eef4fb" stroke="#d8e2ef" />
+  <image href="{SvgExportHelpers.EscapeXml(photoUrl)}" x="{FormatSvgNumber(x)}" y="{FormatSvgNumber(y)}" width="{FormatSvgNumber(w)}" height="{FormatSvgNumber(h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#{clipId})" />
 """;
         }
 
-        var centerX = panelX + 264d;
-        var centerY = panelY + 370d;
-        var radius = 220d;
-        var legendX = panelX + 430d;
-        var legendY = panelY + 180d;
+        // Fallback: initials in a rounded rectangle
+        var initials = GetInitials(fullName);
+        return $"""
+  <rect x="{FormatSvgNumber(x)}" y="{FormatSvgNumber(y)}" width="{FormatSvgNumber(w)}" height="{FormatSvgNumber(h)}" rx="{FormatSvgNumber(rx)}" fill="#eef4fb" stroke="#d8e2ef" />
+  <text x="{FormatSvgNumber(cx)}" y="{FormatSvgNumber(cy + 16d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="44" font-weight="800" fill="{ChartPalette.Player}">{EscapeXml(initials)}</text>
+""";
+    }
+
+    private string BuildPlayerSheetTableMarkup(
+        IReadOnlyList<PlayerSheetRowV2> offensiveRows,
+        IReadOnlyList<PlayerSheetRowV2> defensiveRows,
+        double x,
+        double y,
+        double width,
+        double height)
+    {
+        var panelInnerX = x + 20d;
+        var panelW = width - 40d;
+        var labelW    = 168d;
+        var valueW    = 100d;
+        var evidenceW = 170d;
+        var pctW      = 90d;
+        var evidenceX = panelInnerX + labelW + valueW + 10d;
+        var pctX      = evidenceX + evidenceW + 8d;
+        var rowH = 50d;
+        var sectionKickerH = 30d;
+
+        double cursorY = y + 8d;
+
+        // Panel background
+        var panelBg = $"""
+  <rect x="{FormatSvgNumber(x)}" y="{FormatSvgNumber(y)}" width="{FormatSvgNumber(width)}" height="{FormatSvgNumber(height)}" rx="22" fill="#ffffff" stroke="#d8e2ef" />
+""";
+
+        // Column header (once, at the top)
+        var colHeaderY = cursorY + sectionKickerH;
+        var colHeader = $"""
+  <rect x="{FormatSvgNumber(panelInnerX)}" y="{FormatSvgNumber(colHeaderY)}" width="{FormatSvgNumber(panelW)}" height="28" rx="10" fill="#f8fafc" stroke="#d8e2ef" />
+  <text x="{FormatSvgNumber(panelInnerX + 14d)}" y="{FormatSvgNumber(colHeaderY + 19d)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#94a3b8">INDICATEUR</text>
+  <text x="{FormatSvgNumber(panelInnerX + labelW + 10d)}" y="{FormatSvgNumber(colHeaderY + 19d)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#94a3b8">VALEUR</text>
+  <text x="{FormatSvgNumber(evidenceX)}" y="{FormatSvgNumber(colHeaderY + 19d)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#94a3b8">PREUVE</text>
+  <text x="{FormatSvgNumber(pctX)}" y="{FormatSvgNumber(colHeaderY + 19d)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#94a3b8">VS POSTE</text>
+""";
+        cursorY = colHeaderY + 28d + 4d;
+
+        // OFFENSIF section
+        var offKickerY = cursorY;
+        var offKicker = $"""
+  <text x="{FormatSvgNumber(panelInnerX + 4d)}" y="{FormatSvgNumber(offKickerY + 20d)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2" fill="{ChartPalette.Player}">OFFENSIF</text>
+""";
+        cursorY += sectionKickerH;
+
+        var offRows = BuildTableBodyRows(offensiveRows, panelInnerX, cursorY, panelW, labelW, valueW, evidenceX, evidenceW, pctX, pctW, rowH);
+        cursorY += offensiveRows.Count * rowH + 10d;
+
+        // DÉFENSIF section
+        var defKickerY = cursorY;
+        var defKicker = $"""
+  <text x="{FormatSvgNumber(panelInnerX + 4d)}" y="{FormatSvgNumber(defKickerY + 20d)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2" fill="{ChartPalette.Primary}">DEFENSIF</text>
+""";
+        cursorY += sectionKickerH;
+
+        var defRows = BuildTableBodyRows(defensiveRows, panelInnerX, cursorY, panelW, labelW, valueW, evidenceX, evidenceW, pctX, pctW, rowH);
+
+        return panelBg + colHeader + offKicker + offRows + defKicker + defRows;
+    }
+
+    private static string BuildTableBodyRows(
+        IReadOnlyList<PlayerSheetRowV2> rows,
+        double tableX,
+        double startY,
+        double tableWidth,
+        double labelW,
+        double valueW,
+        double evidenceX,
+        double evidenceW,
+        double pctX,
+        double pctW,
+        double rowH)
+    {
+        return string.Join("\n", rows.Select((row, index) =>
+        {
+            var rowY       = startY + (index * rowH);
+            var background = index % 2 == 0 ? "#f8fafc" : "#ffffff";
+            var accent     = GetSheetToneColor(row.Tone);
+
+            // "VS POSTE" badge — only when a percentile label is available
+            var pctBadge = string.Empty;
+            if (!string.IsNullOrWhiteSpace(row.PercentileLabel))
+            {
+                var badgeColor = row.PercentileTone switch {
+                    "positive" => ("#d1fae5", "#065f46"),
+                    "good"     => ("#dbeafe", "#1e40af"),
+                    "warning"  => ("#fef3c7", "#92400e"),
+                    "danger"   => ("#fee2e2", "#991b1b"),
+                    _          => ("#f1f5f9", "#475569"),
+                };
+                pctBadge = $"""
+  <rect x="{FormatSvgNumber(pctX)}" y="{FormatSvgNumber(rowY + 14d)}" width="{FormatSvgNumber(pctW - 4d)}" height="22" rx="7" fill="{badgeColor.Item1}" />
+  <text x="{FormatSvgNumber(pctX + (pctW - 4d) / 2d)}" y="{FormatSvgNumber(rowY + 29d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="{badgeColor.Item2}">{SvgExportHelpers.EscapeXml(row.PercentileLabel)}</text>
+""";
+            }
+
+            return $"""
+  <rect x="{FormatSvgNumber(tableX)}" y="{FormatSvgNumber(rowY)}" width="{FormatSvgNumber(tableWidth)}" height="{FormatSvgNumber(rowH - 3d)}" rx="12" fill="{background}" stroke="#d8e2ef" />
+  <rect x="{FormatSvgNumber(tableX)}" y="{FormatSvgNumber(rowY)}" width="5" height="{FormatSvgNumber(rowH - 3d)}" rx="12" fill="{accent}" />
+  {SvgExportHelpers.BuildWrappedText(tableX + 16d, rowY + 18d, labelW - 24d, row.Label, "#64748b", 12, 700, "start", 1.1, 1)}
+  <text x="{FormatSvgNumber(tableX + labelW + 10d)}" y="{FormatSvgNumber(rowY + 31d)}" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="800" fill="#0f172a">{SvgExportHelpers.EscapeXml(row.Value)}</text>
+  {SvgExportHelpers.BuildWrappedText(evidenceX, rowY + 18d, evidenceW, row.Evidence, "#64748b", 12, 400, "start", 1.15, 2)}
+  {pctBadge}
+""";
+        }));
+    }
+
+    private string BuildPlayerSheetRadarMarkup(
+        PlayerListItemDto profile,
+        PositionProfileResponseDto? positionProfile,
+        double panelX,
+        double panelY,
+        double panelW,
+        double panelH)
+    {
+        var isGk = profile.IsGoalkeeper;
+        var offAxes = BuildOffensiveRadarAxes(positionProfile, isGk);
+        var defAxes = BuildDefensiveRadarAxes(positionProfile, isGk);
+
+        // Use the larger set for the main radar; fall back to the other
+        var primaryAxes = offAxes.Count >= defAxes.Count ? offAxes : defAxes;
+        var primaryTitle = offAxes.Count >= defAxes.Count
+            ? (isGk ? "PROFIL GARDIENNE" : "PROFIL OFFENSIF")
+            : "PROFIL DEFENSIF";
+        var secondaryAxes = offAxes.Count >= defAxes.Count ? defAxes : offAxes;
+        var secondaryTitle = offAxes.Count >= defAxes.Count
+            ? "PROFIL DEFENSIF"
+            : (isGk ? "PROFIL GARDIENNE" : "PROFIL OFFENSIF");
+
+        var cohortCount = positionProfile?.CohortPlayerCount ?? 0;
+        var positionName = positionProfile?.PositionName ?? profile.PositionName ?? "poste";
+        var cohortLabel = cohortCount > 0
+            ? $"Cohorte : {cohortCount} {SvgExportHelpers.EscapeXml(positionName.ToLowerInvariant())}s"
+            : "Comparaison au poste";
+
+        // Panel bg
+        var panelBg = $"""
+  <rect x="{FormatSvgNumber(panelX)}" y="{FormatSvgNumber(panelY)}" width="{FormatSvgNumber(panelW)}" height="{FormatSvgNumber(panelH)}" rx="22" fill="#ffffff" stroke="#d8e2ef" />
+""";
+
+        if (primaryAxes.Count == 0)
+        {
+            return panelBg + $"""
+  <text x="{FormatSvgNumber(panelX + panelW / 2d)}" y="{FormatSvgNumber(panelY + panelH / 2d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="#0f172a">Radar poste indisponible</text>
+  <text x="{FormatSvgNumber(panelX + panelW / 2d)}" y="{FormatSvgNumber(panelY + panelH / 2d + 28d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">La cohorte du poste n'a pas pu etre chargee.</text>
+""";
+        }
+
+        // Layout: primary radar takes top 50%, secondary takes bottom 50%
+        var halfH = (panelH - 24d) / 2d;
+
+        var primaryBlock = BuildSingleRadarBlock(
+            profile, primaryAxes, primaryTitle, cohortLabel,
+            panelX, panelY + 8d, panelW, halfH);
+
+        var defBlock = secondaryAxes.Count > 0
+            ? BuildSingleRadarBlock(
+                profile, secondaryAxes, secondaryTitle, cohortLabel,
+                panelX, panelY + halfH + 16d, panelW, halfH)
+            : $"""
+  <text x="{FormatSvgNumber(panelX + panelW / 2d)}" y="{FormatSvgNumber(panelY + halfH + 16d + halfH / 2d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#94a3b8">Profil secondaire non disponible pour ce poste.</text>
+""";
+
+        return panelBg + primaryBlock + defBlock;
+    }
+
+    private string BuildSingleRadarBlock(
+        PlayerListItemDto profile,
+        IReadOnlyList<PlayerSheetRadarAxis> axes,
+        string title,
+        string cohortLabel,
+        double panelX,
+        double panelY,
+        double panelW,
+        double panelH)
+    {
+        // Radar center: leave room for labels (80px padding) and title (30px) + legend (40px at bottom)
+        var titleH = 30d;
+        var legendH = 44d;
+        var radarAreaH = panelH - titleH - legendH;
+        var radarRadius = Math.Min(panelW / 2d - 90d, radarAreaH / 2d - 30d);
+        radarRadius = Math.Max(radarRadius, 60d);
+        var centerX = panelX + (panelW / 2d);
+        var centerY = panelY + titleH + (radarAreaH / 2d) + 10d;
+
         var polygonLevels = new[] { 0.25d, 0.5d, 0.75d, 1d };
-        var grid = string.Join("\n", polygonLevels.Select(level => BuildRadarPolygon(axes, centerX, centerY, radius * level, axis => 100d, "none", "#d7e0ea", 1)));
+        var grid = string.Join("\n", polygonLevels.Select(level =>
+            BuildRadarPolygon(axes, centerX, centerY, radarRadius * level, _ => 100d, "none", "#d7e0ea", 1)));
+
         var spokes = string.Join("\n", axes.Select((axis, index) =>
         {
-            var point = GetRadarPoint(index, axes.Count, centerX, centerY, radius, 100d);
+            var point = GetRadarPoint(index, axes.Count, centerX, centerY, radarRadius, 100d);
             return $"""<line x1="{FormatSvgNumber(centerX)}" y1="{FormatSvgNumber(centerY)}" x2="{FormatSvgNumber(point.X)}" y2="{FormatSvgNumber(point.Y)}" stroke="#d7e0ea" stroke-width="1" />""";
         }));
+
+        // Labels with 80px clearance from edge
+        var labelRadius = radarRadius + 56d;
         var labels = string.Join("\n", axes.Select((axis, index) =>
         {
-            var point = GetRadarPoint(index, axes.Count, centerX, centerY, radius + 42d, 100d);
-            return $"""<text x="{FormatSvgNumber(point.X)}" y="{FormatSvgNumber(point.Y)}" text-anchor="{GetRadarTextAnchor(point.X, centerX)}" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#334155">{EscapeXml(axis.Label)}</text>""";
+            var point = GetRadarPoint(index, axes.Count, centerX, centerY, labelRadius, 100d);
+            var anchor = GetRadarTextAnchor(point.X, centerX);
+            // Multi-line label if needed: split on "/"
+            var parts = axis.Label.Split('/');
+            if (parts.Length == 2)
+            {
+                var line1 = parts[0].Trim();
+                var line2 = "/" + parts[1].Trim();
+                return $"""
+<text x="{FormatSvgNumber(point.X)}" y="{FormatSvgNumber(point.Y - 6d)}" text-anchor="{anchor}" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#334155">{EscapeXml(line1)}</text>
+<text x="{FormatSvgNumber(point.X)}" y="{FormatSvgNumber(point.Y + 8d)}" text-anchor="{anchor}" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#64748b">{EscapeXml(line2)}</text>
+""";
+            }
+
+            return $"""<text x="{FormatSvgNumber(point.X)}" y="{FormatSvgNumber(point.Y)}" text-anchor="{anchor}" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#334155">{EscapeXml(axis.Label)}</text>""";
         }));
-        var medianPolygon = BuildRadarPolygon(axes, centerX, centerY, radius, axis => axis.MedianValue, ChartColorUtilities.WithAlpha(ChartPalette.Reference, 0.12), ChartPalette.Reference, 2.5, "7 6");
-        var playerPolygon = BuildRadarPolygon(axes, centerX, centerY, radius, axis => axis.PlayerValue, ChartColorUtilities.WithAlpha(ChartPalette.Player, 0.18), ChartPalette.Player, 3);
+
+        var medianPolygon = BuildRadarPolygon(axes, centerX, centerY, radarRadius, axis => axis.MedianValue, ChartColorUtilities.WithAlpha(ChartPalette.Reference, 0.10), ChartPalette.Reference, 2d, "6 5");
+        var playerPolygon = BuildRadarPolygon(axes, centerX, centerY, radarRadius, axis => axis.PlayerValue, ChartColorUtilities.WithAlpha(ChartPalette.Player, 0.16), ChartPalette.Player, 2.5d);
+
+        // Legend below radar
+        var legendY = panelY + panelH - legendH + 6d;
+        var legendCenterX = panelX + panelW / 2d;
+        var playerShortName = profile.FullName ?? "Joueuse";
+        var legendMarkup = $"""
+  <line x1="{FormatSvgNumber(legendCenterX - 120d)}" y1="{FormatSvgNumber(legendY + 10d)}" x2="{FormatSvgNumber(legendCenterX - 80d)}" y2="{FormatSvgNumber(legendY + 10d)}" stroke="{ChartPalette.Player}" stroke-width="3" />
+  <text x="{FormatSvgNumber(legendCenterX - 74d)}" y="{FormatSvgNumber(legendY + 15d)}" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#334155">{EscapeXml(playerShortName)}</text>
+  <line x1="{FormatSvgNumber(legendCenterX + 20d)}" y1="{FormatSvgNumber(legendY + 10d)}" x2="{FormatSvgNumber(legendCenterX + 60d)}" y2="{FormatSvgNumber(legendY + 10d)}" stroke="{ChartPalette.Reference}" stroke-width="2" stroke-dasharray="6 5" />
+  <text x="{FormatSvgNumber(legendCenterX + 66d)}" y="{FormatSvgNumber(legendY + 15d)}" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">Mediane</text>
+  <text x="{FormatSvgNumber(legendCenterX)}" y="{FormatSvgNumber(legendY + 32d)}" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#94a3b8">{SvgExportHelpers.EscapeXml(cohortLabel)} · Echelle 0-100</text>
+""";
 
         return $"""
-  <g>
-    <rect x="{panelX + 24}" y="{panelY + 74}" width="{panelWidth - 48}" height="{panelHeight - 120}" rx="22" fill="#ffffff" stroke="#d8e2ef" />
-    <g>
-      {grid}
-      {spokes}
-      {medianPolygon}
-      {playerPolygon}
-      {labels}
-      <circle cx="{FormatSvgNumber(centerX)}" cy="{FormatSvgNumber(centerY)}" r="4" fill="#0f172a" />
-    </g>
-    <g transform="translate({FormatSvgNumber(legendX)}, {FormatSvgNumber(legendY)})">
-      <rect width="220" height="128" rx="18" fill="#f8fafc" stroke="#d8e2ef" />
-      <text x="24" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#0f172a">Legende</text>
-      <line x1="26" y1="62" x2="70" y2="62" stroke="{ChartPalette.Player}" stroke-width="4" />
-      <text x="78" y="67" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#334155">{EscapeXml(Profile?.FullName ?? "Joueuse")}</text>
-      <line x1="26" y1="94" x2="70" y2="94" stroke="{ChartPalette.Reference}" stroke-width="4" stroke-dasharray="7 6" />
-      <text x="78" y="99" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#334155">Mediane du poste</text>
-      <text x="24" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#64748b">Echelle radar 0-100 sur la cohorte du poste.</text>
-    </g>
-  </g>
+  <text x="{FormatSvgNumber(panelX + 20d)}" y="{FormatSvgNumber(panelY + 22d)}" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1" fill="#475569">{SvgExportHelpers.EscapeXml(title)}</text>
+  {grid}
+  {spokes}
+  {medianPolygon}
+  {playerPolygon}
+  {labels}
+  <circle cx="{FormatSvgNumber(centerX)}" cy="{FormatSvgNumber(centerY)}" r="3" fill="#0f172a" />
+  {legendMarkup}
 """;
     }
 
-    private static IReadOnlyList<PlayerSheetRadarAxis> BuildRadarAxes(PositionProfileResponseDto? positionProfile)
-    {
-        var axes = positionProfile?.SelectedPlayer?.Axes ?? [];
-        if (axes.Count == 0)
-        {
-            return [];
-        }
+    // ── Offensive radar axes: max 6, offense/passing category, higher-is-better first ──
+    // ── Radar axis selection: delegated to PlayerSheetExportHelper ──────────────
 
-        return axes
-            .Where(axis => axis is not null && !string.IsNullOrWhiteSpace(axis.Label))
-            .OrderBy(GetRadarAxisSortRank)
-            .ThenBy(axis => axis.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(axis =>
-            {
-                return new PlayerSheetRadarAxis(
-                    axis.Label,
-                    NormalizeRadarValue(axis, axis.Value),
-                    NormalizeRadarValue(axis, axis.MedianValue));
-            })
-            .ToList();
-    }
+    private static IReadOnlyList<PlayerSheetRadarAxis> BuildOffensiveRadarAxes(
+        PositionProfileResponseDto? positionProfile,
+        bool isGoalkeeper)
+        => PlayerSheetExportHelper.BuildOffensiveRadarAxes(positionProfile, isGoalkeeper);
+
+    private static IReadOnlyList<PlayerSheetRadarAxis> BuildDefensiveRadarAxes(
+        PositionProfileResponseDto? positionProfile,
+        bool isGoalkeeper)
+        => PlayerSheetExportHelper.BuildDefensiveRadarAxes(positionProfile, isGoalkeeper);
+
+    private static double NormalizeRadarValue(PositionProfileAxisDto axis, double value)
+        => PlayerSheetExportHelper.NormalizeRadarValue(axis, value);
 
     private static string BuildRadarPolygon(
         IReadOnlyList<PlayerSheetRadarAxis> axes,
@@ -3587,49 +3885,73 @@
         return pointX > centerX ? "start" : "end";
     }
 
-    private static int GetRadarAxisSortRank(PositionProfileAxisDto axis)
+    // ── Table row builders: delegated to PlayerSheetExportHelper ─────────────────
+
+    private IReadOnlyList<PlayerSheetRowV2> BuildPlayerSheetOffensiveRows(PositionProfileResponseDto? positionProfile = null)
     {
-        var text = $"{axis.Category} {axis.Key} {axis.Label}".ToLowerInvariant();
-
-        if (text.Contains("goalkeeper") || text.Contains("keeper") || text.Contains("save") || text.Contains("arret"))
+        if (Profile is null || Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null || Technical is null)
         {
-            return 4;
+            return [];
         }
 
-        if (text.Contains("discip") || text.Contains("sanction") || text.Contains("penalty"))
+        if (Profile.IsGoalkeeper)
         {
-            return 3;
+            var totalSaves = Goalkeeper.Arrets + Goalkeeper.ArretsPenalty;
+            var tirs = Goalkeeper.TirsSubis;
+            return
+            [
+                new PlayerSheetRowV2("Matchs", Profile.MatchesPlayed.ToString(), string.Empty, "info"),
+                new PlayerSheetRowV2("Arrets", totalSaves.ToString(), $"{Goalkeeper.Arrets} jeu + {Goalkeeper.ArretsPenalty} sur 7m", "positive"),
+                new PlayerSheetRowV2("Taux d'arret", PlayerSheetExportHelper.FormatRateOrDash(Goalkeeper.TauxArret, tirs), $"{totalSaves} / {tirs}", Goalkeeper.TauxArret >= 45 ? "positive" : "warning"),
+                new PlayerSheetRowV2("Stop 7m", PlayerSheetExportHelper.FormatRateOrDash(Technical.GoalkeeperPenaltyStopRate, Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty), $"{Goalkeeper.ArretsPenalty} / {Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty}", Technical.GoalkeeperPenaltyStopRate >= 40 ? "good" : "warning"),
+                new PlayerSheetRowV2("Passes decisives", Goalkeeper.PasseDecisives.ToString(), string.Empty, "good"),
+                new PlayerSheetRowV2("Buts", Goalkeeper.Buts.ToString(), string.Empty, "neutral"),
+            ];
         }
 
-        if (text.Contains("def") || text.Contains("interception") || text.Contains("block") || text.Contains("neutral"))
-        {
-            return 2;
-        }
+        var v2Offense = LeagueAnalytics?.Analytics?.Offense;
+        var penWonMetric    = v2Offense?.FirstOrDefault(m => m.MetricCode == "PENALTIES_WON");
+        var sanctDrawnMetric = v2Offense?.FirstOrDefault(m => m.MetricCode == "SANCTIONS_DRAWN");
 
-        if (text.Contains("pass") || text.Contains("assist") || text.Contains("create") || text.Contains("ball"))
-        {
-            return 1;
-        }
+        var penWonVal      = penWonMetric?.CountValue ?? -1;
+        var penWonUnavail   = penWonMetric?.IsUnavailable ?? true;
+        var sanctDrawnVal   = sanctDrawnMetric?.CountValue ?? -1;
+        var sanctDrawnUnavail = sanctDrawnMetric?.IsUnavailable ?? true;
 
-        return 0;
+        return PlayerSheetExportHelper.BuildOffensiveRows(
+            Profile, Global, Offense, Passing, Technical,
+            penWonVal, penWonUnavail,
+            sanctDrawnVal, sanctDrawnUnavail,
+            positionProfile);
     }
 
-    private static double NormalizeRadarValue(PositionProfileAxisDto axis, double value)
+    private IReadOnlyList<PlayerSheetRowV2> BuildPlayerSheetDefensiveRows(PositionProfileResponseDto? positionProfile = null)
     {
-        if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
+        if (Profile is null || Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null || Technical is null)
         {
-            // The API percentile is already oriented so that a higher score is favorable.
-            return Math.Clamp(axis.Percentile, 0d, 100d);
+            return [];
         }
 
-        var normalized = (value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);
-
-        if (!axis.HigherIsBetter)
+        if (Profile.IsGoalkeeper)
         {
-            normalized = 100d - normalized;
+            return
+            [
+                new PlayerSheetRowV2("Tirs subis", Goalkeeper.TirsSubis.ToString(), string.Empty, "neutral"),
+                new PlayerSheetRowV2("Buts encaisses", (Goalkeeper.ButsPris + Goalkeeper.ButsPenalty).ToString(), $"{Goalkeeper.ButsPris} jeu + {Goalkeeper.ButsPenalty} sur 7m", "warning"),
+                new PlayerSheetRowV2("Pertes de balle", Goalkeeper.PerteDeBalle.ToString(), string.Empty, Goalkeeper.PerteDeBalle > 5 ? "warning" : "neutral"),
+                new PlayerSheetRowV2("Sanctions", Technical.Sanctions.ToString(), string.Empty, Technical.Sanctions > 3 ? "danger" : "neutral"),
+            ];
         }
 
-        return Math.Clamp(Math.Round(normalized, 1, MidpointRounding.AwayFromZero), 0d, 100d);
+        return PlayerSheetExportHelper.BuildDefensiveRows(Profile, Defense, Sanctions, positionProfile);
+    }
+
+    private static string FormatRateOrDash(double rate, int denominator)
+        => PlayerSheetExportHelper.FormatRateOrDash(rate, denominator);
+
+    private static string FormatNumber(double value, string format)
+    {
+        return value.ToString(format, CultureInfo.InvariantCulture);
     }
 
     private static string GetSheetToneColor(string? tone)
@@ -3651,9 +3973,7 @@
 
     private static string FormatSvgNumber(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
-    private sealed record PlayerSheetRow(string Label, string Value, string Note, string Tone);
-
-    private sealed record PlayerSheetRadarAxis(string Label, double PlayerValue, double MedianValue);
+    // PlayerSheetRowV2 and PlayerSheetRadarAxis are defined in Models/Analytics/PlayerSheetExportModels.cs
 
     private RenderFragment TableHeader(string column, string label, Action<string> onSort) => builder =>
     {
