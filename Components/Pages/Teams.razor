@@ -648,18 +648,18 @@
                 teamId: TeamId,
                 year: Year,
                 page: 1,
-                pageSize: 500);
+                pageSize: 5000);
             var teamScopeTask = MatchesApiClient.GetMatchesAsync(
                 competitionId: CompetitionId,
                 year: Year,
                 page: 1,
-                pageSize: 500);
+                pageSize: 5000);
             var matchesTask = MatchesApiClient.GetMatchesAsync(
                 competitionId: CompetitionId,
                 teamId: TeamId,
                 year: Year,
                 page: 1,
-                pageSize: 500);
+                pageSize: 5000);
 
             await Task.WhenAll(teamTask, playersTask, rosterTask, competitionScopeTask, teamScopeTask, matchesTask);
 

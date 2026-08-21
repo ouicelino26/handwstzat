@@ -106,7 +106,7 @@
         try
         {
             var referenceTask = ReferenceDataService.GetReferenceDataAsync();
-            var matchesTask = MatchesApiClient.GetMatchesAsync(page: 1, pageSize: 500);
+            var matchesTask = MatchesApiClient.GetMatchesAsync(page: 1, pageSize: 5000);
             await Task.WhenAll(referenceTask, matchesTask);
             ReferenceData = referenceTask.Result;
             Matches = matchesTask.Result;
