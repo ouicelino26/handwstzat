@@ -591,7 +591,7 @@ public class HomeBase : ComponentBase, IDisposable
             to: Filters.To,
             year: Filters.Year,
             page: 1,
-            pageSize: 500,
+            pageSize: 5000,
             cancellationToken: cancellationToken);
         var teamScopeTask = MatchesApiClient.GetMatchesAsync(
             competitionId: Filters.CompetitionId,
@@ -599,7 +599,7 @@ public class HomeBase : ComponentBase, IDisposable
             to: Filters.To,
             year: Filters.Year,
             page: 1,
-            pageSize: 500,
+            pageSize: 5000,
             cancellationToken: cancellationToken);
         var contextScopeTask = MatchesApiClient.GetMatchesAsync(
             competitionId: Filters.CompetitionId,
@@ -608,7 +608,7 @@ public class HomeBase : ComponentBase, IDisposable
             to: Filters.To,
             year: Filters.Year,
             page: 1,
-            pageSize: 500,
+            pageSize: 5000,
             cancellationToken: cancellationToken);
 
         await Task.WhenAll(competitionScopeTask, teamScopeTask, contextScopeTask);
