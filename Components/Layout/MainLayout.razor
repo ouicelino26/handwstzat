@@ -7,112 +7,185 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
-<div class="studio-shell @(IsDomainDrawerOpen ? "domain-drawer-open" : string.Empty) @(IsContextLensOpen ? "context-lens-open" : string.Empty)">
-    <header class="studio-commandbar">
-        <div class="studio-commandbar__brand">
-            <button type="button"
-                    class="studio-icon-button studio-domain-trigger"
-                    @onclick="ToggleDomainDrawer"
-                    aria-label="Ouvrir les domaines">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
-            </button>
+<div class="studio-shell @(IsScenePage ? "studio-shell--scene" : "") @(IsDomainDrawerOpen ? "domain-drawer-open" : "") @(IsContextLensOpen ? "context-lens-open" : "")">
 
-            <NavLink href="dashboard" class="studio-wordmark" aria-label="HandWStat Studio, accueil">
-                <span class="studio-wordmark__symbol" aria-hidden="true">
-                    <svg viewBox="0 0 40 40">
-                        <path d="M6 28 13 12l7 16 7-16 7 16"></path>
-                        <path d="M5 32h30"></path>
-                        <circle cx="20" cy="8" r="2.5"></circle>
-                    </svg>
-                </span>
-                <span>
-                    <strong>HWS</strong>
-                    <small>Studio</small>
-                </span>
-            </NavLink>
-        </div>
+    @* ── CommandBar ─────────────────────────────────────────────── *@
+    @if (IsScenePage)
+    {
+        <header class="studio-commandbar studio-commandbar--scene">
+            <div class="studio-commandbar__brand">
+                <button type="button"
+                        class="studio-icon-button studio-domain-trigger"
+                        @onclick="ToggleDomainDrawer"
+                        aria-label="Ouvrir la navigation">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <NavLink href="dashboard" class="studio-wordmark" aria-label="HandWStat Studio, accueil">
+                    <span class="studio-wordmark__symbol" aria-hidden="true">
+                        <svg viewBox="0 0 40 40">
+                            <path d="M6 28 13 12l7 16 7-16 7 16"></path>
+                            <path d="M5 32h30"></path>
+                            <circle cx="20" cy="8" r="2.5"></circle>
+                        </svg>
+                    </span>
+                    <span>
+                        <strong>HWS</strong>
+                        <small>Studio</small>
+                    </span>
+                </NavLink>
+            </div>
 
-        <button type="button"
-                class="studio-command-search"
-                @onclick="OpenCommandPalette"
-                aria-label="Ouvrir la recherche universelle">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5"></path></svg>
-            <span>Joueuse, equipe, match ou commande</span>
-            <kbd>Ctrl K</kbd>
-        </button>
-
-        <div class="studio-commandbar__actions">
-            <NavLink href="compare" class="studio-create-button">
-                <span aria-hidden="true">+</span>
-                <span>Nouvelle analyse</span>
-            </NavLink>
-
-            <button type="button"
-                    class="studio-icon-button"
-                    @onclick="ToggleThemeAsync"
-                    aria-label="@ThemeToggleTitle"
-                    aria-pressed="@IsDarkTheme">
-                @if (IsDarkTheme)
-                {
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"></path></svg>
-                }
-                else
-                {
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"></path></svg>
-                }
-            </button>
-
-            <button type="button"
-                    class="studio-account"
-                    @onclick="ToggleContextLens"
-                    aria-expanded="@IsContextLensOpen"
-                    aria-label="Ouvrir le panneau de session">
-                <span class="studio-account__status" aria-hidden="true"></span>
-                <span class="studio-account__copy">
-                    <strong>@AccountName</strong>
-                    <small>@AccountRole</small>
-                </span>
-                <span class="studio-account__avatar">@AccountInitials</span>
-            </button>
-        </div>
-    </header>
-
-    <aside class="studio-domain-rail" aria-label="Domaines HandWStat">
-        <div class="studio-domain-rail__index">
-            <span>@CurrentPageIndex</span>
-        </div>
-
-        <NavMenu OnNavigate="HandleNavigationAsync" />
-
-        <div class="studio-domain-rail__utility">
-            <NavLink href="position-profiles"
-                     class="studio-domain-utility"
-                     title="Benchmark de poste"
-                     @onclick="HandleNavigationAsync">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z"></path><path d="m8 14 2-4 2 3 2-6 2 7"></path></svg>
-                <span>Benchmark</span>
-            </NavLink>
-        </div>
-    </aside>
-
-    <section class="studio-workbench">
-        <div class="studio-scene-heading">
-            <div>
-                <span class="studio-scene-heading__eyebrow">@CurrentPageKicker</span>
-                <h1>@CurrentPageTitle</h1>
-                <p>@CurrentPageDescription</p>
+            <div class="studio-scene-heading">
+                <div>
+                    <span class="studio-scene-heading__eyebrow">@CurrentPageKicker</span>
+                    <h1>@CurrentPageTitle</h1>
+                    <p>@CurrentPageDescription</p>
+                </div>
+                <div class="studio-commandbar__actions">
+                    <NavLink href="compare" class="studio-create-button">
+                        <span aria-hidden="true">+</span>
+                        <span>Nouvelle analyse</span>
+                    </NavLink>
+                    <button type="button"
+                            class="studio-icon-button"
+                            @onclick="ToggleThemeAsync"
+                            aria-label="@ThemeToggleTitle"
+                            aria-pressed="@IsDarkTheme">
+                        @if (IsDarkTheme)
+                        {
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"></path></svg>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"></path></svg>
+                        }
+                    </button>
+                    <button type="button"
+                            class="studio-account"
+                            @onclick="ToggleContextLens"
+                            aria-expanded="@IsContextLensOpen"
+                            aria-label="Ouvrir le panneau de session">
+                        <span class="studio-account__status" aria-hidden="true"></span>
+                        <span class="studio-account__copy">
+                            <strong>@AccountName</strong>
+                            <small>@AccountRole</small>
+                        </span>
+                        <span class="studio-account__avatar">@AccountInitials</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+    }
+    else
+    {
+        <header class="studio-commandbar">
+            <div class="studio-commandbar__brand">
+                <button type="button"
+                        class="studio-icon-button studio-domain-trigger"
+                        @onclick="ToggleDomainDrawer"
+                        aria-label="Ouvrir la navigation">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <NavLink href="dashboard" class="studio-wordmark" aria-label="HandWStat Studio, accueil">
+                    <span class="studio-wordmark__symbol" aria-hidden="true">
+                        <svg viewBox="0 0 40 40">
+                            <path d="M6 28 13 12l7 16 7-16 7 16"></path>
+                            <path d="M5 32h30"></path>
+                            <circle cx="20" cy="8" r="2.5"></circle>
+                        </svg>
+                    </span>
+                    <span>
+                        <strong>HWS</strong>
+                        <small>Studio</small>
+                    </span>
+                </NavLink>
             </div>
 
             <button type="button"
-                    class="studio-context-trigger"
-                    @onclick="ToggleContextLens"
-                    aria-expanded="@IsContextLensOpen">
-                <span>Contexte</span>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h10M5 12h14M9 19h10"></path></svg>
+                    class="studio-command-search"
+                    @onclick="OpenCommandPalette"
+                    aria-label="Ouvrir la recherche universelle">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5"></path></svg>
+                <span>Joueuse, equipe, match ou commande</span>
+                <kbd>Ctrl K</kbd>
             </button>
-        </div>
 
-        <GlobalScopeBar />
+            <div class="studio-commandbar__actions">
+                <NavLink href="compare" class="studio-create-button">
+                    <span aria-hidden="true">+</span>
+                    <span>Nouvelle analyse</span>
+                </NavLink>
+                <button type="button"
+                        class="studio-icon-button"
+                        @onclick="ToggleThemeAsync"
+                        aria-label="@ThemeToggleTitle"
+                        aria-pressed="@IsDarkTheme">
+                    @if (IsDarkTheme)
+                    {
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"></path></svg>
+                    }
+                    else
+                    {
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"></path></svg>
+                    }
+                </button>
+                <button type="button"
+                        class="studio-account"
+                        @onclick="ToggleContextLens"
+                        aria-expanded="@IsContextLensOpen"
+                        aria-label="Ouvrir le panneau de session">
+                    <span class="studio-account__status" aria-hidden="true"></span>
+                    <span class="studio-account__copy">
+                        <strong>@AccountName</strong>
+                        <small>@AccountRole</small>
+                    </span>
+                    <span class="studio-account__avatar">@AccountInitials</span>
+                </button>
+            </div>
+        </header>
+    }
+
+    @* ── Domain Rail ─────────────────────────────────────────────── *@
+    <nav class="studio-domain-rail" aria-label="Domaines HandWStat">
+        <NavMenu OnNavigate="HandleNavigationAsync" />
+
+        @if (PositionProfilesItem is not null)
+        {
+            <div class="studio-domain-rail__utility">
+                <NavLink href="@PositionProfilesItem.Href"
+                         class="studio-nav-item"
+                         title="@PositionProfilesItem.Label"
+                         aria-label="@PositionProfilesItem.Label"
+                         @onclick="HandleNavigationAsync">
+                    <span class="studio-nav-item__index" aria-hidden="true">@PositionProfilesItem.Index</span>
+                    <span class="studio-nav-item__icon" aria-hidden="true">@((MarkupString)PositionProfilesItem.IconMarkup)</span>
+                    <span class="studio-nav-item__label">@PositionProfilesItem.Label</span>
+                    <span class="studio-nav-item__kicker">@PositionProfilesItem.Kicker</span>
+                </NavLink>
+            </div>
+        }
+    </nav>
+
+    @* ── Workbench ───────────────────────────────────────────────── *@
+    <section class="studio-workbench">
+        @if (!IsScenePage)
+        {
+            <div class="studio-scene-heading">
+                <div>
+                    <span class="studio-scene-heading__eyebrow">@CurrentPageKicker</span>
+                    <h1>@CurrentPageTitle</h1>
+                    <p>@CurrentPageDescription</p>
+                </div>
+                <button type="button"
+                        class="studio-context-trigger"
+                        @onclick="ToggleContextLens"
+                        aria-expanded="@IsContextLensOpen"
+                        aria-label="Ouvrir le contexte">
+                    <span>Contexte</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h10M5 12h14M9 19h10"></path></svg>
+                </button>
+            </div>
+        }
 
         <main class="studio-stage" id="studio-main">
             <div class="studio-stage__content">
@@ -121,6 +194,12 @@
         </main>
     </section>
 
+    @* ── Scope Tray ──────────────────────────────────────────────── *@
+    <div class="studio-tray" aria-label="Scope d'analyse global">
+        <GlobalScopeBar />
+    </div>
+
+    @* ── Context Lens ────────────────────────────────────────────── *@
     <aside class="studio-context-lens" aria-label="Contexte de travail">
         <div class="studio-context-lens__head">
             <div>
@@ -191,22 +270,7 @@
         </section>
     </aside>
 
-    <footer class="studio-activity-tray">
-        <div class="studio-activity-tray__pulse">
-            <span aria-hidden="true"></span>
-            <strong>Studio live</strong>
-            <small>Scope synchronise</small>
-        </div>
-        <div class="studio-activity-tray__current">
-            <span>Domaine</span>
-            <strong>@CurrentPageTitle</strong>
-        </div>
-        <button type="button" @onclick="OpenCommandPalette">
-            Naviguer rapidement
-            <span aria-hidden="true">⌘</span>
-        </button>
-    </footer>
-
+    @* ── Mobile Dock ─────────────────────────────────────────────── *@
     <nav class="studio-mobile-dock" aria-label="Navigation principale mobile">
         @foreach (var item in MobileNavItems)
         {
@@ -238,6 +302,9 @@
     private static IReadOnlyList<AppNavigationItem> MobileNavItems =>
         AppNavigationCatalog.Primary.Where(item => item.ShowOnMobile).ToList();
 
+    private static AppNavigationItem? PositionProfilesItem =>
+        AppNavigationCatalog.All.FirstOrDefault(i => i.Href == "position-profiles");
+
     private bool IsDarkTheme => string.Equals(Theme, "dark", StringComparison.OrdinalIgnoreCase);
     private string ThemeToggleTitle => IsDarkTheme ? "Passer au theme clair" : "Passer au theme sombre";
     private string AccountName => AuthService.Session.Username ?? "Session live";
@@ -260,9 +327,10 @@
         }
     }
 
+    private bool IsScenePage => CurrentNavigationItem?.Href == "dashboard";
+
     private string CurrentPageTitle => CurrentNavigationItem?.Label ?? "Studio";
     private string CurrentPageDescription => CurrentNavigationItem?.Description ?? "Intelligence de performance handball.";
-    private string CurrentPageIndex => CurrentNavigationItem?.Index ?? "00";
     private string CurrentPageKicker => CurrentNavigationItem?.Kicker ?? "Performance operating system";
 
     protected override void OnInitialized()

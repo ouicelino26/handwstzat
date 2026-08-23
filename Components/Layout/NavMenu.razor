@@ -3,14 +3,14 @@
     {
         <NavLink href="@item.Href"
                  Match="@item.Match"
+                 class="studio-nav-item"
                  @onclick="NotifyNavigationAsync"
-                 title="@item.Label">
-            <span class="studio-domain-nav__icon" aria-hidden="true">@((MarkupString)item.IconMarkup)</span>
-            <span class="studio-domain-nav__copy">
-                <strong>@item.Label</strong>
-                <small>@item.Kicker</small>
-            </span>
-            <span class="studio-domain-nav__index">@item.Index</span>
+                 title="@item.Label"
+                 aria-label="@item.Label">
+            <span class="studio-nav-item__index" aria-hidden="true">@item.Index</span>
+            <span class="studio-nav-item__icon" aria-hidden="true">@((MarkupString)item.IconMarkup)</span>
+            <span class="studio-nav-item__label">@item.Label</span>
+            <span class="studio-nav-item__kicker">@item.Kicker</span>
         </NavLink>
     }
 </nav>

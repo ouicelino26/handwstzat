@@ -58,6 +58,9 @@
     --rail-width: 5.15rem;
     --tray-height: 3.15rem;
     --context-width: 20rem;
+    --transition-fast: 150ms ease;
+    --transition-base: 240ms ease;
+    --transition-slow: 360ms ease;
 }
 
 html[data-theme="light"] {
@@ -295,19 +298,37 @@ svg {
     grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--context-width);
 }
 
+.studio-shell--scene {
+    --command-height: 8rem;
+    --tray-height: 0px;
+}
+
 .studio-commandbar {
     grid-area: command;
     position: relative;
     z-index: 60;
     display: grid;
-    grid-template-columns: minmax(12rem, 0.65fr) minmax(18rem, 1.25fr) minmax(18rem, 0.8fr);
+    grid-template-columns: var(--rail-width) 1fr auto;
     align-items: center;
-    gap: 1.4rem;
+    gap: 1rem;
     min-width: 0;
-    padding: 0 1.15rem;
+    padding: 0 1.25rem 0 0;
     border-bottom: 1px solid var(--line);
     background: color-mix(in srgb, var(--surface) 88%, transparent);
     backdrop-filter: blur(24px);
+}
+
+.studio-commandbar--scene {
+    grid-template-columns: var(--rail-width) 1fr;
+    padding: 0;
+}
+
+.studio-commandbar--scene .studio-scene-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: 0.85rem 1.25rem 0.75rem;
 }
 
 .studio-commandbar__brand,
@@ -320,7 +341,11 @@ svg {
 }
 
 .studio-commandbar__brand {
-    gap: 0.55rem;
+    gap: 0.5rem;
+    height: 100%;
+    justify-content: center;
+    padding: 0 0.65rem;
+    border-right: 1px solid var(--line);
 }
 
 .studio-wordmark {
@@ -522,11 +547,16 @@ kbd {
     grid-area: rail;
     position: relative;
     z-index: 50;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0;
     min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
     border-right: 1px solid var(--line);
-    background: var(--ink-950);
+    background: var(--surface-raised);
 }
 
 .studio-domain-rail__index {
@@ -540,12 +570,84 @@ kbd {
 }
 
 .studio-domain-nav {
-    display: grid;
-    align-content: start;
-    gap: 0.35rem;
-    padding: 0.35rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+    padding: 0 0.5rem;
+    flex: 1;
 }
 
+.studio-nav-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.6rem 0.4rem;
+    width: 100%;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.studio-nav-item:hover {
+    color: var(--text-body);
+    background: rgba(255, 255, 255, 0.055);
+}
+
+.studio-nav-item.active {
+    background: var(--court-soft);
+    color: var(--court-400);
+    border-color: rgba(143, 225, 178, 0.2);
+}
+
+.studio-nav-item__index {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--signal-500);
+    line-height: 1;
+}
+
+.studio-nav-item__icon {
+    width: 1.35rem;
+    height: 1.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.studio-nav-item__icon svg {
+    width: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.studio-nav-item__label {
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.studio-nav-item__kicker {
+    display: none;
+    font-size: 0.52rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+/* Legacy selectors kept for domain-utility compatibility */
 .studio-domain-nav > a,
 .studio-domain-utility {
     position: relative;
@@ -555,28 +657,13 @@ kbd {
     padding: 0.45rem;
     border-radius: var(--radius-sm);
     color: #758a81;
-    transition: color 150ms ease, background 150ms ease;
+    transition: color var(--transition-fast), background var(--transition-fast);
 }
 
 .studio-domain-nav > a:hover,
 .studio-domain-utility:hover {
     color: #dbe4de;
     background: rgba(255, 255, 255, 0.055);
-}
-
-.studio-domain-nav > a.active {
-    color: #071412;
-    background: var(--paper-100);
-}
-
-.studio-domain-nav > a.active::before {
-    content: "";
-    position: absolute;
-    left: -0.55rem;
-    width: 0.22rem;
-    height: 1.8rem;
-    border-radius: 0 99px 99px 0;
-    background: var(--signal-500);
 }
 
 .studio-domain-nav__icon,
@@ -596,13 +683,15 @@ kbd {
 
 .studio-domain-nav__copy,
 .studio-domain-nav__index,
-.studio-domain-utility span {
+.studio-domain-utility span:not(.studio-nav-item__index):not(.studio-nav-item__icon):not(.studio-nav-item__label):not(.studio-nav-item__kicker) {
     display: none;
 }
 
 .studio-domain-rail__utility {
-    padding: 0.55rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: auto;
+    border-top: 1px solid var(--line);
 }
 
 .studio-workbench {
@@ -611,8 +700,12 @@ kbd {
     min-height: 0;
     height: 100%;
     display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     overflow: hidden;
+}
+
+.studio-shell--scene .studio-workbench {
+    grid-template-rows: minmax(0, 1fr);
 }
 
 .studio-scene-heading {
@@ -826,52 +919,14 @@ kbd {
     cursor: pointer;
 }
 
-.studio-activity-tray {
+.studio-tray {
     grid-area: tray;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 1rem;
-    padding: 0 1rem;
-    border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
-}
-
-.studio-activity-tray__pulse,
-.studio-activity-tray__current {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 0;
-}
-
-.studio-activity-tray__pulse > span {
-    width: 0.42rem;
-    height: 0.42rem;
-    border-radius: 50%;
-    background: var(--court-400);
-}
-
-.studio-activity-tray strong {
-    font-size: 0.65rem;
-}
-
-.studio-activity-tray small,
-.studio-activity-tray__current > span {
-    color: var(--text-muted);
-    font-size: 0.6rem;
-}
-
-.studio-activity-tray__current {
-    justify-content: center;
-}
-
-.studio-activity-tray > button {
-    border: 0;
-    color: var(--text-muted);
-    font-size: 0.65rem;
-    background: transparent;
-    cursor: pointer;
+    align-items: stretch;
+    border-top: 1px solid var(--line);
+    background: var(--surface-raised);
+    z-index: 90;
+    overflow: hidden;
 }
 
 .studio-mobile-dock {
@@ -4333,7 +4388,7 @@ select {
 /* Responsive */
 @media (max-width: 1180px) {
     .studio-commandbar {
-        grid-template-columns: auto minmax(14rem, 1fr) auto;
+        grid-template-columns: var(--rail-width) minmax(14rem, 1fr) auto;
     }
 
     .studio-account__copy,
@@ -4385,22 +4440,25 @@ select {
     html:not([data-handwstat-platform="android"]) .studio-shell,
     html:not([data-handwstat-platform="android"]) .studio-shell.context-lens-open {
         display: grid;
-        height: 100vh;
         height: 100dvh;
-        max-height: 100vh;
         max-height: 100dvh;
         grid-template:
             "command" var(--command-height)
             "workbench" minmax(0, 1fr)
+            "tray" var(--tray-height)
             / minmax(0, 1fr);
         overflow: hidden;
     }
 
     html:not([data-handwstat-platform="android"]) .studio-workbench {
         display: grid;
-        grid-template-rows: auto auto minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
         height: 100%;
         overflow: hidden;
+    }
+
+    html:not([data-handwstat-platform="android"]) .studio-shell--scene .studio-workbench {
+        grid-template-rows: minmax(0, 1fr);
     }
 
     html:not([data-handwstat-platform="android"]) .studio-stage {
@@ -4465,17 +4523,22 @@ select {
         grid-template:
             "command" var(--command-height)
             "workbench" minmax(0, 1fr)
+            "tray" var(--tray-height)
             / minmax(0, 1fr);
-        height: 100vh;
         height: 100dvh;
-        max-height: 100vh;
         max-height: 100dvh;
         overflow: hidden;
     }
 
     .studio-workbench {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
         height: 100%;
         overflow: hidden;
+    }
+
+    .studio-shell--scene .studio-workbench {
+        grid-template-rows: minmax(0, 1fr);
     }
 
     .studio-stage {
@@ -4486,9 +4549,9 @@ select {
     }
 
     .studio-commandbar {
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-columns: auto 1fr auto;
         gap: 0.7rem;
-        padding: 0 0.75rem;
+        padding: 0 0.75rem 0 0;
     }
 
     .studio-domain-trigger {
@@ -4534,13 +4597,26 @@ select {
         background: rgba(0, 0, 0, 0.58);
     }
 
-    .studio-domain-nav > a,
-    .studio-domain-utility {
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        justify-items: start;
+    .studio-nav-item {
+        flex-direction: row;
+        justify-content: flex-start;
         gap: 0.8rem;
-        min-height: 3.8rem;
-        padding: 0.7rem;
+        min-height: 3.5rem;
+        padding: 0.65rem 0.75rem;
+    }
+
+    .studio-nav-item__label {
+        font-family: var(--font-display);
+        font-size: 0.88rem;
+        text-align: left;
+    }
+
+    .studio-nav-item__kicker {
+        display: block;
+    }
+
+    .studio-nav-item__index {
+        margin-left: auto;
     }
 
     .studio-domain-nav__copy {
@@ -4562,15 +4638,6 @@ select {
         display: block;
         color: #60766d;
         font-size: 0.58rem;
-    }
-
-    .studio-domain-rail__index {
-        justify-content: start;
-        padding: 0 1rem;
-    }
-
-    .studio-activity-tray {
-        display: none;
     }
 
     .studio-mobile-dock {
@@ -5195,7 +5262,7 @@ html[data-handwstat-platform="android"] .studio-stage__content {
     padding-bottom: calc(7.25rem + env(safe-area-inset-bottom));
 }
 
-html[data-handwstat-platform="android"] .studio-activity-tray {
+html[data-handwstat-platform="android"] .studio-tray {
     display: none !important;
 }
 
