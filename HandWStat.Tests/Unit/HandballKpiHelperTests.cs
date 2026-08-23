@@ -29,26 +29,25 @@ public class HandballKpiHelperTests
     [Fact]
     public void Ratio_NormalValues_ReturnsDivision()
     {
-        Assert.Equal(0.3, HandballKpiHelper.Ratio(3, 10), precision: 10);
+        Assert.Equal(0.3, HandballKpiHelper.Ratio(3, 10)!.Value, precision: 10);
     }
 
     [Fact]
-    public void Ratio_BothZero_ReturnsZero()
+    public void Ratio_BothZero_ReturnsNull()
     {
-        Assert.Equal(0.0, HandballKpiHelper.Ratio(0, 0));
+        Assert.Null(HandballKpiHelper.Ratio(0, 0));
     }
 
     [Fact]
-    public void Ratio_ZeroDenominatorPositiveNumerator_ReturnsNumerator()
+    public void Ratio_ZeroDenominatorPositiveNumerator_ReturnsNull()
     {
-        // Edge case KH-02: documented intentional behavior
-        Assert.Equal(5.0, HandballKpiHelper.Ratio(5, 0));
+        Assert.Null(HandballKpiHelper.Ratio(5, 0));
     }
 
     [Fact]
-    public void Ratio_ZeroDenominatorZeroNumerator_ReturnsZero()
+    public void Ratio_ZeroDenominatorZeroNumerator_ReturnsNull()
     {
-        Assert.Equal(0.0, HandballKpiHelper.Ratio(0, 0));
+        Assert.Null(HandballKpiHelper.Ratio(0, 0));
     }
 
     // --- Share ---

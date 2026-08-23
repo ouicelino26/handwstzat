@@ -1,6 +1,5 @@
 using HandWStat.Models.Analytics;
-using HandballManagerCore.DTO;
-using HandballManagerCore.Models;
+using HandWStat.Models.Contracts;
 
 namespace HandWStat.Tests.Unit;
 
@@ -28,7 +27,7 @@ public class MatchScenarioAnalyzerTests
     [Fact]
     public void BuildScoreTimeline_NullMatchUsesLastKnownScore()
     {
-        var events = new List<MatchEvent>
+        var events = new List<MatchEventAnalyticsDto>
         {
             new() { Time = TimeSpan.FromMinutes(10), MiTemps = "1", TeamScore1 = 5, TeamScore2 = 3 }
         };
@@ -43,7 +42,7 @@ public class MatchScenarioAnalyzerTests
     [Fact]
     public void BuildScoreTimeline_MatchScoreOverridesLastEvent()
     {
-        var events = new List<MatchEvent>
+        var events = new List<MatchEventAnalyticsDto>
         {
             new() { Time = TimeSpan.FromMinutes(10), MiTemps = "1", TeamScore1 = 5, TeamScore2 = 3 }
         };
@@ -59,7 +58,7 @@ public class MatchScenarioAnalyzerTests
     [Fact]
     public void BuildScoreTimeline_SecondHalfEvent_ShiftedByThirtyMinutes()
     {
-        var events = new List<MatchEvent>
+        var events = new List<MatchEventAnalyticsDto>
         {
             new() { Time = TimeSpan.FromMinutes(5), MiTemps = "2", TeamScore1 = 20, TeamScore2 = 18 }
         };
@@ -73,10 +72,10 @@ public class MatchScenarioAnalyzerTests
     [Fact]
     public void BuildScoreTimeline_DuplicateScores_DeduplicatesPoints()
     {
-        var events = new List<MatchEvent>
+        var events = new List<MatchEventAnalyticsDto>
         {
-            new() { Id = 1, Time = TimeSpan.FromMinutes(10), MiTemps = "1", TeamScore1 = 5, TeamScore2 = 3 },
-            new() { Id = 2, Time = TimeSpan.FromMinutes(11), MiTemps = "1", TeamScore1 = 5, TeamScore2 = 3 },
+            new() { MatchEventId = 1, Time = TimeSpan.FromMinutes(10), MiTemps = "1", TeamScore1 = 5, TeamScore2 = 3 },
+            new() { MatchEventId = 2, Time = TimeSpan.FromMinutes(11), MiTemps = "1", TeamScore1 = 5, TeamScore2 = 3 },
         };
 
         var result = MatchScenarioAnalyzer.BuildScoreTimeline(events, null);
