@@ -305,47 +305,48 @@ svg {
 
 .studio-commandbar {
     grid-area: command;
-    position: relative;
-    z-index: 60;
     display: grid;
-    grid-template-columns: var(--rail-width) 1fr auto;
-    align-items: center;
-    gap: 1rem;
-    min-width: 0;
-    padding: 0 1.25rem 0 0;
-    border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
-    backdrop-filter: blur(24px);
-}
-
-.studio-commandbar--scene {
-    grid-template-columns: var(--rail-width) 1fr;
+    grid-template-columns: var(--rail-width) minmax(0, 1fr);
+    align-items: stretch;
     padding: 0;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-raised);
+    z-index: 100;
 }
 
-.studio-commandbar--scene .studio-scene-heading {
+.studio-commandbar__brand {
     display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 2rem;
-    padding: 0.85rem 1.25rem 0.75rem;
+    align-items: center;
+    justify-content: center;
+    width: var(--rail-width);
+    height: 100%;
+    border-right: 1px solid var(--line);
 }
 
-.studio-commandbar__brand,
+.studio-commandbar__brand-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-sm);
+    background: var(--signal-500);
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #fff;
+    text-decoration: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 .studio-commandbar__actions,
 .studio-wordmark,
 .studio-account,
 .studio-create-button {
     display: flex;
     align-items: center;
-}
-
-.studio-commandbar__brand {
-    gap: 0.5rem;
-    height: 100%;
-    justify-content: center;
-    padding: 0 0.65rem;
-    border-right: 1px solid var(--line);
 }
 
 .studio-wordmark {
@@ -399,29 +400,30 @@ svg {
 .studio-icon-button {
     display: grid;
     place-items: center;
-    width: 2.65rem;
-    height: 2.65rem;
+    width: 2.25rem;
+    height: 2.25rem;
     padding: 0;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    color: var(--text-body);
-    background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    background: transparent;
     cursor: pointer;
-    transition: border-color 150ms ease, color 150ms ease, transform 150ms ease;
+    transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .studio-icon-button:hover {
-    color: var(--text);
-    border-color: var(--line-strong);
-    transform: translateY(-1px);
+    color: var(--text-body);
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+    border-color: var(--line);
 }
 
 .studio-icon-button svg {
     width: 1.15rem;
     fill: none;
     stroke: currentColor;
-    stroke-width: 1.8;
+    stroke-width: 1.5;
     stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .studio-command-search {
@@ -623,10 +625,10 @@ kbd {
 }
 
 .studio-nav-item__icon svg {
-    width: 100%;
+    width: 1.25rem;
     fill: none;
     stroke: currentColor;
-    stroke-width: 1.7;
+    stroke-width: 1.5;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
@@ -698,16 +700,65 @@ kbd {
     grid-area: workbench;
     min-width: 0;
     min-height: 0;
-    height: 100%;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     overflow: hidden;
 }
 
-.studio-shell--scene .studio-workbench {
-    grid-template-rows: minmax(0, 1fr);
+/* Scene heading in commandbar — all pages */
+.studio-commandbar .studio-scene-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: 0 2rem;
+    min-width: 0;
 }
 
+.studio-commandbar .studio-scene-heading__copy {
+    min-width: 0;
+}
+
+.studio-commandbar .studio-scene-heading h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+}
+
+.studio-commandbar .studio-scene-heading .studio-scene-heading__sub {
+    display: none;
+}
+
+/* Scene commandbar (8rem) — full mockup typography */
+.studio-shell--scene .studio-commandbar .studio-scene-heading {
+    align-items: flex-end;
+    padding: 0.75rem 2rem;
+}
+
+.studio-shell--scene .studio-commandbar .studio-scene-heading h1 {
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    padding-bottom: 0.5rem;
+}
+
+.studio-shell--scene .studio-commandbar .studio-scene-heading .studio-scene-heading__sub {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    padding-bottom: 0.625rem;
+}
+
+.studio-scene-heading__tools {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-shrink: 0;
+}
+
+/* Workbench scene heading (legacy — kept for reference, no longer rendered) */
 .studio-scene-heading {
     display: flex;
     align-items: flex-end;
@@ -737,10 +788,11 @@ kbd {
 .studio-scene-heading h1 {
     margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(2rem, 3.8vw, 4rem);
-    font-weight: 650;
-    line-height: 0.9;
-    letter-spacing: -0.035em;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text);
 }
 
 .studio-scene-heading p {
@@ -768,6 +820,59 @@ kbd {
     fill: none;
     stroke: currentColor;
     stroke-width: 1.8;
+}
+
+/* Button system — from mockup components.css */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-body);
+    border-color: var(--line);
+}
+
+.btn-ghost:hover {
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+    border-color: var(--line-strong);
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.btn svg {
+    flex-shrink: 0;
+}
+
+.badge-outline {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-muted);
+}
+
+.studio-account__avatar--btn {
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: var(--surface-soft);
+    transition: box-shadow var(--transition-fast);
+}
+
+.studio-account__avatar--btn:hover {
+    box-shadow: 0 0 0 2px var(--signal-500);
 }
 
 .studio-stage {
@@ -4387,21 +4492,6 @@ select {
 
 /* Responsive */
 @media (max-width: 1180px) {
-    .studio-commandbar {
-        grid-template-columns: var(--rail-width) minmax(14rem, 1fr) auto;
-    }
-
-    .studio-account__copy,
-    .studio-create-button span:last-child {
-        display: none;
-    }
-
-    .studio-create-button {
-        width: 2.65rem;
-        justify-content: center;
-        padding: 0;
-    }
-
     .studio-shell.context-lens-open {
         grid-template-columns: var(--rail-width) minmax(0, 1fr) 0;
     }
@@ -4452,13 +4542,9 @@ select {
 
     html:not([data-handwstat-platform="android"]) .studio-workbench {
         display: grid;
-        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr);
         height: 100%;
         overflow: hidden;
-    }
-
-    html:not([data-handwstat-platform="android"]) .studio-shell--scene .studio-workbench {
-        grid-template-rows: minmax(0, 1fr);
     }
 
     html:not([data-handwstat-platform="android"]) .studio-stage {
@@ -4471,11 +4557,14 @@ select {
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 767px) {
     :root {
-        --tray-height: 0px;
+        --command-height: 3.75rem;
+        --tray-height: 3rem;
     }
+}
 
+@media (max-width: 1023px) {
     .scope-ribbon {
         grid-template-columns: minmax(0, 1fr) auto;
         overflow: hidden;
@@ -4532,13 +4621,9 @@ select {
 
     .studio-workbench {
         display: grid;
-        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr);
         height: 100%;
         overflow: hidden;
-    }
-
-    .studio-shell--scene .studio-workbench {
-        grid-template-rows: minmax(0, 1fr);
     }
 
     .studio-stage {
@@ -4548,44 +4633,33 @@ select {
         overflow-y: auto;
     }
 
-    .studio-commandbar {
-        grid-template-columns: auto 1fr auto;
-        gap: 0.7rem;
-        padding: 0 0.75rem 0 0;
+    .studio-domain-rail {
+        display: none;
     }
 
     .studio-domain-trigger {
         display: grid;
     }
 
-    .studio-wordmark > span:last-child,
-    .studio-command-search span,
-    .studio-command-search kbd {
-        display: none;
+    .studio-commandbar .studio-scene-heading {
+        padding: 0 1rem;
     }
 
-    .studio-command-search {
-        justify-self: stretch;
-        grid-template-columns: 1fr;
-        justify-items: center;
-        padding: 0;
+    .studio-commandbar .studio-scene-heading h1 {
+        font-size: 1.15rem;
     }
 
-    .studio-domain-rail {
+    /* Drawer fallback for tablet if needed in future */
+    .domain-drawer-open .studio-domain-rail {
+        display: flex;
         position: fixed;
         top: var(--command-height);
         bottom: 0;
         left: 0;
         z-index: 80;
         width: min(20rem, 88vw);
-        grid-template-rows: auto minmax(0, 1fr) auto;
-        transform: translateX(-105%);
-        transition: transform 180ms ease;
+        transform: none;
         box-shadow: var(--shadow-float);
-    }
-
-    .domain-drawer-open .studio-domain-rail {
-        transform: translateX(0);
     }
 
     .domain-drawer-open .studio-scrim {

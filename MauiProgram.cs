@@ -63,6 +63,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<StatsDashboardService>();
         builder.Services.AddSingleton<AnalysisScopeService>();
         builder.Services.AddSingleton<GlobalSearchService>();
+        builder.Services.AddSingleton<CommandBarService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
