@@ -1,37 +1,40 @@
 @if (Items.Count > 0)
 {
-    <section class="metric-tape @CssClass" aria-label="Indicateurs cles">
-        @foreach (var entry in Items.Select((item, index) => (item, index)))
+    <div class="kpi-tile-grid @CssClass" role="list" aria-label="Indicateurs cles">
+        @foreach (var item in Items)
         {
-            <article class="metric-tape__item @(GetToneClass(entry.item.Tone))">
-                <span class="metric-tape__index">@((entry.index + 1).ToString("00"))</span>
-                <div>
-                    <span class="metric-tape__label">@KpiCopy.Label(entry.item.Label)</span>
-                    <strong>@entry.item.Value</strong>
-                </div>
+            <div class="kpi-tile @GetColorModifier(item.Tone)" role="listitem">
+                <span class="kpi-tile__label">@KpiCopy.Label(item.Label)</span>
+                <span class="kpi-tile__value">@item.Value</span>
                 @{
-                    var context = KpiCopy.Context(entry.item.Context);
+                    var sub = KpiCopy.Caption(item.Caption);
                 }
-                @if (!string.IsNullOrWhiteSpace(context))
+                @if (!string.IsNullOrWhiteSpace(sub))
                 {
-                    <small>@context</small>
+                    <span class="kpi-tile__sub">@sub</span>
                 }
-                <p>@KpiCopy.Caption(entry.item.Caption)</p>
-            </article>
+                @{
+                    var ctx = KpiCopy.Context(item.Context);
+                }
+                @if (!string.IsNullOrWhiteSpace(ctx))
+                {
+                    <span class="kpi-tile__sub">@ctx</span>
+                }
+            </div>
         }
-    </section>
+    </div>
 }
 
 @code {
     [Parameter] public IReadOnlyList<KpiTile> Items { get; set; } = [];
     [Parameter] public string CssClass { get; set; } = string.Empty;
 
-    private static string GetToneClass(string tone) => tone?.ToLowerInvariant() switch
+    private static string GetColorModifier(string tone) => tone?.ToLowerInvariant() switch
     {
-        "positive" => "is-positive",
-        "good" => "is-good",
-        "warning" => "is-warning",
-        "danger" => "is-danger",
-        _ => "is-neutral"
+        "positive" => "kpi-tile--court",
+        "good"     => "kpi-tile--electric",
+        "warning"  => "kpi-tile--warning",
+        "danger"   => "kpi-tile--danger",
+        _          => string.Empty
     };
 }

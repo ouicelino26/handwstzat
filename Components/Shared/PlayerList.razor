@@ -35,10 +35,10 @@
                 var photoUrl = ResolvePlayerPhotoUrl(player.PlayerPhoto, player.PlayerId, player.FullName, player.TeamName);
 
                 <button type="button"
-                        class="entity-index__item @(SelectedPlayerId == player.PlayerId ? "is-selected" : string.Empty)"
+                        class="player-row @(SelectedPlayerId == player.PlayerId ? "active" : string.Empty)"
                         aria-pressed="@(SelectedPlayerId == player.PlayerId)"
                         @onclick="() => SelectPlayerAsync(player.PlayerId)">
-                    <span class="entity-index__avatar @(photoUrl is null ? "is-placeholder" : string.Empty)">
+                    <div class="player-row__avatar @(photoUrl is null ? "is-placeholder" : string.Empty)">
                         @if (!string.IsNullOrWhiteSpace(photoUrl))
                         {
                             <img src="@photoUrl" alt="@($"Portrait de {player.FullName}")" loading="lazy" />
@@ -47,13 +47,17 @@
                         {
                             @GetInitials(player.FullName)
                         }
-                    </span>
-                    <span class="entity-index__identity">
-                        <strong>@player.FullName</strong>
-                        <small>@(player.TeamName ?? "Equipe inconnue")</small>
-                    </span>
-                    <span class="entity-index__role">@(player.PositionCode ?? player.PositionName ?? "—")</span>
-                    <span class="entity-index__arrow" aria-hidden="true">→</span>
+                    </div>
+                    <div class="player-row__identity">
+                        <div class="player-row__name">@player.FullName</div>
+                        <div class="player-row__meta">@FormatMeta(player)</div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(player.PositionCode ?? player.PositionName))
+                    {
+                        <div class="player-row__position">
+                            <span class="badge badge--neutral">@(player.PositionCode ?? player.PositionName)</span>
+                        </div>
+                    }
                 </button>
             }
         }
@@ -99,6 +103,13 @@
     {
         var parts = (fullName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return string.Concat(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])));
+    }
+
+    private static string FormatMeta(PlayerListItemDto player)
+    {
+        var pos = player.PositionCode ?? player.PositionName;
+        var team = player.TeamName ?? "—";
+        return string.IsNullOrWhiteSpace(pos) ? team : $"{pos} · {team}";
     }
 
     private static string? ResolvePlayerPhotoUrl(string? photo, int playerId, string? fullName, string? teamName)

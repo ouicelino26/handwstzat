@@ -1,41 +1,20 @@
 @using HandWStat.Models.Analytics
 
-@if (!string.IsNullOrWhiteSpace(Title) || Items.Count > 0 || !string.IsNullOrWhiteSpace(Message))
+@if (Items.Count > 0)
 {
-    <section class="evidence-strip @CssClass">
-        <div class="evidence-strip__intro">
-            @if (!string.IsNullOrWhiteSpace(Kicker))
-            {
-                <span>@Kicker</span>
-            }
-            @if (!string.IsNullOrWhiteSpace(Title))
-            {
-                <strong>@Title</strong>
-            }
-            @if (!string.IsNullOrWhiteSpace(Subtitle))
-            {
-                <small>@Subtitle</small>
-            }
-        </div>
-
-        @if (Items.Count > 0)
+    <div class="scope-summary-bar @CssClass">
+        @for (int i = 0; i < Items.Count; i++)
         {
-            <div class="evidence-strip__facts">
-                @foreach (var item in Items)
-                {
-                    <article>
-                        <span>@item.Label</span>
-                        <strong>@item.Value</strong>
-                    </article>
-                }
+            @if (i > 0)
+            {
+                <div class="scope-summary-bar__divider" aria-hidden="true"></div>
+            }
+            <div class="scope-summary-bar__item">
+                <span class="scope-summary-bar__label">@Items[i].Label</span>
+                <span class="scope-summary-bar__value">@Items[i].Value</span>
             </div>
         }
-
-        @if (!string.IsNullOrWhiteSpace(Message))
-        {
-            <p>@Message</p>
-        }
-    </section>
+    </div>
 }
 
 @code {
