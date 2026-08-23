@@ -491,9 +491,9 @@ public class PositionProfilesBase : ComponentBase, IDisposable
 
     private async Task LoadFilterScopesAsync()
     {
-        var competitionScopeTask = MatchesApiClient.GetMatchesAsync(teamId: TeamId, year: Year, page: 1, pageSize: 5000);
-        var teamScopeTask = MatchesApiClient.GetMatchesAsync(competitionId: CompetitionId, year: Year, page: 1, pageSize: 5000);
-        var contextScopeTask = MatchesApiClient.GetMatchesAsync(competitionId: CompetitionId, teamId: TeamId, year: Year, page: 1, pageSize: 5000);
+        var competitionScopeTask = MatchesApiClient.GetAllMatchesAsync(teamId: TeamId, year: Year);
+        var teamScopeTask = MatchesApiClient.GetAllMatchesAsync(competitionId: CompetitionId, year: Year);
+        var contextScopeTask = MatchesApiClient.GetAllMatchesAsync(competitionId: CompetitionId, teamId: TeamId, year: Year);
 
         await Task.WhenAll(competitionScopeTask, teamScopeTask, contextScopeTask);
 

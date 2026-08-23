@@ -38,6 +38,32 @@ public sealed class MatchesApiClient : ApiClientBase
         return GetListAsync<MatchListItemDto>("api/Matches", query, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<MatchListItemDto>> GetAllMatchesAsync(
+        int? competitionId = null,
+        int? teamId = null,
+        int? playerId = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        int? year = null,
+        string? season = null,
+        string? day = null,
+        CancellationToken cancellationToken = default)
+    {
+        const int pageSize = 500;
+        var all = new List<MatchListItemDto>();
+        var page = 1;
+        while (true)
+        {
+            var batch = await GetMatchesAsync(
+                competitionId, teamId, playerId, from, to, year, season, day,
+                page, pageSize, cancellationToken);
+            all.AddRange(batch);
+            if (batch.Count < pageSize) break;
+            page++;
+        }
+        return all;
+    }
+
     public Task<MatchListItemDto?> GetMatchAsync(int matchId, CancellationToken cancellationToken = default)
     {
         return GetAsync<MatchListItemDto>($"api/Matches/{matchId}", cancellationToken: cancellationToken);

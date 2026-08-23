@@ -644,22 +644,16 @@
             var teamTask = StatsApiClient.GetTeamStatsAsync(TeamId.Value, summaryOptions);
             var playersTask = StatsApiClient.GetTeamPlayersAsync(TeamId.Value, summaryOptions);
             var rosterTask = StatsApiClient.GetTeamPlayersAsync(TeamId.Value, rosterOptions);
-            var competitionScopeTask = MatchesApiClient.GetMatchesAsync(
+            var competitionScopeTask = MatchesApiClient.GetAllMatchesAsync(
                 teamId: TeamId,
-                year: Year,
-                page: 1,
-                pageSize: 5000);
-            var teamScopeTask = MatchesApiClient.GetMatchesAsync(
+                year: Year);
+            var teamScopeTask = MatchesApiClient.GetAllMatchesAsync(
                 competitionId: CompetitionId,
-                year: Year,
-                page: 1,
-                pageSize: 5000);
-            var matchesTask = MatchesApiClient.GetMatchesAsync(
+                year: Year);
+            var matchesTask = MatchesApiClient.GetAllMatchesAsync(
                 competitionId: CompetitionId,
                 teamId: TeamId,
-                year: Year,
-                page: 1,
-                pageSize: 5000);
+                year: Year);
 
             await Task.WhenAll(teamTask, playersTask, rosterTask, competitionScopeTask, teamScopeTask, matchesTask);
 

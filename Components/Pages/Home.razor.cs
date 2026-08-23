@@ -585,30 +585,24 @@ public class HomeBase : ComponentBase, IDisposable
 
     private async Task LoadFilterScopesAsync(CancellationToken cancellationToken)
     {
-        var competitionScopeTask = MatchesApiClient.GetMatchesAsync(
+        var competitionScopeTask = MatchesApiClient.GetAllMatchesAsync(
             teamId: Filters.TeamId,
             from: Filters.From,
             to: Filters.To,
             year: Filters.Year,
-            page: 1,
-            pageSize: 5000,
             cancellationToken: cancellationToken);
-        var teamScopeTask = MatchesApiClient.GetMatchesAsync(
+        var teamScopeTask = MatchesApiClient.GetAllMatchesAsync(
             competitionId: Filters.CompetitionId,
             from: Filters.From,
             to: Filters.To,
             year: Filters.Year,
-            page: 1,
-            pageSize: 5000,
             cancellationToken: cancellationToken);
-        var contextScopeTask = MatchesApiClient.GetMatchesAsync(
+        var contextScopeTask = MatchesApiClient.GetAllMatchesAsync(
             competitionId: Filters.CompetitionId,
             teamId: Filters.TeamId,
             from: Filters.From,
             to: Filters.To,
             year: Filters.Year,
-            page: 1,
-            pageSize: 5000,
             cancellationToken: cancellationToken);
 
         await Task.WhenAll(competitionScopeTask, teamScopeTask, contextScopeTask);
