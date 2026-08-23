@@ -4,13 +4,13 @@ namespace HandWStat.Components.Shared;
 
 internal static class ChartPalette
 {
-    public const string Player = "#ff5b2e";
-    public const string Reference = "#8fa39a";
-    public const string Primary = "#177a5b";
+    public const string Player = "#8fe1b2";
+    public const string Reference = "#73a7ff";
+    public const string Primary = "#48bb7b";
     public const string Secondary = "#3979d8";
     public const string Positive = "#48bb7b";
-    public const string Warning = "#e6ab4a";
-    public const string Danger = "#e95c57";
+    public const string Warning = "#efc468";
+    public const string Danger = "#ff7770";
     public const string Accent = "#d66f35";
     public const string Info = "#4d9cb3";
     public const string Pink = "#c55d79";
