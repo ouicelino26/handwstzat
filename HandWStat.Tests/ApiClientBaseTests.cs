@@ -57,6 +57,52 @@ public sealed class ApiClientBaseTests
         Assert.Equal("header-corr-456", error.CorrelationId);
     }
 
+    [Fact]
+    public async Task GetListAsync_304WithNoCache_ReturnsEmptyList()
+    {
+        using var httpClient = new HttpClient(new StubHandler(new HttpResponseMessage(HttpStatusCode.NotModified)));
+        var client = new TestApiClient(httpClient, new ApiSettings { BaseUrl = "https://example.test/" }, new StubAuthService());
+
+        var result = await client.GetListValueAsync();
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetListAsync_304AfterSuccessWithETag_ReturnsCachedList()
+    {
+        var items = new List<string> { "alpha", "beta", "gamma" };
+        var callCount = 0;
+        var handler = new CallbackHandler((req, _) =>
+        {
+            callCount++;
+            if (callCount == 1)
+            {
+                var ok = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new System.Net.Http.StringContent(
+                        System.Text.Json.JsonSerializer.Serialize(items),
+                        System.Text.Encoding.UTF8,
+                        "application/json")
+                };
+                ok.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"v1\"");
+                return Task.FromResult(ok);
+            }
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotModified));
+        });
+
+        using var httpClient = new HttpClient(handler);
+        var client = new TestApiClient(httpClient, new ApiSettings { BaseUrl = "https://example.test/" }, new StubAuthService());
+
+        var first = await client.GetListValueAsync();
+        var second = await client.GetListValueAsync();
+
+        Assert.Equal(3, first.Count);
+        Assert.Equal(3, second.Count);
+        Assert.Equal(items, second.ToList());
+        Assert.Equal(2, callCount);
+    }
+
     private sealed class TestApiClient : ApiClientBase
     {
         public TestApiClient(HttpClient httpClient, ApiSettings settings, IApiAuthService authService)
@@ -65,6 +111,8 @@ public sealed class ApiClientBaseTests
         }
 
         public Task<object?> GetValueAsync() => GetAsync<object>("api/test");
+
+        public Task<IReadOnlyList<string>> GetListValueAsync() => GetListAsync<string>("api/list");
     }
 
     private sealed class StubHandler : HttpMessageHandler
@@ -78,6 +126,19 @@ public sealed class ApiClientBaseTests
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(_response);
+    }
+
+    private sealed class CallbackHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _callback;
+
+        public CallbackHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> callback)
+        {
+            _callback = callback;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            _callback(request, cancellationToken);
     }
 
     private sealed class StubAuthService : IApiAuthService

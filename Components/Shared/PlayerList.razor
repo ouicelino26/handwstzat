@@ -1,32 +1,14 @@
-<aside class="entity-index @(IsPlayerListOpen ? "is-open" : "is-collapsed")"
-       aria-label="@Kicker">
-    <header class="entity-index__head">
-        <div>
-            <span>@Kicker</span>
-            <strong>@Players.Count.ToString("00")</strong>
-            @if (!string.IsNullOrWhiteSpace(Subtitle))
-            {
-                <small>@Subtitle</small>
-            }
-        </div>
-        <button type="button"
-                @onclick="TogglePlayerListAsync"
-                aria-expanded="@IsPlayerListOpen"
-                aria-controls="@_contentId"
-                aria-label="@(IsPlayerListOpen ? "Reduire l'index" : "Ouvrir l'index")">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@TogglePath"></path></svg>
-        </button>
-    </header>
-
-    <div id="@_contentId"
-         class="entity-index__body @(Scrollable ? "is-scrollable" : string.Empty)"
-         aria-hidden="@(!IsPlayerListOpen)">
+@if (SlimMode)
+{
+    <ul class="player-list" aria-label="@Kicker">
         @if (Players.Count == 0)
         {
-            <StateCard Kicker="@EmptyKicker"
-                       Title="@EmptyTitle"
-                       Message="@EmptyMessage"
-                       Tone="empty" />
+            <li>
+                <StateCard Kicker="@EmptyKicker"
+                           Title="@EmptyTitle"
+                           Message="@EmptyMessage"
+                           Tone="empty" />
+            </li>
         }
         else
         {
@@ -34,35 +16,116 @@
             {
                 var photoUrl = ResolvePlayerPhotoUrl(player.PlayerPhoto, player.PlayerId, player.FullName, player.TeamName);
 
-                <button type="button"
-                        class="player-row @(SelectedPlayerId == player.PlayerId ? "active" : string.Empty)"
-                        aria-pressed="@(SelectedPlayerId == player.PlayerId)"
-                        @onclick="() => SelectPlayerAsync(player.PlayerId)">
-                    <div class="player-row__avatar @(photoUrl is null ? "is-placeholder" : string.Empty)">
-                        @if (!string.IsNullOrWhiteSpace(photoUrl))
-                        {
-                            <img src="@photoUrl" alt="@($"Portrait de {player.FullName}")" loading="lazy" />
-                        }
-                        else
-                        {
-                            @GetInitials(player.FullName)
-                        }
-                    </div>
-                    <div class="player-row__identity">
-                        <div class="player-row__name">@player.FullName</div>
-                        <div class="player-row__meta">@FormatMeta(player)</div>
-                    </div>
-                    @if (!string.IsNullOrWhiteSpace(player.PositionCode ?? player.PositionName))
-                    {
-                        <div class="player-row__position">
-                            <span class="badge badge--neutral">@(player.PositionCode ?? player.PositionName)</span>
+                <li>
+                    <button type="button"
+                            class="player-row @(SelectedPlayerId == player.PlayerId ? "active" : string.Empty)"
+                            aria-pressed="@(SelectedPlayerId == player.PlayerId)"
+                            @onclick="() => SelectPlayerAsync(player.PlayerId)">
+                        <div class="player-row__avatar @(photoUrl is null ? "is-placeholder" : string.Empty)">
+                            @if (!string.IsNullOrWhiteSpace(photoUrl))
+                            {
+                                <img src="@photoUrl" alt="@($"Portrait de {player.FullName}")" loading="lazy" />
+                            }
+                            else
+                            {
+                                @GetInitials(player.FullName)
+                            }
                         </div>
-                    }
-                </button>
+                        <div class="player-row__identity">
+                            <div class="player-row__name">@player.FullName</div>
+                            <div class="player-row__meta">@FormatMeta(player)</div>
+                        </div>
+                        @if (ShowGoalKpi)
+                        {
+                            var statValue = player.IsGoalkeeper
+                                ? ((player as PlayerGlobalStatsDto)?.SaveCount ?? 0)
+                                : ((player as PlayerGlobalStatsDto)?.TotalGoals ?? 0);
+                            var statLabel = player.IsGoalkeeper ? "arr." : "buts";
+                            <div class="player-row__kpi">
+                                @statValue
+                                <small>@statLabel</small>
+                            </div>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(player.PositionCode ?? player.PositionName))
+                        {
+                            <div class="player-row__position">
+                                <span class="badge badge--neutral">@(player.PositionCode ?? player.PositionName)</span>
+                            </div>
+                        }
+                    </button>
+                </li>
             }
         }
-    </div>
-</aside>
+    </ul>
+}
+else
+{
+    <aside class="entity-index @(IsPlayerListOpen ? "is-open" : "is-collapsed")"
+           aria-label="@Kicker">
+        <header class="entity-index__head">
+            <div>
+                <span>@Kicker</span>
+                <strong>@Players.Count.ToString("00")</strong>
+                @if (!string.IsNullOrWhiteSpace(Subtitle))
+                {
+                    <small>@Subtitle</small>
+                }
+            </div>
+            <button type="button"
+                    @onclick="TogglePlayerListAsync"
+                    aria-expanded="@IsPlayerListOpen"
+                    aria-controls="@_contentId"
+                    aria-label="@(IsPlayerListOpen ? "Reduire l'index" : "Ouvrir l'index")">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@TogglePath"></path></svg>
+            </button>
+        </header>
+
+        <div id="@_contentId"
+             class="entity-index__body @(Scrollable ? "is-scrollable" : string.Empty)"
+             aria-hidden="@(!IsPlayerListOpen)">
+            @if (Players.Count == 0)
+            {
+                <StateCard Kicker="@EmptyKicker"
+                           Title="@EmptyTitle"
+                           Message="@EmptyMessage"
+                           Tone="empty" />
+            }
+            else
+            {
+                @foreach (var player in Players)
+                {
+                    var photoUrl = ResolvePlayerPhotoUrl(player.PlayerPhoto, player.PlayerId, player.FullName, player.TeamName);
+
+                    <button type="button"
+                            class="player-row @(SelectedPlayerId == player.PlayerId ? "active" : string.Empty)"
+                            aria-pressed="@(SelectedPlayerId == player.PlayerId)"
+                            @onclick="() => SelectPlayerAsync(player.PlayerId)">
+                        <div class="player-row__avatar @(photoUrl is null ? "is-placeholder" : string.Empty)">
+                            @if (!string.IsNullOrWhiteSpace(photoUrl))
+                            {
+                                <img src="@photoUrl" alt="@($"Portrait de {player.FullName}")" loading="lazy" />
+                            }
+                            else
+                            {
+                                @GetInitials(player.FullName)
+                            }
+                        </div>
+                        <div class="player-row__identity">
+                            <div class="player-row__name">@player.FullName</div>
+                            <div class="player-row__meta">@FormatMeta(player)</div>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(player.PositionCode ?? player.PositionName))
+                        {
+                            <div class="player-row__position">
+                                <span class="badge badge--neutral">@(player.PositionCode ?? player.PositionName)</span>
+                            </div>
+                        }
+                    </button>
+                }
+            }
+        </div>
+    </aside>
+}
 
 @code {
     [Parameter] public string Kicker { get; set; } = "Athlete index";
@@ -71,6 +134,8 @@
     [Parameter] public int? SelectedPlayerId { get; set; }
     [Parameter] public bool Scrollable { get; set; }
     [Parameter] public bool IsPlayerListOpen { get; set; } = true;
+    [Parameter] public bool SlimMode { get; set; }
+    [Parameter] public bool ShowGoalKpi { get; set; }
     [Parameter] public EventCallback<bool> IsPlayerListOpenChanged { get; set; }
     [Parameter] public string EmptyKicker { get; set; } = "Aucune joueuse";
     [Parameter] public string EmptyTitle { get; set; } = "Le scope ne retourne aucune joueuse";

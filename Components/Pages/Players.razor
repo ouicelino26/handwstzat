@@ -9,1346 +9,974 @@
 @inject IApiAuthService AuthService
 @inject IJSRuntime JS
 @inject AnalysisScopeService ScopeService
+@inject CommandBarService CommandBarService
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
 <PageTitle>Athletes</PageTitle>
 
-<div class="athlete-workspace" data-workspace="athletes">
-    @if (!AuthService.Session.IsAuthenticated)
+<div class="page-players-shell">
+@if (!AuthService.Session.IsAuthenticated)
+{
+    <AccessRequiredCard Message="Connectez-vous pour ouvrir les fiches joueuses, les zones et les feuilles de match." />
+}
+else
+{
+    @if (IsFilterDrawerOpen)
     {
-        <AccessRequiredCard Message="Connectez-vous pour ouvrir les fiches joueuses, les zones et les feuilles de match." />
+        <div class="filter-drawer-overlay" @onclick="CloseFilterDrawer" role="dialog" aria-modal="true" aria-label="Filtres joueuses">
+            <div class="filter-drawer" @onclick:stopPropagation="true">
+                <header class="filter-drawer__head">
+                    <h3 class="filter-drawer__title">Filtres joueuses</h3>
+                    <button type="button" class="filter-drawer__close" @onclick="CloseFilterDrawer">×</button>
+                </header>
+                <div class="filter-drawer__body page-filters">
+                    <div class="filter-section">
+                        <span class="filter-section__label">Recherche</span>
+                        <input class="form-input" value="@Search" @oninput="OnSearchChangedAsync" placeholder="Nom ou prénom" />
+                    </div>
+                    <div class="filter-section">
+                        <span class="filter-section__label">Compétition</span>
+                        <select class="form-select" @bind="CompetitionId" @bind:after="OnDirectoryScopeChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var comp in AvailableCompetitions) { <option value="@comp.CompetitionId">@comp.CompetitionName</option> }
+                        </select>
+                    </div>
+                    <div class="filter-section">
+                        <span class="filter-section__label">Équipe</span>
+                        <select class="form-select" @bind="TeamId" @bind:after="OnDirectoryScopeChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var team in AvailableTeams) { <option value="@team.TeamId">@team.TeamName</option> }
+                        </select>
+                    </div>
+                    <div class="filter-section">
+                        <span class="filter-section__label">Poste</span>
+                        <div class="filter-chips">
+                            <button type="button" class="position-chip @(PositionId == null ? "is-active" : "")" @onclick="async () => { PositionId = null; await OnDirectoryScopeChangedAsync(); }">Tous</button>
+                            @foreach (var pos in AvailablePositions)
+                            {
+                                var _chipPosId   = pos.Id;
+                                var _chipPosName = pos.Name;
+                                <button type="button" class="position-chip @(PositionId == _chipPosId ? "is-active" : "")" @onclick="async () => { PositionId = _chipPosId; await OnDirectoryScopeChangedAsync(); }">@_chipPosName</button>
+                            }
+                        </div>
+                    </div>
+                    <div class="filter-section">
+                        <span class="filter-section__label">Saison</span>
+                        <select class="form-select" @bind="Season" @bind:after="OnDirectoryScopeChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var season in SeasonOptions) { <option value="@season">@season</option> }
+                        </select>
+                    </div>
+                </div>
+                <footer class="filter-drawer__foot">
+                    <div class="filter-drawer__foot-actions">
+                        <button type="button" class="ghost-button" @onclick="CloseFilterDrawer">Annuler</button>
+                        <button type="button" class="primary-button" @onclick="CloseFilterDrawer">Appliquer</button>
+                    </div>
+                </footer>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <StateCard Kicker="Erreur" Title="Impossible de charger le répertoire" Message="@ErrorMessage" Tone="error" />
+    }
+    else if (IsBusy && PlayerDirectory.Count == 0)
+    {
+        <StateCard Kicker="Chargement" Title="Chargement du répertoire joueuses" Message="Préparation des filtres, de la liste et de la fiche détaillée." Tone="loading" />
+    }
+    else if (!HasDirectoryCriteria)
+    {
+        <StateCard Kicker="Filtre requis" Title="Sélectionnez un filtre pour charger les joueuses" Message="Choisissez au moins une compétition, une équipe, un poste ou saisissez une recherche." Tone="empty" />
     }
     else
     {
-        <details class="directory-command @(IsBusy ? "is-loading" : string.Empty)" open="@IsDirectoryDrawerOpen">
-            <summary @onclick="ToggleDirectoryDrawer">
+        <div class="players-subtoolbar">
+            <span class="badge badge-outline" style="font-variant-numeric: tabular-nums;">
+                @PlayerDirectory.Count.ToString("00") joueuses
+            </span>
+        </div>
+        <div class="page-players__layout @(IsDirectoryDrawerOpen ? string.Empty : "is-list-collapsed")">
 
-                <div class="drawer-copy">
-                    <strong>Athlete index</strong>
-                    <span>Recherche instantanee et scope local</span>
-                </div>
-
-                <div class="toolbar drawer-actions">
-                    <button type="button"
-                            class="ghost-button filter-ghost"
-                            @onclick="ResetFiltersAsync"
-                            @onclick:preventDefault="true"
-                            @onclick:stopPropagation="true"
-                            disabled="@IsBusy">Réinitialiser</button>
-                </div>
-            </summary>
-
-            <div class="filter-drawer-body">
-                <div class="page-filters">
-                        <label class="filter-field player-search">
-                            <span>Recherche</span>
-                            <input value="@Search" @oninput="OnSearchChangedAsync" placeholder="Nom ou prenom" />
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Competition</span>
-                            <select @bind="CompetitionId" @bind:after="OnDirectoryScopeChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var competition in AvailableCompetitions)
-                                {
-                                    <option value="@competition.CompetitionId">@competition.CompetitionName</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Equipe</span>
-                            <select @bind="TeamId" @bind:after="OnDirectoryScopeChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var team in AvailableTeams)
-                                {
-                                    <option value="@team.TeamId">@team.TeamName</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Poste</span>
-                            <select @bind="PositionId" @bind:after="OnDirectoryScopeChangedAsync">
-                                <option value="">Tous</option>
-                                @foreach (var position in AvailablePositions)
-                                {
-                                    <option value="@position.Id">@position.Name</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Saison</span>
-                            <select @bind="Season" @bind:after="OnDirectoryScopeChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var season in SeasonOptions)
-                                {
-                                    <option value="@season">@season</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Journee</span>
-                            <select @bind="Day" @bind:after="OnDirectoryScopeChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var day in DayOptions)
-                                {
-                                    <option value="@day">@day</option>
-                                }
-                            </select>
-                        </label>
-                    </div>
-                </div>
-        </details>
-
-        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
-        {
-            <StateCard Kicker="Erreur"
-                       Title="Impossible de charger le répertoire"
-                       Message="@ErrorMessage"
-                       Tone="error" />
-        }
-        else if (IsBusy && PlayerDirectory.Count == 0)
-        {
-            <StateCard Kicker="Chargement"
-                       Title="Chargement du répertoire joueuses"
-                       Message="Préparation des filtres, de la liste et de la fiche détaillée."
-                       Tone="loading" />
-        }
-        else if (!HasDirectoryCriteria)
-        {
-            <StateCard Kicker="Filtre requis"
-                       Title="Sélectionnez un filtre pour charger les joueuses"
-                       Message="Choisissez au moins une compétition, une équipe, un poste ou saisissez une recherche."
-                       Tone="empty" />
-        }
-        else
-        {
-            @if (IsBusy)
-            {
-                <PageLoader Kicker="Chargement"
-                            Title="Actualisation du repertoire"
-                            Message="La liste et la fiche de la joueuse se recalculent." />
-            }
-
-            <section class="entity-workspace">
-                <PlayerList Kicker="Athlete index"
-                            Subtitle="Ouvrez un workspace individuel"
-                            Players="@PlayerDirectory"
-                            SelectedPlayerId="@SelectedPlayerId"
-                            Scrollable="@UseScrollableDirectory"
-                            IsPlayerListOpen="@IsPlayerListOpen"
-                            IsPlayerListOpenChanged="@(value => IsPlayerListOpen = value)"
-                            EmptyKicker="Aucune joueuse"
-                            EmptyTitle="Le filtre courant ne retourne aucune fiche"
-                            EmptyMessage="Essayez un contexte plus large ou retirez un filtre trop restrictif."
-                            OnSelectedPlayerChanged="SelectPlayerAsync" />
-
-                <article class="entity-stage">
-                    @if (Profile is null || Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null)
+            @* ── LEFT: player list pane ── *@
+            <aside class="player-list-pane">
+                <div class="player-list-pane__toolbar">
+                    @if (IsDirectoryDrawerOpen)
                     {
-                        <StateCard Kicker="Aucune fiche"
-                                   Title="Choisissez une joueuse pour afficher la synthèse"
-                                   Message="La vue détaillée, les zones et les matchs s’ouvrent après sélection."
-                                   Tone="empty"
-                                   CssClass="empty-card-inline" />
+                        <span class="player-list-count"><strong>@PlayerDirectory.Count.ToString("00")</strong><small>joueuses</small></span>
                     }
-                    else
-                    {
-                        var profile = Profile!;
-                        var global = Global!;
-                        var offense = Offense!;
-                        var defense = Defense!;
-                        var passing = Passing!;
-                        var sanctions = Sanctions!;
-                        var goalkeeper = Goalkeeper!;
-                        PlayerTechnicalStatsDto? technical = Technical!;
-                        var playerPhotoUrl = ResolvePlayerPhotoUrl(profile.PlayerPhoto, profile.PlayerId, profile.FullName, profile.TeamName);
-                        var playerFlagUrl = ResolveFlagAssetUrl(profile.Nationality);
-
-                        <header class="entity-identity entity-identity--athlete">
-                            <div class="player-identity-photo @(playerPhotoUrl is null ? "is-placeholder" : string.Empty)">
-                                @if (!string.IsNullOrWhiteSpace(playerPhotoUrl))
-                                {
-                                    <img src="@playerPhotoUrl" alt="@($"Portrait de {profile.FullName}")" loading="lazy" />
-                                }
-                                else
-                                {
-                                    <span>@GetInitials(profile.FullName)</span>
-                                }
-                            </div>
-                            <div class="entity-identity__number">@(profile.Number?.ToString("00") ?? "—")</div>
-                            <div class="entity-identity__copy">
-                                <h2 data-page-title>@profile.FullName</h2>
-                                <p class="page-subtitle athlete-meta-line">
-                                    <span>@(profile.TeamName ?? "Equipe non renseignee") · @(profile.PositionName ?? "Poste non renseigne")</span>
-                                    @if (!string.IsNullOrWhiteSpace(profile.Nationality))
-                                    {
-                                        <span class="nationality-chip">
-                                            @if (!string.IsNullOrWhiteSpace(playerFlagUrl))
-                                            {
-                                                <img src="@playerFlagUrl" alt="" loading="lazy" />
-                                            }
-                                            <span>@profile.Nationality</span>
-                                        </span>
-                                    }
-                                </p>
-                            </div>
-
-                            <div class="entity-identity__actions">
-                                <a class="ghost-button" href="@($"/position-profiles?playerId={profile.PlayerId}")">Role benchmark</a>
-                                <button type="button"
-                                        class="primary-button"
-                                        @onclick="ExportPlayerSheetAsync"
-                                        disabled="@(!CanExportPlayerSheet || IsBusy || IsPlayerSheetExportBusy)">Exporter</button>
-                            </div>
-                        </header>
-
-                        <div class="scene-switcher" role="tablist" aria-label="Scenes de la joueuse">
-                            <button type="button" class="tab-button @(ActiveSection == "overview" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("overview")'>Brief</button>
-                            <button type="button" class="tab-button @(ActiveSection == "analysis" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("analysis")'>Performance</button>
-                            <button type="button" class="tab-button @(ActiveSection == "graphs" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("graphs")'>Évolution</button>
-                            <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Court</button>
-                            <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Matchs</button>
-                        </div>
-
-                        @if (ActiveSection == "overview")
+                    <button type="button" class="player-list-pane__toggle" @onclick="ToggleDirectoryDrawer" aria-label="@(IsDirectoryDrawerOpen ? "Réduire la liste" : "Ouvrir la liste")">
+                        @if (IsDirectoryDrawerOpen)
                         {
-                            <div class="player-brief-board">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                        }
+                    </button>
+                </div>
+                <div class="player-list-pane__body">
+                    @if (IsBusy && PlayerDirectory.Count > 0) { <p class="player-list-pane__loader">Actualisation…</p> }
+                    <PlayerList Players="@PlayerDirectory"
+                                SelectedPlayerId="@SelectedPlayerId"
+                                SlimMode="true"
+                                ShowGoalKpi="true"
+                                EmptyKicker="Aucune joueuse"
+                                EmptyTitle="Le filtre courant ne retourne aucune fiche"
+                                EmptyMessage="Essayez un contexte plus large ou retirez un filtre trop restrictif."
+                                OnSelectedPlayerChanged="SelectPlayerAsync" />
+                </div>
+            </aside>
 
-                                @* ── GLOBAL ── *@
-                                <section class="brief-section brief-section--global">
-                                    <header class="brief-section__head">
-                                        <p class="section-kicker">Global</p>
-                                        <h4>@profile.MatchesPlayed matchs</h4>
-                                    </header>
-                                    <div class="brief-kpi-grid brief-kpi-grid--compact">
-                                        @foreach (var kpi in BriefGlobalKpis)
-                                        {
-                                            <BarGaugeKpiCard Item="@kpi" />
-                                        }
-                                    </div>
-                                </section>
+            @* ── RIGHT: player detail pane ── *@
+            <div class="player-detail-pane">
+                @if (Profile is null || Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null)
+                {
+                    <div class="player-detail-pane__body player-detail-pane__body--empty">
+                        @if (IsBusy)
+                        {
+                            <PageLoader Kicker="Chargement" Title="Actualisation du répertoire" Message="La liste et la fiche de la joueuse se recalculent." />
+                        }
+                        else
+                        {
+                            <StateCard Kicker="Aucune fiche"
+                                       Title="Choisissez une joueuse pour afficher la synthèse"
+                                       Message="La vue détaillée, les zones et les matchs s'ouvrent après sélection."
+                                       Tone="empty"
+                                       CssClass="empty-card-inline" />
+                        }
+                    </div>
+                }
+                else
+                {
+                    var profile  = Profile!;
+                    var global   = Global!;
+                    var offense  = Offense!;
+                    var defense  = Defense!;
+                    var passing  = Passing!;
+                    var sanctions = Sanctions!;
+                    var goalkeeper = Goalkeeper!;
+                    PlayerTechnicalStatsDto? technical = Technical;
+                    var playerPhotoUrl = ResolvePlayerPhotoUrl(profile.PlayerPhoto, profile.PlayerId, profile.FullName, profile.TeamName);
+                    var playerFlagUrl  = ResolveFlagAssetUrl(profile.Nationality);
 
-                                @if (!profile.IsGoalkeeper)
+                    var _posVariant = GetPositionChipVariant(profile.PositionCode ?? profile.PositionName);
+                    @* ── Profile header ── *@
+                    <div class="player-profile">
+                        <div class="player-profile__avatar-lg">
+                            @if (!string.IsNullOrWhiteSpace(playerPhotoUrl))
+                            { <img src="@playerPhotoUrl" alt="@($"Portrait de {profile.FullName}")" loading="lazy" /> }
+                            else { <span>@GetInitials(profile.FullName)</span> }
+                        </div>
+                        <div class="player-profile__identity">
+                            <p class="player-profile__number">#@(profile.Number?.ToString("00") ?? "—")</p>
+                            <h2 class="player-profile__name">@profile.FullName</h2>
+                            <div class="player-profile__meta">
+                                <span class="position-chip position-chip--@_posVariant">@(profile.PositionCode ?? profile.PositionName ?? "—")</span>
+                                <span>@(profile.TeamName ?? "Équipe non renseignée")</span>
+                                @if (!string.IsNullOrWhiteSpace(profile.Nationality))
                                 {
-                                    @* ── OFFENSIF ── *@
-                                    <section class="brief-section brief-section--offense">
-                                        <header class="brief-section__head">
-                                            <p class="section-kicker">Stats offensives</p>
-                                            <h4>@offense.TotalButs buts · @passing.PasseDecisive passes</h4>
-                                            <button type="button" class="brief-see-details" @onclick='() => SetActiveSection("analysis")'>
-                                                Voir détails →
-                                            </button>
-                                        </header>
-                                        <div class="brief-kpi-grid brief-kpi-grid--compact">
+                                    <span class="text-muted">
+                                        @if (!string.IsNullOrWhiteSpace(playerFlagUrl)) { <img src="@playerFlagUrl" alt="" loading="lazy" style="width:1rem;height:auto;vertical-align:middle;" /> }
+                                        @profile.Nationality
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                        <div class="player-profile__actions">
+                            <a href="/position-profiles?playerId=@SelectedPlayerId"
+                               class="btn btn-ghost btn-sm"
+                               title="Voir le benchmark de poste pour cette joueuse">
+                                Role benchmark →
+                            </a>
+                            <button type="button" class="primary-button" @onclick="ExportPlayerSheetAsync"
+                                    disabled="@(!CanExportPlayerSheet || IsBusy || IsPlayerSheetExportBusy)">Exporter</button>
+                        </div>
+                    </div>
+                    <div class="player-profile__facts">
+                        <div class="player-badge">
+                            <span class="player-badge__value">@profile.MatchesPlayed</span>
+                            <span class="player-badge__label">Matchs</span>
+                        </div>
+                        @if (!profile.IsGoalkeeper)
+                        {
+                            <div class="player-badge player-badge--highlight">
+                                <span class="player-badge__value">@offense.TotalButs</span>
+                                <span class="player-badge__label">Buts</span>
+                            </div>
+                            <div class="player-badge">
+                                <span class="player-badge__value">@passing.PasseDecisive</span>
+                                <span class="player-badge__label">Passes déc.</span>
+                            </div>
+                            <div class="player-badge">
+                                @{ var _defImpact = defense.Interceptions + defense.Contres + defense.Neutralisations; }
+                                <span class="player-badge__value">@(_defImpact > 0 ? _defImpact.ToString() : "—")</span>
+                                <span class="player-badge__label">Impact déf.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="player-badge player-badge--highlight">
+                                <span class="player-badge__value">@(goalkeeper.Arrets + goalkeeper.ArretsPenalty)</span>
+                                <span class="player-badge__label">Arrêts</span>
+                            </div>
+                            <div class="player-badge">
+                                <span class="player-badge__value">@goalkeeper.TirsSubis</span>
+                                <span class="player-badge__label">Tirs subis</span>
+                            </div>
+                            <div class="player-badge">
+                                <span class="player-badge__value">@(goalkeeper.TauxArret > 0 ? $"{FormatRate(goalkeeper.TauxArret)}%" : "—")</span>
+                                <span class="player-badge__label">% Arrêt</span>
+                            </div>
+                        }
+                        @if (profile.Age.HasValue)
+                        {
+                            <div class="player-badge">
+                                <span class="player-badge__value">@profile.Age</span>
+                                <span class="player-badge__label">Ans</span>
+                            </div>
+                        }
+                    </div>
+
+                    @* ── Tab navigation ── *@
+                    <div class="tab-group">
+                        <nav class="tab-bar" role="tablist" aria-label="Sections de la joueuse">
+                            <button type="button" role="tab" class="tab @(ActiveSection == "overview" ? "active" : string.Empty)" aria-selected="@(ActiveSection == "overview")" @onclick='() => SetActiveSection("overview")'>Brief</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "analysis" ? "active" : string.Empty)" aria-selected="@(ActiveSection == "analysis")" @onclick='() => SetActiveSection("analysis")'>Performance</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "graphs"   ? "active" : string.Empty)" aria-selected="@(ActiveSection == "graphs")"   @onclick='() => SetActiveSection("graphs")'>Évolution</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "zones"    ? "active" : string.Empty)" aria-selected="@(ActiveSection == "zones")"    @onclick='() => SetActiveSection("zones")'>Court</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "matches"  ? "active" : string.Empty)" aria-selected="@(ActiveSection == "matches")"  @onclick='() => SetActiveSection("matches")'>Matchs</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "analyse"  ? "active" : string.Empty)" aria-selected="@(ActiveSection == "analyse")"  @onclick='() => SetActiveSection("analyse")'>Analyse</button>
+                        </nav>
+                    </div>
+
+                    @* ── Tab body ── *@
+                    <div class="player-detail-pane__body">
+
+                    @* BRIEF *@
+                    @if (ActiveSection == "overview")
+                    {
+                        <div class="brief-layout">
+                            @if (!profile.IsGoalkeeper)
+                            {
+                                <section class="brief-section brief-section--offense">
+                                    <div class="brief-section__header">
+                                        <span class="brief-section__eyebrow">STAT OFFENSIVE</span>
+                                        <h3 class="brief-section__title">Production et création</h3>
+                                    </div>
+                                    <div class="brief-section__panel">
+                                        <dl class="brief-stat-list">
                                             @foreach (var kpi in BriefOffenseKpis)
                                             {
-                                                <BarGaugeKpiCard Item="@kpi" />
+                                                <div class="brief-stat-row">
+                                                    <dt>@kpi.Label</dt>
+                                                    <dd>
+                                                        <strong>@kpi.Value</strong>
+                                                        @if (!string.IsNullOrEmpty(kpi.Caption))
+                                                        {
+                                                            <details class="stat-details">
+                                                                <summary>Voir détails</summary>
+                                                                <div class="stat-details__content">
+                                                                    <div><span>@kpi.Caption</span></div>
+                                                                </div>
+                                                            </details>
+                                                        }
+                                                    </dd>
+                                                </div>
                                             }
-                                        </div>
-                                    </section>
-
-                                    @* ── DÉFENSIF ── *@
-                                    <section class="brief-section brief-section--defense">
-                                        <header class="brief-section__head">
-                                            <p class="section-kicker">Stats défensives</p>
-                                            <h4>@defense.Interceptions interceptions · @(defense.Contres + defense.Neutralisations) blocs</h4>
-                                            <button type="button" class="brief-see-details" @onclick='() => SetActiveSection("analysis")'>
-                                                Voir détails →
-                                            </button>
-                                        </header>
-                                        <div class="brief-kpi-grid brief-kpi-grid--compact">
+                                        </dl>
+                                    </div>
+                                </section>
+                                <section class="brief-section brief-section--defense">
+                                    <div class="brief-section__header">
+                                        <span class="brief-section__eyebrow">STAT DÉFENSIVE</span>
+                                        <h3 class="brief-section__title">Récupération et protection</h3>
+                                    </div>
+                                    <div class="brief-section__panel">
+                                        <dl class="brief-stat-list">
                                             @foreach (var kpi in BriefDefenseKpis)
                                             {
-                                                <BarGaugeKpiCard Item="@kpi" />
-                                            }
-                                        </div>
-                                    </section>
-                                }
-                                else
-                                {
-                                    @* ── GARDIENNE ── *@
-                                    <section class="brief-section brief-section--goalkeeper">
-                                        <header class="brief-section__head">
-                                            <p class="section-kicker">Stats arrêts</p>
-                                            <h4>@(goalkeeper.Arrets + goalkeeper.ArretsPenalty) arrêts · @goalkeeper.TirsSubis tirs subis</h4>
-                                            <button type="button" class="brief-see-details" @onclick='() => SetActiveSection("analysis")'>
-                                                Voir détails →
-                                            </button>
-                                        </header>
-                                        <div class="brief-kpi-grid brief-kpi-grid--compact">
-                                            @foreach (var kpi in BriefGoalkeeperKpis)
-                                            {
-                                                <BarGaugeKpiCard Item="@kpi" />
-                                            }
-                                        </div>
-                                    </section>
-
-                                    @* ── AVEC BALLON ── *@
-                                    <section class="brief-section brief-section--ball">
-                                        <header class="brief-section__head">
-                                            <p class="section-kicker">Avec ballon</p>
-                                            <h4>@goalkeeper.PasseDecisives passes · @goalkeeper.Buts buts</h4>
-                                            <button type="button" class="brief-see-details" @onclick='() => SetActiveSection("analysis")'>
-                                                Voir détails →
-                                            </button>
-                                        </header>
-                                        <div class="brief-kpi-grid brief-kpi-grid--compact">
-                                            @foreach (var kpi in BriefBallKpis)
-                                            {
-                                                <BarGaugeKpiCard Item="@kpi" />
-                                            }
-                                        </div>
-                                    </section>
-                                }
-                            </div>
-                        }
-                        else if (ActiveSection == "analysis")
-                        {
-                            var v2Offense  = LeagueAnalytics?.Analytics?.Offense;
-                            var v2Defense  = LeagueAnalytics?.Analytics?.Defense;
-                            var v2Keeper   = LeagueAnalytics?.Analytics?.Goalkeeper;
-
-                            @* ── Onglets internes Performance ── *@
-                            <div class="perf-tabs" role="tablist" aria-label="Sections Performance">
-                                @if (!profile.IsGoalkeeper)
-                                {
-                                    <button type="button" role="tab"
-                                            class="perf-tab-btn @(PerformanceSection == "attack" ? "is-active" : "")"
-                                            aria-selected="@(PerformanceSection == "attack")"
-                                            aria-controls="perf-panel-attack"
-                                            @onclick='() => PerformanceSection = "attack"'>Attaque</button>
-                                    <button type="button" role="tab"
-                                            class="perf-tab-btn @(PerformanceSection == "defense" ? "is-active" : "")"
-                                            aria-selected="@(PerformanceSection == "defense")"
-                                            aria-controls="perf-panel-defense"
-                                            @onclick='() => PerformanceSection = "defense"'>Défense</button>
-                                    <button type="button" role="tab"
-                                            class="perf-tab-btn @(PerformanceSection == "mastery" ? "is-active" : "")"
-                                            aria-selected="@(PerformanceSection == "mastery")"
-                                            aria-controls="perf-panel-mastery"
-                                            @onclick='() => PerformanceSection = "mastery"'>Maîtrise</button>
-                                    <button type="button" role="tab"
-                                            class="perf-tab-btn @(PerformanceSection == "discipline" ? "is-active" : "")"
-                                            aria-selected="@(PerformanceSection == "discipline")"
-                                            aria-controls="perf-panel-discipline"
-                                            @onclick='() => PerformanceSection = "discipline"'>Discipline</button>
-                                }
-                                else
-                                {
-                                    <button type="button" role="tab"
-                                            class="perf-tab-btn @(PerformanceSection == "saves" ? "is-active" : "")"
-                                            aria-selected="@(PerformanceSection == "saves")"
-                                            aria-controls="perf-panel-saves"
-                                            @onclick='() => PerformanceSection = "saves"'>Arrêts</button>
-                                    <button type="button" role="tab"
-                                            class="perf-tab-btn @(PerformanceSection == "ball" ? "is-active" : "")"
-                                            aria-selected="@(PerformanceSection == "ball")"
-                                            aria-controls="perf-panel-ball"
-                                            @onclick='() => PerformanceSection = "ball"'>Avec ballon</button>
-                                    <button type="button" role="tab"
-                                            class="perf-tab-btn @(PerformanceSection == "discipline" ? "is-active" : "")"
-                                            aria-selected="@(PerformanceSection == "discipline")"
-                                            aria-controls="perf-panel-discipline"
-                                            @onclick='() => PerformanceSection = "discipline"'>Discipline</button>
-                                }
-                            </div>
-
-                            @* ── ATTAQUE ── *@
-                            @if (!profile.IsGoalkeeper && PerformanceSection == "attack")
-                            {
-                                <div id="perf-panel-attack" role="tabpanel" class="perf-panel">
-                                    @{
-                                        var totalGoals = PerfCountOf(v2Offense, "TOTAL_GOALS", Offense?.TotalButs ?? 0);
-                                        var openGoals  = PerfCountOf(v2Offense, "OPEN_PLAY_GOALS", Offense?.Buts ?? 0);
-                                        var penGoals   = PerfCountOf(v2Offense, "PENALTY_GOALS", Offense?.Buts7m ?? 0);
-                                        var assists    = PerfCountOf(v2Offense, "ASSISTS", Passing?.PasseDecisive ?? 0);
-                                        var penWonUnavailable  = PerfIsUnavailable(v2Offense, "PENALTIES_WON");
-                                        var sanctDrawnUnavailable = PerfIsUnavailable(v2Offense, "SANCTIONS_DRAWN");
-                                        var penWonVal  = PerfCountOf(v2Offense, "PENALTIES_WON", -1);
-                                        var sanctDrawnVal = PerfCountOf(v2Offense, "SANCTIONS_DRAWN", -1);
-                                        var matches = profile.MatchesPlayed;
-                                        var totalShots = Technical?.ShotAttempts ?? (Offense != null ? Offense.TotalButs + Offense.TirsRates + Offense.PenaltyRate : 0);
-                                        var openShots  = Offense != null ? Offense.Buts + Offense.TirsRates : 0;
-                                        var penShots   = Offense != null ? Offense.Buts7m + Offense.PenaltyRate : 0;
-                                        var blocked    = Offense?.TirContre ?? 0;
-                                        var totalRateModel = PerfRateOf(v2Offense, "TOTAL_SHOT_RATE");
-                                        var openRateModel  = PerfRateOf(v2Offense, "OPEN_PLAY_SHOT_RATE");
-                                        var penRateModel   = PerfRateOf(v2Offense, "PENALTY_SHOT_RATE");
-                                        var totalRate = totalRateModel?.Value ?? Technical?.OverallShotSuccessRate ?? 0;
-                                        var openRate  = openRateModel?.Value  ?? Technical?.OpenShotSuccessRate ?? 0;
-                                        var penRate   = penRateModel?.Value   ?? Technical?.PenaltySuccessRate ?? 0;
-                                    }
-                                    @* Production *@
-                                    <section class="perf-group">
-                                        <header class="perf-group__head">
-                                            <p class="section-kicker">Production</p>
-                                        </header>
-                                        <div class="perf-metric-list">
-                                            <PerformanceMetricRow Label="Buts" Value="@totalGoals.ToString()"
-                                                Evidence="@($"{openGoals} jeu + {penGoals} sur 7m")"
-                                                Context="@(matches > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalGoals, matches))}/match" : null)" />
-                                            <PerformanceMetricRow Label="Dans le jeu" Value="@openGoals.ToString()"
-                                                Evidence="@(Offense is not null ? $"sur {Offense.Buts + Offense.TirsRates} tirs ouverts" : null)" />
-                                            <PerformanceMetricRow Label="7 mètres" Value="@penGoals.ToString()"
-                                                Evidence="@(Offense is not null ? $"sur {Offense.Buts7m + Offense.PenaltyRate} tirs 7m" : null)" />
-                                            <PerformanceMetricRow Label="Passes décisives" Value="@assists.ToString()"
-                                                Context="@(matches > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(assists, matches))}/match" : null)" />
-                                            @if (!penWonUnavailable && penWonVal >= 0)
-                                            {
-                                                <PerformanceMetricRow Label="7m obtenus" Value="@penWonVal.ToString()" />
-                                            }
-                                            @if (!sanctDrawnUnavailable && sanctDrawnVal >= 0)
-                                            {
-                                                <PerformanceMetricRow Label="Sanctions obtenues" Value="@sanctDrawnVal.ToString()" />
-                                            }
-                                        </div>
-                                    </section>
-
-                                    @* Volume de tir *@
-                                    <section class="perf-group">
-                                        <header class="perf-group__head">
-                                            <p class="section-kicker">Volume de tir</p>
-                                        </header>
-                                        <div class="perf-metric-list">
-                                            <PerformanceMetricRow Label="Tirs total" Value="@totalShots.ToString()"
-                                                Context="@(matches > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalShots, matches))}/match" : null)" />
-                                            <PerformanceMetricRow Label="Tirs dans le jeu" Value="@openShots.ToString()" />
-                                            <PerformanceMetricRow Label="Tirs 7 mètres" Value="@penShots.ToString()" />
-                                            @if (blocked > 0)
-                                            {
-                                                <PerformanceMetricRow Label="Tirs contrés" Value="@blocked.ToString()" />
-                                            }
-                                        </div>
-                                    </section>
-
-                                    @* Efficacité *@
-                                    <section class="perf-group">
-                                        <header class="perf-group__head">
-                                            <p class="section-kicker">Efficacité</p>
-                                        </header>
-                                        <div class="perf-metric-list perf-metric-list--rates">
-                                            <PerformanceMetricRow
-                                                Label="Taux total"db
-                                                Value="@(FormatRate(totalRate) + "%")"
-                                                Evidence="@(totalRateModel != null ? $"{totalRateModel.Numerator?.ToString("0") ?? "?"} / {totalRateModel.Denominator?.ToString("0") ?? "?"}" : $"{totalGoals} / {totalShots}")"
-                                                Availability="@(totalRateModel != null && !totalRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)"
-                                                Context="@(totalRateModel != null ? (totalRateModel.SampleReliable ? "Volume fiable" : $"Min. {totalRateModel.MinimumSample?.ToString("0") ?? "?"} tirs") : null)" />
-                                            <PerformanceMetricRow
-                                                Label="Jeu ouvert"
-                                                Value="@(FormatRate(openRate) + "%")"
-                                                Evidence="@(openRateModel != null ? $"{openRateModel.Numerator?.ToString("0") ?? "?"} / {openRateModel.Denominator?.ToString("0") ?? "?"}" : $"{openGoals} / {openShots}")"
-                                                Availability="@(openRateModel != null && !openRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)" />
-                                            <PerformanceMetricRow
-                                                Label="7 mètres"
-                                                Value="@(FormatRate(penRate) + "%")"
-                                                Evidence="@(penRateModel != null ? $"{penRateModel.Numerator?.ToString("0") ?? "?"} / {penRateModel.Denominator?.ToString("0") ?? "?"}" : $"{penGoals} / {penShots}")"
-                                                Availability="@(penRateModel != null && !penRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)" />
-                                        </div>
-                                    </section>
-                                </div>
-                            }
-
-                            @* ── DÉFENSE ── *@
-                            @if (!profile.IsGoalkeeper && PerformanceSection == "defense")
-                            {
-                                <div id="perf-panel-defense" role="tabpanel" class="perf-panel">
-                                    @{
-                                        var interceptions = PerfCountOf(v2Defense, "INTERCEPTIONS", Defense?.Interceptions ?? 0);
-                                        var blocks        = PerfCountOf(v2Defense, "BLOCKS", Defense?.Contres ?? 0);
-                                        var offFouls      = PerfCountOf(v2Defense, "OFFENSIVE_FOULS_DRAWN", Defense?.PassageForce ?? 0);
-                                        var neutral       = PerfCountOf(v2Defense, "NEUTRALIZATIONS", Defense?.Neutralisations ?? 0);
-                                        var penConc       = PerfCountOf(v2Defense, "PENALTIES_CONCEDED", Sanctions?.PenaltyConcede ?? 0);
-                                        var sanctConc     = PerfCountOf(v2Defense, "SANCTIONS_CONCEDED",
-                                            Sanctions != null ? Sanctions.Avertissements + Sanctions.DeuxMinutes + Sanctions.Exclusions : 0);
-                                        var warn  = PerfCountOf(v2Defense, "WARNINGS_CONCEDED", Sanctions?.Avertissements ?? 0);
-                                        var twom  = PerfCountOf(v2Defense, "TWO_MINUTE_SUSPENSIONS_CONCEDED", Sanctions?.DeuxMinutes ?? 0);
-                                        var dq    = PerfCountOf(v2Defense, "DISQUALIFICATIONS_CONCEDED", Sanctions?.Exclusions ?? 0);
-                                    }
-                                    @* Impact défensif *@
-                                    <section class="perf-group">
-                                        <header class="perf-group__head">
-                                            <p class="section-kicker">Impact défensif</p>
-                                        </header>
-                                        <div class="perf-metric-list">
-                                            <PerformanceMetricRow Label="Interceptions" Value="@interceptions.ToString()"
-                                                Context="@(profile.MatchesPlayed > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(interceptions, profile.MatchesPlayed))}/match" : null)" />
-                                            <PerformanceMetricRow Label="Contres" Value="@blocks.ToString()"
-                                                Context="@(profile.MatchesPlayed > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(blocks, profile.MatchesPlayed))}/match" : null)" />
-                                            <PerformanceMetricRow Label="PF provoqués" Value="@offFouls.ToString()" />
-                                            <PerformanceMetricRow Label="Neutralisations" Value="@neutral.ToString()" />
-                                        </div>
-                                    </section>
-
-                                    @* Coût défensif *@
-                                    <section class="perf-group">
-                                        <header class="perf-group__head">
-                                            <p class="section-kicker">Coût défensif</p>
-                                        </header>
-                                        <div class="perf-metric-list">
-                                            <PerformanceMetricRow Label="7m concédés" Value="@penConc.ToString()" Tone="@(penConc > 3 ? "warning" : "neutral")" />
-                                            <PerformanceMetricRow Label="Sanctions concédées" Value="@sanctConc.ToString()"
-                                                Tone="@(sanctConc > 5 ? "warning" : "neutral")">
-                                                <div class="pmr-sanction-breakdown">
-                                                    <span>@warn avert.</span>
-                                                    <span>@twom × 2 min</span>
-                                                    <span>@dq exclusions</span>
+                                                <div class="brief-stat-row">
+                                                    <dt>@kpi.Label</dt>
+                                                    <dd>
+                                                        <strong>@kpi.Value</strong>
+                                                        @if (!string.IsNullOrEmpty(kpi.Caption))
+                                                        {
+                                                            <details class="stat-details">
+                                                                <summary>Voir détails</summary>
+                                                                <div class="stat-details__content">
+                                                                    <div><span>@kpi.Caption</span></div>
+                                                                </div>
+                                                            </details>
+                                                        }
+                                                    </dd>
                                                 </div>
-                                            </PerformanceMetricRow>
-                                        </div>
-                                    </section>
-                                </div>
-                            }
-
-                            @* ── MAÎTRISE ── *@
-                            @if (!profile.IsGoalkeeper && PerformanceSection == "mastery")
-                            {
-                                <div id="perf-panel-mastery" role="tabpanel" class="perf-panel">
-                                    @{
-                                        var totalTurnovers = PerfCountOf(v2Offense, "TOTAL_TURNOVERS", Passing?.TotalPertes ?? 0);
-                                        var badPasses      = PerfCountOf(v2Offense, "BAD_PASSES", Passing?.MauvaisePasse ?? 0);
-                                        var pivotMetric    = v2Offense?.FirstOrDefault(m => m.MetricCode == "FAILED_PIVOT_PASSES");
-                                        var pivotValue     = pivotMetric?.CountValue;
-                                        var pivotMissing   = pivotMetric == null || pivotMetric.IsUnavailable || pivotMetric.Availability is "DATA_MISSING" or "UNAVAILABLE_FROM_CURRENT_DATA" or "UNAVAILABLE";
-                                        var matches2 = profile.MatchesPlayed;
-                                    }
-                                    <section class="perf-group">
-                                        <header class="perf-group__head">
-                                            <p class="section-kicker">Conservation du ballon</p>
-                                        </header>
-                                        <div class="perf-metric-list">
-                                            <PerformanceMetricRow Label="Pertes de balle" Value="@totalTurnovers.ToString()"
-                                                Context="@(matches2 > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalTurnovers, matches2))}/match" : null)"
-                                                Tone="@(HandballKpiHelper.PerMatch(totalTurnovers, matches2) > 3 ? "warning" : "neutral")">
-                                                <div class="pmr-turnover-breakdown">
-                                                    <span>Mauvaises passes : @badPasses</span>
-                                                    @if (pivotMissing)
-                                                    {
-                                                        <span class="pmr-data-missing">Passes pivot ratées : —</span>
-                                                    }
-                                                    else if (pivotValue.HasValue)
-                                                    {
-                                                        <span>Passes pivot ratées : @pivotValue.Value</span>
-                                                    }
-                                                </div>
-                                            </PerformanceMetricRow>
-                                            <PerformanceMetricRow Label="Mauvaises passes" Value="@badPasses.ToString()"
-                                                Context="@(matches2 > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(badPasses, matches2))}/match" : null)" />
-                                            @if (!pivotMissing && pivotValue.HasValue)
-                                            {
-                                                <PerformanceMetricRow Label="Passes pivot ratées" Value="@pivotValue.Value.ToString()" />
                                             }
-                                            else
-                                            {
-                                                <PerformanceMetricRow Label="Passes pivot ratées" Value="—" Availability="DATA_MISSING" />
-                                            }
-                                        </div>
-                                    </section>
-                                </div>
-                            }
-
-                            @* ── DISCIPLINE ── *@
-                            @if (PerformanceSection == "discipline")
-                            {
-                                <div id="perf-panel-discipline" role="tabpanel" class="perf-panel">
-                                    @{
-                                        var warn2  = PerfCountOf(v2Defense, "WARNINGS_CONCEDED", Sanctions?.Avertissements ?? 0);
-                                        var twom2  = PerfCountOf(v2Defense, "TWO_MINUTE_SUSPENSIONS_CONCEDED", Sanctions?.DeuxMinutes ?? 0);
-                                        var dq2    = PerfCountOf(v2Defense, "DISQUALIFICATIONS_CONCEDED", Sanctions?.Exclusions ?? 0);
-                                        var totalSanct2 = warn2 + twom2 + dq2;
-                                        var penConc2 = PerfCountOf(v2Defense, "PENALTIES_CONCEDED", Sanctions?.PenaltyConcede ?? 0);
-                                        var matches3 = profile.MatchesPlayed;
-                                    }
-                                    <section class="perf-group">
-                                        <header class="perf-group__head">
-                                            <p class="section-kicker">Discipline</p>
-                                        </header>
-                                        <div class="perf-metric-list">
-                                            <PerformanceMetricRow Label="Total sanctions" Value="@totalSanct2.ToString()"
-                                                Tone="@(HandballKpiHelper.SanctionsTone(HandballKpiHelper.PerMatch(totalSanct2, matches3), false))"
-                                                Context="@(matches3 > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalSanct2, matches3))}/match" : null)" />
-                                            @* Barres de breakdown *@
-                                            <div class="perf-sanction-bar-group">
-                                                @{ var maxSanct = Math.Max(totalSanct2, 1); }
-                                                <div class="perf-sanction-bar-row">
-                                                    <span class="psb-label">Avert.</span>
-                                                    <div class="psb-bar-wrap"><div class="psb-bar" style="width:@((warn2 * 100.0 / maxSanct).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                                    <span class="psb-value">@warn2</span>
-                                                </div>
-                                                <div class="perf-sanction-bar-row">
-                                                    <span class="psb-label">2 min</span>
-                                                    <div class="psb-bar-wrap"><div class="psb-bar psb-bar--twom" style="width:@((twom2 * 100.0 / maxSanct).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                                    <span class="psb-value">@twom2</span>
-                                                </div>
-                                                <div class="perf-sanction-bar-row">
-                                                    <span class="psb-label">Excl.</span>
-                                                    <div class="psb-bar-wrap"><div class="psb-bar psb-bar--dq" style="width:@((dq2 * 100.0 / maxSanct).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                                    <span class="psb-value">@dq2</span>
-                                                </div>
-                                            </div>
-                                            @* Séparé : 7m concédés N'EST PAS dans sanctions *@
-                                            <PerformanceMetricRow Label="7m concédés" Value="@penConc2.ToString()"
-                                                Context="Distinct des sanctions disciplinaires"
-                                                Tone="@(penConc2 > 3 ? "warning" : "neutral")" />
-                                        </div>
-                                    </section>
-                                </div>
-                            }
-
-                            @* ── GARDIENNE : ARRÊTS ── *@
-                            @if (profile.IsGoalkeeper && PerformanceSection == "saves")
-                            {
-                                <div id="perf-panel-saves" role="tabpanel" class="perf-panel">
-                                    @{
-                                        var totalSaves = PerfCountOf(v2Keeper, "TOTAL_SAVES", Goalkeeper != null ? Goalkeeper.Arrets + Goalkeeper.ArretsPenalty : 0);
-                                        var openSaves  = PerfCountOf(v2Keeper, "OPEN_PLAY_SAVES", Goalkeeper?.Arrets ?? 0);
-                                        var penSaves   = PerfCountOf(v2Keeper, "PENALTY_SAVES", Goalkeeper?.ArretsPenalty ?? 0);
-                                        var totalFaced = PerfCountOf(v2Keeper, "TOTAL_SHOTS_FACED", Goalkeeper?.TirsSubis ?? 0);
-                                        var openFaced  = PerfCountOf(v2Keeper, "OPEN_PLAY_SHOTS_FACED", Goalkeeper != null ? Goalkeeper.Arrets + Goalkeeper.ButsPris : 0);
-                                        var penFaced   = PerfCountOf(v2Keeper, "PENALTY_SHOTS_FACED", Goalkeeper != null ? Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty : 0);
-                                        var gkMatches  = profile.MatchesPlayed;
-                                        var totalSaveRateModel = PerfRateOf(v2Keeper, "TOTAL_SAVE_RATE");
-                                        var openSaveRateModel  = PerfRateOf(v2Keeper, "OPEN_PLAY_SAVE_RATE");
-                                        var penSaveRateModel   = PerfRateOf(v2Keeper, "PENALTY_SAVE_RATE");
-                                        var totalSaveRate = totalSaveRateModel?.Value ?? Technical?.GoalkeeperSaveRate ?? 0;
-                                        var openSaveRate  = openSaveRateModel?.Value  ?? (openFaced > 0 ? openSaves * 100.0 / openFaced : 0.0);
-                                        var penSaveRate   = penSaveRateModel?.Value   ?? Technical?.GoalkeeperPenaltyStopRate ?? 0;
-                                    }
-                                    <section class="perf-group">
-                                        <header class="perf-group__head"><p class="section-kicker">Arrêts</p></header>
-                                        <div class="perf-metric-list">
-                                            <PerformanceMetricRow Label="Arrêts total" Value="@totalSaves.ToString()"
-                                                Evidence="@($"{openSaves} jeu + {penSaves} sur 7m")"
-                                                Context="@(gkMatches > 0 ? $"{HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalSaves, gkMatches))}/match" : null)" />
-                                            <PerformanceMetricRow Label="Arrêts dans le jeu" Value="@openSaves.ToString()" />
-                                            <PerformanceMetricRow Label="Arrêts 7 mètres" Value="@penSaves.ToString()" />
-                                        </div>
-                                    </section>
-                                    <section class="perf-group">
-                                        <header class="perf-group__head"><p class="section-kicker">Tirs subis</p></header>
-                                        <div class="perf-metric-list">
-                                            <PerformanceMetricRow Label="Tirs subis total" Value="@totalFaced.ToString()"
-                                                Evidence="@($"{openFaced} jeu + {penFaced} sur 7m")" />
-                                            <PerformanceMetricRow Label="Dans le jeu" Value="@openFaced.ToString()" />
-                                            <PerformanceMetricRow Label="7 mètres" Value="@penFaced.ToString()" />
-                                            <PerformanceMetricRow Label="Buts encaissés" Value="@(((Goalkeeper?.ButsPris ?? 0) + (Goalkeeper?.ButsPenalty ?? 0)).ToString())"
-                                                Evidence="@($"{Goalkeeper?.ButsPris ?? 0} jeu + {Goalkeeper?.ButsPenalty ?? 0} sur 7m")" />
-                                        </div>
-                                    </section>
-                                    <section class="perf-group">
-                                        <header class="perf-group__head"><p class="section-kicker">Taux d'arrêt</p></header>
-                                        <div class="perf-metric-list perf-metric-list--rates">
-                                            <PerformanceMetricRow Label="Taux total"
-                                                Value="@(FormatRate(totalSaveRate) + "%")"
-                                                Evidence="@(totalSaveRateModel != null ? $"{totalSaveRateModel.Numerator?.ToString("0") ?? "?"} / {totalSaveRateModel.Denominator?.ToString("0") ?? "?"}" : $"{totalSaves} / {totalFaced}")"
-                                                Availability="@(totalSaveRateModel != null && !totalSaveRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)"
-                                                Context="@(totalSaveRateModel != null ? (totalSaveRateModel.SampleReliable ? "Volume fiable" : $"Min. {totalSaveRateModel.MinimumSample?.ToString("0") ?? "?"} tirs") : null)" />
-                                            <PerformanceMetricRow Label="Jeu ouvert"
-                                                Value="@(FormatRate(openSaveRate) + "%")"
-                                                Evidence="@(openSaveRateModel != null ? $"{openSaveRateModel.Numerator?.ToString("0") ?? "?"} / {openSaveRateModel.Denominator?.ToString("0") ?? "?"}" : $"{openSaves} / {openFaced}")"
-                                                Availability="@(openSaveRateModel != null && !openSaveRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)" />
-                                            <PerformanceMetricRow Label="7 mètres"
-                                                Value="@(FormatRate(penSaveRate) + "%")"
-                                                Evidence="@(penSaveRateModel != null ? $"{penSaveRateModel.Numerator?.ToString("0") ?? "?"} / {penSaveRateModel.Denominator?.ToString("0") ?? "?"}" : $"{penSaves} / {penFaced}")"
-                                                Availability="@(penSaveRateModel != null && !penSaveRateModel.SampleReliable ? "INSUFFICIENT_SAMPLE" : null)" />
-                                        </div>
-                                    </section>
-                                </div>
-                            }
-
-                            @* ── GARDIENNE : AVEC BALLON ── *@
-                            @if (profile.IsGoalkeeper && PerformanceSection == "ball")
-                            {
-                                <div id="perf-panel-ball" role="tabpanel" class="perf-panel">
-                                    @{
-                                        var gkAssists   = PerfCountOf(v2Keeper, "GOALKEEPER_ASSISTS", Goalkeeper?.PasseDecisives ?? 0);
-                                        var gkGoals     = PerfCountOf(v2Keeper, "GOALKEEPER_GOALS", Goalkeeper?.Buts ?? 0);
-                                        var gkTurnovers = PerfCountOf(v2Keeper, "GOALKEEPER_TURNOVERS", Goalkeeper?.PerteDeBalle ?? 0);
-                                        var gkMissed    = PerfCountOf(v2Keeper, "GOALKEEPER_MISSED_SHOTS", Goalkeeper?.TirsLoupes ?? 0);
-                                    }
-                                    <section class="perf-group">
-                                        <header class="perf-group__head"><p class="section-kicker">Avec ballon</p></header>
-                                        <div class="perf-metric-list">
-                                            <PerformanceMetricRow Label="Passes décisives" Value="@gkAssists.ToString()" />
-                                            <PerformanceMetricRow Label="Buts" Value="@gkGoals.ToString()" />
-                                            <PerformanceMetricRow Label="Pertes de balle" Value="@gkTurnovers.ToString()"
-                                                Tone="@(gkTurnovers > 5 ? "warning" : "neutral")" />
-                                            <PerformanceMetricRow Label="Tirs manqués" Value="@gkMissed.ToString()" />
-                                        </div>
-                                    </section>
-                                </div>
-                            }
-                        }
-                        else if (ActiveSection == "graphs")
-                        {
-                            var _trajMetricDefs = PlayerTrajectoryMetricCatalog.GetFor(profile.IsGoalkeeper);
-                            var _trajActiveDef = ActiveMetricDef;
-                            var _trajSorted = ActiveTrajectoryPoints.OrderBy(p => p.Date).ThenBy(p => p.MatchId).ToList();
-                            var _trajSeasonRef = SeasonSummary?.AggregatedValue;
-
-                            @* ── Contrôles ── *@
-                            <div class="traj-controls">
-                                <div class="traj-control-group">
-                                    <label class="traj-ctrl-label">Métrique</label>
-                                    <select class="traj-metric-select" value="@ActiveTrajectoryMetric"
-                                            @onchange="OnTrajectoryMetricChangedAsync">
-                                        @foreach (var m in _trajMetricDefs)
-                                        {
-                                            <option value="@m.Code" selected="@(m.Code == ActiveTrajectoryMetric)">@m.Label</option>
-                                        }
-                                    </select>
-                                </div>
-                                <div class="traj-control-group">
-                                    <label class="traj-ctrl-label">Période</label>
-                                    <div class="traj-window-btns" role="group" aria-label="Fenêtre temporelle">
-                                        <button type="button" class="traj-win-btn @(TrajectoryWindow == TrajectoryWindow.Last5 ? "is-active" : "")"
-                                                @onclick='() => TrajectoryWindow = TrajectoryWindow.Last5'>5 derniers</button>
-                                        <button type="button" class="traj-win-btn @(TrajectoryWindow == TrajectoryWindow.Last10 ? "is-active" : "")"
-                                                @onclick='() => TrajectoryWindow = TrajectoryWindow.Last10'>10 derniers</button>
-                                        <button type="button" class="traj-win-btn @(TrajectoryWindow == TrajectoryWindow.Season ? "is-active" : "")"
-                                                @onclick='() => TrajectoryWindow = TrajectoryWindow.Season'>Saison</button>
+                                        </dl>
                                     </div>
-                                </div>
-                                @if (IsTrajectoryLoading)
-                                {
-                                    <span class="traj-loading-note">Chargement…</span>
-                                }
-                            </div>
-
-                            @if (!IsTrajectoryLoaded && !IsTrajectoryLoading)
-                            {
-                                <div class="traj-empty">
-                                    <p>Aucune donnée de trajectoire disponible.</p>
-                                </div>
-                            }
-                            else if (_trajSorted.Count == 0)
-                            {
-                                <div class="traj-empty">
-                                    <p>Aucun match dans cette fenêtre.</p>
-                                </div>
+                                </section>
+                                <section class="brief-section brief-section--technical">
+                                    <div class="brief-section__header">
+                                        <span class="brief-section__eyebrow">MAÎTRISE TECHNIQUE</span>
+                                        <h3 class="brief-section__title">Pertes, déchets et discipline</h3>
+                                    </div>
+                                    <div class="brief-section__panel">
+                                        <dl class="brief-stat-list">
+                                            @foreach (var kpi in BriefGlobalKpis)
+                                            {
+                                                <div class="brief-stat-row">
+                                                    <dt>@kpi.Label</dt>
+                                                    <dd>
+                                                        <strong>@kpi.Value</strong>
+                                                        @if (!string.IsNullOrEmpty(kpi.Caption))
+                                                        {
+                                                            <details class="stat-details">
+                                                                <summary>Voir détails</summary>
+                                                                <div class="stat-details__content">
+                                                                    <div><span>@kpi.Caption</span></div>
+                                                                </div>
+                                                            </details>
+                                                        }
+                                                    </dd>
+                                                </div>
+                                            }
+                                        </dl>
+                                    </div>
+                                </section>
                             }
                             else
                             {
-                                @* ── Graphique principal ── *@
-                                <div class="traj-chart-wrap" role="region" aria-label="@($"Évolution {_trajActiveDef?.Label ?? ""} — {_trajSorted.Count} matchs")">
-                                    <div class="traj-chart-header">
-                                        <span class="traj-chart-title">@(_trajActiveDef?.Label ?? "Métrique")</span>
-                                        <span class="traj-chart-unit">@(_trajActiveDef?.Unit ?? "")</span>
-                                        <span class="traj-chart-scope">@_trajSorted.Count matchs</span>
+                                <section class="brief-section brief-section--defense">
+                                    <div class="brief-section__header">
+                                        <span class="brief-section__eyebrow">GARDIENNE</span>
+                                        <h3 class="brief-section__title">Arrêts et efficacité</h3>
                                     </div>
-
-                                    <ApexChart TItem="PlayerTrajectoryPoint"
-                                               @key="@($"{SelectedPlayerId}_{ActiveTrajectoryMetric}_{TrajectoryWindow}")"
-                                               Options="@GetTrajectoryChartOptions(_trajActiveDef, _trajSorted, _trajSeasonRef)">
-                                        <ApexPointSeries TItem="PlayerTrajectoryPoint"
-                                                         Items="_trajSorted"
-                                                         Name="@(_trajActiveDef?.Label ?? "Valeur")"
-                                                         SeriesType="SeriesType.Line"
-                                                         XValue="@(p => p.Date.ToString("dd/MM"))"
-                                                         YValue="@(p => (decimal?)(p.Availability != "DATA_MISSING" ? p.MetricValue : null))" />
-                                        @if (_trajSeasonRef.HasValue)
-                                        {
-                                            <ApexPointSeries TItem="PlayerTrajectoryPoint"
-                                                             Items="_trajSorted"
-                                                             Name="Moy. saison"
-                                                             SeriesType="SeriesType.Line"
-                                                             XValue="@(p => p.Date.ToString("dd/MM"))"
-                                                             YValue="@(_ => (decimal?)_trajSeasonRef.Value)" />
-                                        }
-                                    </ApexChart>
-                                </div>
-
-                                @* ── Résumé 3 fenêtres ── *@
-                                <div class="traj-summaries" role="region" aria-label="Résumé par fenêtre">
-                                    @foreach (var summaryItem in new (TrajectoryWindowSummary? Summary, string Label)[] {
-                                        (Last5Summary, "5 derniers"),
-                                        (Last10Summary, "10 derniers"),
-                                        (SeasonSummary, "Saison")
-                                    })
-                                    {
-                                        @if (summaryItem.Summary is not null)
-                                        {
-                                            <div class="traj-summary-card">
-                                                <p class="tsc-window">@summaryItem.Label</p>
-                                                @if (summaryItem.Summary.AggregatedValue.HasValue)
-                                                {
-                                                    <p class="tsc-value">@FormatTrajectoryValue(summaryItem.Summary.AggregatedValue.Value, _trajActiveDef)</p>
-                                                    @if (summaryItem.Summary.DeltaVsSeason.HasValue && summaryItem.Summary.Window != TrajectoryWindow.Season)
-                                                    {
-                                                        var isPositive = (_trajActiveDef?.Direction == TrajectoryMetricDirection.LowerIsBetter)
-                                                            ? summaryItem.Summary.DeltaVsSeason.Value < 0
-                                                            : summaryItem.Summary.DeltaVsSeason.Value > 0;
-                                                        <p class="tsc-delta @(isPositive ? "tsc-delta--pos" : "tsc-delta--neg")">@summaryItem.Summary.DeltaLabel vs saison</p>
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    <p class="tsc-value tsc-value--na">—</p>
-                                                }
-                                                @if (summaryItem.Summary.EligibleMatches < summaryItem.Summary.TotalMatchesInWindow)
-                                                {
-                                                    <p class="tsc-note">@summaryItem.Summary.EligibleMatches renseignés sur @summaryItem.Summary.TotalMatchesInWindow</p>
-                                                }
-                                            </div>
-                                        }
-                                    }
-                                </div>
-
-                                @* ── Tendance ── *@
-                                @if ((Last5Summary?.AggregatedValue).HasValue && (Last5Summary?.Trend ?? TrendState.InsufficientData) != TrendState.InsufficientData)
+                                    <div class="brief-section__panel">
+                                        <dl class="brief-stat-list">
+                                            @foreach (var kpi in BriefGoalkeeperKpis)
+                                            {
+                                                <div class="brief-stat-row">
+                                                    <dt>@kpi.Label</dt>
+                                                    <dd>
+                                                        <strong>@kpi.Value</strong>
+                                                        @if (!string.IsNullOrEmpty(kpi.Caption))
+                                                        {
+                                                            <details class="stat-details">
+                                                                <summary>Voir détails</summary>
+                                                                <div class="stat-details__content">
+                                                                    <div><span>@kpi.Caption</span></div>
+                                                                </div>
+                                                            </details>
+                                                        }
+                                                    </dd>
+                                                </div>
+                                            }
+                                        </dl>
+                                    </div>
+                                </section>
+                                <section class="brief-section brief-section--technical">
+                                    <div class="brief-section__header">
+                                        <span class="brief-section__eyebrow">AVEC BALLON</span>
+                                        <h3 class="brief-section__title">Relance et distribution</h3>
+                                    </div>
+                                    <div class="brief-section__panel">
+                                        <dl class="brief-stat-list">
+                                            @foreach (var kpi in BriefBallKpis)
+                                            {
+                                                <div class="brief-stat-row">
+                                                    <dt>@kpi.Label</dt>
+                                                    <dd>
+                                                        <strong>@kpi.Value</strong>
+                                                        @if (!string.IsNullOrEmpty(kpi.Caption))
+                                                        {
+                                                            <details class="stat-details">
+                                                                <summary>Voir détails</summary>
+                                                                <div class="stat-details__content">
+                                                                    <div><span>@kpi.Caption</span></div>
+                                                                </div>
+                                                            </details>
+                                                        }
+                                                    </dd>
+                                                </div>
+                                            }
+                                        </dl>
+                                    </div>
+                                </section>
+                            }
+                            @{ var _tileKpis = profile.IsGoalkeeper ? BriefGoalkeeperKpis.Concat(BriefBallKpis).ToList() : BriefOffenseKpis.Concat(BriefDefenseKpis).ToList(); }
+                            <div class="kpi-tile-grid kpi-tile-grid--5">
+                                @foreach (var kpi in _tileKpis)
                                 {
-                                    var _trendState = Last5Summary!.Trend;
-                                    <div class="traj-trend @($"traj-trend--{_trendState.ToString().ToLowerInvariant()}")">
-                                        <span class="traj-trend-icon">@(_trendState == TrendState.Progressing ? "↗" : _trendState == TrendState.Declining ? "↘" : "→")</span>
-                                        <span class="traj-trend-label">@(_trendState switch {
-                                            TrendState.Progressing => "En progression",
-                                            TrendState.Declining => "En baisse",
-                                            TrendState.Stable => "Stable",
-                                            _ => "Données insuffisantes"
-                                        })</span>
+                                    <div class="kpi-tile kpi-tile--@GetKpiTileClass(kpi.Tone)">
+                                        <span class="kpi-tile__label">@kpi.Label</span>
+                                        <span class="kpi-tile__value">@kpi.Value</span>
                                     </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* PERFORMANCE *@
+                    else if (ActiveSection == "analysis")
+                    {
+                        var v2Offense = LeagueAnalytics?.Analytics?.Offense;
+                        var v2Defense = LeagueAnalytics?.Analytics?.Defense;
+                        var v2Keeper  = LeagueAnalytics?.Analytics?.Goalkeeper;
+
+                        <div class="tab-group tab-group--inner">
+                            <nav class="tab-bar tab-bar--pills" role="tablist" aria-label="Sections Performance">
+                                @if (!profile.IsGoalkeeper)
+                                {
+                                    <button type="button" role="tab" class="tab @(PerformanceSection == "attack"     ? "active" : "")" @onclick='() => PerformanceSection = "attack"'>Attaque</button>
+                                    <button type="button" role="tab" class="tab @(PerformanceSection == "defense"    ? "active" : "")" @onclick='() => PerformanceSection = "defense"'>Défense</button>
+                                    <button type="button" role="tab" class="tab @(PerformanceSection == "mastery"    ? "active" : "")" @onclick='() => PerformanceSection = "mastery"'>Maîtrise</button>
+                                    <button type="button" role="tab" class="tab @(PerformanceSection == "discipline" ? "active" : "")" @onclick='() => PerformanceSection = "discipline"'>Discipline</button>
                                 }
                                 else
                                 {
-                                    <div class="traj-trend traj-trend--insufficient">
-                                        <span class="traj-trend-label">Données insuffisantes pour conclure sur la tendance</span>
-                                    </div>
+                                    <button type="button" role="tab" class="tab @(PerformanceSection == "saves"      ? "active" : "")" @onclick='() => PerformanceSection = "saves"'>Arrêts</button>
+                                    <button type="button" role="tab" class="tab @(PerformanceSection == "ball"       ? "active" : "")" @onclick='() => PerformanceSection = "ball"'>Avec ballon</button>
+                                    <button type="button" role="tab" class="tab @(PerformanceSection == "discipline" ? "active" : "")" @onclick='() => PerformanceSection = "discipline"'>Discipline</button>
                                 }
+                            </nav>
 
-                                @* ── Tableau historique compact ── *@
-                                <section class="traj-history" aria-label="Historique des matchs">
-                                    <p class="section-kicker">Historique</p>
-                                    <table class="traj-history-table" role="grid">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">Date</th>
-                                                <th scope="col">Adversaire</th>
-                                                <th scope="col">Résultat</th>
-                                                <th scope="col">Min.</th>
-                                                <th scope="col">@(_trajActiveDef?.Label ?? "Valeur")</th>
-                                                <th scope="col">vs saison</th>
-                                            </tr>
-                                        </thead>
+                            @if (!profile.IsGoalkeeper && PerformanceSection == "attack")
+                            {
+                                <div class="table-container">@{
+                                    var _tG   = PerfCountOf(v2Offense, "TOTAL_GOALS",       Offense?.TotalButs ?? 0);
+                                    var _oG   = PerfCountOf(v2Offense, "OPEN_PLAY_GOALS",    Offense?.Buts ?? 0);
+                                    var _pG   = PerfCountOf(v2Offense, "PENALTY_GOALS",      Offense?.Buts7m ?? 0);
+                                    var _ast  = PerfCountOf(v2Offense, "ASSISTS",             Passing?.PasseDecisive ?? 0);
+                                    var _pwU  = PerfIsUnavailable(v2Offense, "PENALTIES_WON");
+                                    var _sdU  = PerfIsUnavailable(v2Offense, "SANCTIONS_DRAWN");
+                                    var _pwV  = PerfCountOf(v2Offense, "PENALTIES_WON", -1);
+                                    var _sdV  = PerfCountOf(v2Offense, "SANCTIONS_DRAWN", -1);
+                                    var _am   = profile.MatchesPlayed;
+                                    var _tSh  = technical?.ShotAttempts ?? (Offense != null ? Offense.TotalButs + Offense.TirsRates + Offense.PenaltyRate : 0);
+                                    var _oSh  = Offense != null ? Offense.Buts + Offense.TirsRates : 0;
+                                    var _pSh  = Offense != null ? Offense.Buts7m + Offense.PenaltyRate : 0;
+                                    var _bl   = Offense?.TirContre ?? 0;
+                                    var _tRM  = PerfRateOf(v2Offense, "TOTAL_SHOT_RATE");
+                                    var _oRM  = PerfRateOf(v2Offense, "OPEN_PLAY_SHOT_RATE");
+                                    var _pRM  = PerfRateOf(v2Offense, "PENALTY_SHOT_RATE");
+                                    var _tR   = _tRM?.Value ?? technical?.OverallShotSuccessRate ?? 0;
+                                    var _oR   = _oRM?.Value ?? technical?.OpenShotSuccessRate ?? 0;
+                                    var _pR   = _pRM?.Value ?? technical?.PenaltySuccessRate ?? 0;
+                                }<table class="data-table"><thead><tr><th>Catégorie</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th><th class="data-table__num">/60min</th></tr></thead><tbody>
+                                    <tr class="table-group-header"><td colspan="4">Production</td></tr>
+                                    <tr class="table-sub-row"><td>Buts total</td><td class="data-table__num">@_tG</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_tG,_am)):"—")</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Dans le jeu</td><td class="data-table__num">@_oG</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_oG,_am)):"—")</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>7 mètres</td><td class="data-table__num">@_pG</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_pG,_am)):"—")</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Passes décisives</td><td class="data-table__num">@_ast</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_ast,_am)):"—")</td><td class="data-table__num">—</td></tr>
+                                    @if (!_pwU && _pwV >= 0) { <tr class="table-sub-row"><td>7m obtenus</td><td class="data-table__num">@_pwV</td><td class="data-table__num">—</td><td class="data-table__num">—</td></tr> }
+                                    @if (!_sdU && _sdV >= 0) { <tr class="table-sub-row"><td>Sanctions obtenues</td><td class="data-table__num">@_sdV</td><td class="data-table__num">—</td><td class="data-table__num">—</td></tr> }
+                                    <tr class="table-group-header"><td colspan="4">Volume de tir</td></tr>
+                                    <tr class="table-sub-row"><td>Tirs total</td><td class="data-table__num">@_tSh</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_tSh,_am)):"—")</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Tirs dans le jeu</td><td class="data-table__num">@_oSh</td><td class="data-table__num">—</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Tirs 7 mètres</td><td class="data-table__num">@_pSh</td><td class="data-table__num">—</td><td class="data-table__num">—</td></tr>
+                                    @if (_bl > 0) { <tr class="table-sub-row"><td>Tirs contrés</td><td class="data-table__num">@_bl</td><td class="data-table__num">—</td><td class="data-table__num">—</td></tr> }
+                                    <tr class="table-group-header"><td colspan="4">Efficacité</td></tr>
+                                    <tr class="table-sub-row @(_tRM!=null&&!_tRM.SampleReliable?"table-sub-row--warn":"")"><td>Taux total @if (_tRM!=null&&!_tRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_tR))%</td><td class="data-table__num" colspan="2">@(_tRM!=null?$"{_tRM.Numerator?.ToString("0")??"?"} / {_tRM.Denominator?.ToString("0")??"?"}":$"{_tG} / {_tSh}")</td></tr>
+                                    <tr class="table-sub-row @(_oRM!=null&&!_oRM.SampleReliable?"table-sub-row--warn":"")"><td>Jeu ouvert @if (_oRM!=null&&!_oRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_oR))%</td><td class="data-table__num" colspan="2">@(_oRM!=null?$"{_oRM.Numerator?.ToString("0")??"?"} / {_oRM.Denominator?.ToString("0")??"?"}":$"{_oG} / {_oSh}")</td></tr>
+                                    <tr class="table-sub-row @(_pRM!=null&&!_pRM.SampleReliable?"table-sub-row--warn":"")"><td>7 mètres @if (_pRM!=null&&!_pRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_pR))%</td><td class="data-table__num" colspan="2">@(_pRM!=null?$"{_pRM.Numerator?.ToString("0")??"?"} / {_pRM.Denominator?.ToString("0")??"?"}":$"{_pG} / {_pSh}")</td></tr>
+                                </tbody></table></div>
+                            }
+
+                            @if (!profile.IsGoalkeeper && PerformanceSection == "defense")
+                            {
+                                <div class="table-container">@{
+                                    var _int  = PerfCountOf(v2Defense,"INTERCEPTIONS",Defense?.Interceptions??0);
+                                    var _blk  = PerfCountOf(v2Defense,"BLOCKS",Defense?.Contres??0);
+                                    var _off  = PerfCountOf(v2Defense,"OFFENSIVE_FOULS_DRAWN",Defense?.PassageForce??0);
+                                    var _neu  = PerfCountOf(v2Defense,"NEUTRALIZATIONS",Defense?.Neutralisations??0);
+                                    var _pc   = PerfCountOf(v2Defense,"PENALTIES_CONCEDED",Sanctions?.PenaltyConcede??0);
+                                    var _sc2  = PerfCountOf(v2Defense,"SANCTIONS_CONCEDED",Sanctions!=null?Sanctions.Avertissements+Sanctions.DeuxMinutes+Sanctions.Exclusions:0);
+                                    var _w2   = PerfCountOf(v2Defense,"WARNINGS_CONCEDED",Sanctions?.Avertissements??0);
+                                    var _t2   = PerfCountOf(v2Defense,"TWO_MINUTE_SUSPENSIONS_CONCEDED",Sanctions?.DeuxMinutes??0);
+                                    var _d2   = PerfCountOf(v2Defense,"DISQUALIFICATIONS_CONCEDED",Sanctions?.Exclusions??0);
+                                    var _dm   = profile.MatchesPlayed;
+                                }<table class="data-table"><thead><tr><th>Indicateur</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th></tr></thead><tbody>
+                                    <tr class="table-group-header"><td colspan="3">Impact défensif</td></tr>
+                                    <tr class="table-sub-row"><td>Interceptions</td><td class="data-table__num">@_int</td><td class="data-table__num">@(_dm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_int,_dm)):"—")</td></tr>
+                                    <tr class="table-sub-row"><td>Contres</td><td class="data-table__num">@_blk</td><td class="data-table__num">@(_dm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_blk,_dm)):"—")</td></tr>
+                                    <tr class="table-sub-row"><td>PF provoqués</td><td class="data-table__num">@_off</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Neutralisations</td><td class="data-table__num">@_neu</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-group-header"><td colspan="3">Coût défensif</td></tr>
+                                    <tr class="table-sub-row @(_pc>3?"table-sub-row--warn":"")"><td>7m concédés</td><td class="data-table__num">@_pc</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row @(_sc2>5?"table-sub-row--warn":"")"><td>Sanctions concédées <small>@_w2 avert. · @_t2 × 2min · @_d2 excl.</small></td><td class="data-table__num">@_sc2</td><td class="data-table__num">@(_dm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_sc2,_dm)):"—")</td></tr>
+                                </tbody></table></div>
+                            }
+
+                            @if (!profile.IsGoalkeeper && PerformanceSection == "mastery")
+                            {
+                                <div class="table-container">@{
+                                    var _tTurn = PerfCountOf(v2Offense,"TOTAL_TURNOVERS",Passing?.TotalPertes??0);
+                                    var _bPas  = PerfCountOf(v2Offense,"BAD_PASSES",Passing?.MauvaisePasse??0);
+                                    var _pivM  = v2Offense?.FirstOrDefault(m=>m.MetricCode=="FAILED_PIVOT_PASSES");
+                                    var _pivV  = _pivM?.CountValue;
+                                    var _pivX  = _pivM==null||_pivM.IsUnavailable||_pivM.Availability is "DATA_MISSING" or "UNAVAILABLE_FROM_CURRENT_DATA" or "UNAVAILABLE";
+                                    var _mm    = profile.MatchesPlayed;
+                                }<table class="data-table"><thead><tr><th>Indicateur</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th></tr></thead><tbody>
+                                    <tr class="table-group-header"><td colspan="3">Conservation du ballon</td></tr>
+                                    <tr class="table-sub-row @(HandballKpiHelper.PerMatch(_tTurn,_mm)>3?"table-sub-row--warn":"")"><td>Pertes de balle</td><td class="data-table__num">@_tTurn</td><td class="data-table__num">@(_mm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_tTurn,_mm)):"—")</td></tr>
+                                    <tr class="table-sub-row"><td>Mauvaises passes</td><td class="data-table__num">@_bPas</td><td class="data-table__num">@(_mm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_bPas,_mm)):"—")</td></tr>
+                                    @if (_pivX) { <tr class="table-sub-row table-sub-row--na"><td>Passes pivot ratées</td><td class="data-table__num" colspan="2">—</td></tr> }
+                                    else if (_pivV.HasValue) { <tr class="table-sub-row"><td>Passes pivot ratées</td><td class="data-table__num">@_pivV.Value</td><td class="data-table__num">—</td></tr> }
+                                </tbody></table></div>
+                            }
+
+                            @if (PerformanceSection == "discipline")
+                            {
+                                <div class="table-container">@{
+                                    var _dW = PerfCountOf(v2Defense,"WARNINGS_CONCEDED",Sanctions?.Avertissements??0);
+                                    var _dT = PerfCountOf(v2Defense,"TWO_MINUTE_SUSPENSIONS_CONCEDED",Sanctions?.DeuxMinutes??0);
+                                    var _dD = PerfCountOf(v2Defense,"DISQUALIFICATIONS_CONCEDED",Sanctions?.Exclusions??0);
+                                    var _dS = _dW + _dT + _dD;
+                                    var _dP = PerfCountOf(v2Defense,"PENALTIES_CONCEDED",Sanctions?.PenaltyConcede??0);
+                                    var _dM = profile.MatchesPlayed;
+                                }<table class="data-table"><thead><tr><th>Indicateur</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th></tr></thead><tbody>
+                                    <tr class="table-group-header"><td colspan="3">Discipline</td></tr>
+                                    <tr class="table-sub-row @(HandballKpiHelper.PerMatch(_dS,_dM)>0.5?"table-sub-row--warn":"")"><td>Total sanctions</td><td class="data-table__num">@_dS</td><td class="data-table__num">@(_dM>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_dS,_dM)):"—")</td></tr>
+                                    <tr class="table-sub-row"><td>Avertissements</td><td class="data-table__num">@_dW</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>2 minutes</td><td class="data-table__num">@_dT</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Exclusions</td><td class="data-table__num">@_dD</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row @(_dP>3?"table-sub-row--warn":"")"><td>7m concédés</td><td class="data-table__num">@_dP</td><td class="data-table__num">—</td></tr>
+                                </tbody></table></div>
+                            }
+
+                            @if (profile.IsGoalkeeper && PerformanceSection == "saves")
+                            {
+                                <div class="table-container">@{
+                                    var _tSv = PerfCountOf(v2Keeper,"TOTAL_SAVES",Goalkeeper!=null?Goalkeeper.Arrets+Goalkeeper.ArretsPenalty:0);
+                                    var _oSv = PerfCountOf(v2Keeper,"OPEN_PLAY_SAVES",Goalkeeper?.Arrets??0);
+                                    var _pSv = PerfCountOf(v2Keeper,"PENALTY_SAVES",Goalkeeper?.ArretsPenalty??0);
+                                    var _tFa = PerfCountOf(v2Keeper,"TOTAL_SHOTS_FACED",Goalkeeper?.TirsSubis??0);
+                                    var _oFa = PerfCountOf(v2Keeper,"OPEN_PLAY_SHOTS_FACED",Goalkeeper!=null?Goalkeeper.Arrets+Goalkeeper.ButsPris:0);
+                                    var _pFa = PerfCountOf(v2Keeper,"PENALTY_SHOTS_FACED",Goalkeeper!=null?Goalkeeper.ArretsPenalty+Goalkeeper.ButsPenalty:0);
+                                    var _gkM = profile.MatchesPlayed;
+                                    var _tSRM = PerfRateOf(v2Keeper,"TOTAL_SAVE_RATE");
+                                    var _oSRM = PerfRateOf(v2Keeper,"OPEN_PLAY_SAVE_RATE");
+                                    var _pSRM = PerfRateOf(v2Keeper,"PENALTY_SAVE_RATE");
+                                    var _tSR  = _tSRM?.Value ?? technical?.GoalkeeperSaveRate ?? 0;
+                                    var _oSR  = _oSRM?.Value ?? (_oFa>0?_oSv*100.0/_oFa:0.0);
+                                    var _pSR  = _pSRM?.Value ?? technical?.GoalkeeperPenaltyStopRate ?? 0;
+                                }<table class="data-table"><thead><tr><th>Indicateur</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th></tr></thead><tbody>
+                                    <tr class="table-group-header"><td colspan="3">Arrêts</td></tr>
+                                    <tr class="table-sub-row"><td>Arrêts total</td><td class="data-table__num">@_tSv</td><td class="data-table__num">@(_gkM>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_tSv,_gkM)):"—")</td></tr>
+                                    <tr class="table-sub-row"><td>Dans le jeu</td><td class="data-table__num">@_oSv</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>7 mètres</td><td class="data-table__num">@_pSv</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-group-header"><td colspan="3">Tirs subis</td></tr>
+                                    <tr class="table-sub-row"><td>Total</td><td class="data-table__num">@_tFa</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Dans le jeu</td><td class="data-table__num">@_oFa</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>7 mètres</td><td class="data-table__num">@_pFa</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Buts encaissés</td><td class="data-table__num">@((Goalkeeper?.ButsPris??0)+(Goalkeeper?.ButsPenalty??0))</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-group-header"><td colspan="3">Taux d'arrêt</td></tr>
+                                    <tr class="table-sub-row @(_tSRM!=null&&!_tSRM.SampleReliable?"table-sub-row--warn":"")"><td>Taux total @if(_tSRM!=null&&!_tSRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_tSR))%</td><td class="data-table__num">@(_tSRM!=null?$"{_tSRM.Numerator?.ToString("0")??"?"} / {_tSRM.Denominator?.ToString("0")??"?"}":$"{_tSv} / {_tFa}")</td></tr>
+                                    <tr class="table-sub-row @(_oSRM!=null&&!_oSRM.SampleReliable?"table-sub-row--warn":"")"><td>Jeu ouvert @if(_oSRM!=null&&!_oSRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_oSR))%</td><td class="data-table__num">@(_oSRM!=null?$"{_oSRM.Numerator?.ToString("0")??"?"} / {_oSRM.Denominator?.ToString("0")??"?"}":$"{_oSv} / {_oFa}")</td></tr>
+                                    <tr class="table-sub-row @(_pSRM!=null&&!_pSRM.SampleReliable?"table-sub-row--warn":"")"><td>7 mètres @if(_pSRM!=null&&!_pSRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_pSR))%</td><td class="data-table__num">@(_pSRM!=null?$"{_pSRM.Numerator?.ToString("0")??"?"} / {_pSRM.Denominator?.ToString("0")??"?"}":$"{_pSv} / {_pFa}")</td></tr>
+                                </tbody></table></div>
+                            }
+
+                            @if (profile.IsGoalkeeper && PerformanceSection == "ball")
+                            {
+                                <div class="table-container">@{
+                                    var _gkA = PerfCountOf(v2Keeper,"GOALKEEPER_ASSISTS",Goalkeeper?.PasseDecisives??0);
+                                    var _gkG = PerfCountOf(v2Keeper,"GOALKEEPER_GOALS",Goalkeeper?.Buts??0);
+                                    var _gkT = PerfCountOf(v2Keeper,"GOALKEEPER_TURNOVERS",Goalkeeper?.PerteDeBalle??0);
+                                    var _gkMs= PerfCountOf(v2Keeper,"GOALKEEPER_MISSED_SHOTS",Goalkeeper?.TirsLoupes??0);
+                                }<table class="data-table"><thead><tr><th>Indicateur</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th></tr></thead><tbody>
+                                    <tr class="table-group-header"><td colspan="3">Avec ballon</td></tr>
+                                    <tr class="table-sub-row"><td>Passes décisives</td><td class="data-table__num">@_gkA</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Buts</td><td class="data-table__num">@_gkG</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row @(_gkT>5?"table-sub-row--warn":"")"><td>Pertes de balle</td><td class="data-table__num">@_gkT</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>Tirs manqués</td><td class="data-table__num">@_gkMs</td><td class="data-table__num">—</td></tr>
+                                </tbody></table></div>
+                            }
+                        </div>
+                    }
+
+                    @* ÉVOLUTION *@
+                    else if (ActiveSection == "graphs")
+                    {
+                        var _tMD = PlayerTrajectoryMetricCatalog.GetFor(profile.IsGoalkeeper);
+                        var _tAD = ActiveMetricDef;
+                        var _tSo = ActiveTrajectoryPoints.OrderBy(p=>p.Date).ThenBy(p=>p.MatchId).ToList();
+                        var _tSR = SeasonSummary?.AggregatedValue;
+
+                        <div class="evolution-controls">
+                            <div class="form-group--inline">
+                                <label class="evolution-ctrl-label">Métrique</label>
+                                <select class="evolution-metric-select" value="@ActiveTrajectoryMetric" @onchange="OnTrajectoryMetricChangedAsync">
+                                    @foreach (var m in _tMD) { <option value="@m.Code" selected="@(m.Code==ActiveTrajectoryMetric)">@m.Label</option> }
+                                </select>
+                            </div>
+                            <div class="filter-chips filter-chips--sm" role="group" aria-label="Fenêtre temporelle">
+                                <button type="button" class="filter-chip @(TrajectoryWindow==TrajectoryWindow.Last5?"is-active":"")"  @onclick='()=>TrajectoryWindow=TrajectoryWindow.Last5'>5 derniers</button>
+                                <button type="button" class="filter-chip @(TrajectoryWindow==TrajectoryWindow.Last10?"is-active":"")" @onclick='()=>TrajectoryWindow=TrajectoryWindow.Last10'>10 derniers</button>
+                                <button type="button" class="filter-chip @(TrajectoryWindow==TrajectoryWindow.Season?"is-active":"")" @onclick='()=>TrajectoryWindow=TrajectoryWindow.Season'>Saison</button>
+                            </div>
+                            @if (IsTrajectoryLoading) { <span class="evolution-loading">Chargement…</span> }
+                        </div>
+
+                        @if (!IsTrajectoryLoaded && !IsTrajectoryLoading) { <div class="traj-empty"><p>Aucune donnée de trajectoire disponible.</p></div> }
+                        else if (_tSo.Count == 0) { <div class="traj-empty"><p>Aucun match dans cette fenêtre.</p></div> }
+                        else
+                        {
+                            <div class="chart-container chart-container--lg" role="region" aria-label="@($"Évolution {_tAD?.Label??""} — {_tSo.Count} matchs")">
+                                <div class="chart-container__header">
+                                    <span class="chart-container__title">@(_tAD?.Label??"Métrique")</span>
+                                    <span class="chart-container__unit">@(_tAD?.Unit??"")</span>
+                                    <span class="chart-container__scope">@_tSo.Count matchs</span>
+                                </div>
+                                <ApexChart TItem="PlayerTrajectoryPoint" @key="@($"{SelectedPlayerId}_{ActiveTrajectoryMetric}_{TrajectoryWindow}")" Options="@GetTrajectoryChartOptions(_tAD,_tSo,_tSR)">
+                                    <ApexPointSeries TItem="PlayerTrajectoryPoint" Items="_tSo" Name="@(_tAD?.Label??"Valeur")" SeriesType="SeriesType.Line" XValue="@(p=>p.Date.ToString("dd/MM"))" YValue="@(p=>(decimal?)(p.Availability!="DATA_MISSING"?p.MetricValue:null))" />
+                                    @if (_tSR.HasValue) { <ApexPointSeries TItem="PlayerTrajectoryPoint" Items="_tSo" Name="Moy. saison" SeriesType="SeriesType.Line" XValue="@(p=>p.Date.ToString("dd/MM"))" YValue="@(_=>(decimal?)_tSR.Value)" /> }
+                                </ApexChart>
+                            </div>
+
+                            @if ((Last5Summary?.AggregatedValue).HasValue && (Last5Summary?.Trend??TrendState.InsufficientData)!=TrendState.InsufficientData)
+                            {
+                                var _tr  = Last5Summary!.Trend;
+                                var _tc  = _tr==TrendState.Progressing?"trend-indicator--up":_tr==TrendState.Declining?"trend-indicator--down":"trend-indicator--stable";
+                                var _ti  = _tr==TrendState.Progressing?"↗":_tr==TrendState.Declining?"↘":"→";
+                                var _tl  = _tr switch{TrendState.Progressing=>"En progression",TrendState.Declining=>"En baisse",TrendState.Stable=>"Stable",_=>"Données insuffisantes"};
+                                <div class="trend-indicator @_tc"><span class="trend-indicator__icon">@_ti</span><span class="trend-indicator__label">@_tl</span></div>
+                            }
+                            else { <div class="trend-indicator trend-indicator--stable"><span class="trend-indicator__label">Données insuffisantes pour conclure sur la tendance</span></div> }
+
+                            <section class="traj-history" aria-label="Historique des matchs">
+                                <p class="section-kicker">Historique</p>
+                                <div class="table-container table-container--compact">
+                                    <table class="data-table data-table--compact" role="grid">
+                                        <thead><tr><th>Date</th><th>Adversaire</th><th>Résultat</th><th>Min.</th><th>@(_tAD?.Label??"Valeur")</th><th>vs saison</th></tr></thead>
                                         <tbody>
-                                            @foreach (var pt in _trajSorted.OrderByDescending(p => p.Date))
+                                            @foreach (var pt in _tSo.OrderByDescending(p=>p.Date))
                                             {
-                                                var delta = (pt.MetricValue.HasValue && _trajSeasonRef.HasValue)
-                                                    ? pt.MetricValue.Value - _trajSeasonRef.Value
-                                                    : (double?)null;
-                                                var isPositiveDelta = delta.HasValue && (_trajActiveDef?.Direction == TrajectoryMetricDirection.LowerIsBetter ? delta < 0 : delta > 0);
-                                                <tr class="traj-history-row @(string.IsNullOrEmpty(pt.MatchId) ? "" : "traj-history-row--clickable")"
-                                                    @onclick="() => NavigateToMatch(pt.MatchId)"
-                                                    role="@(string.IsNullOrEmpty(pt.MatchId) ? "row" : "button")"
-                                                    tabindex="@(string.IsNullOrEmpty(pt.MatchId) ? "-1" : "0")"
-                                                    @onkeydown="e => HandleHistoryRowKeyDown(e, pt.MatchId)">
+                                                var _dl  = (pt.MetricValue.HasValue&&_tSR.HasValue)?pt.MetricValue.Value-_tSR.Value:(double?)null;
+                                                var _pd  = _dl.HasValue&&(_tAD?.Direction==TrajectoryMetricDirection.LowerIsBetter?_dl<0:_dl>0);
+                                                <tr class="@(string.IsNullOrEmpty(pt.MatchId)?"":"is-clickable")" @onclick="()=>NavigateToMatch(pt.MatchId)" role="@(string.IsNullOrEmpty(pt.MatchId)?"row":"button")" tabindex="@(string.IsNullOrEmpty(pt.MatchId)?"-1":"0")" @onkeydown="e=>HandleHistoryRowKeyDown(e,pt.MatchId)">
                                                     <td>@pt.Date.ToString("dd/MM")</td>
-                                                    <td class="traj-opponent">@pt.OpponentName</td>
-                                                    <td>@(pt.ResultLabel ?? "—")</td>
-                                                    <td>@(pt.PlayingTimeStatus == PlayingTimeAvailability.DataMissing ? "—" : pt.MinutesPlayed?.ToString("0") ?? "—")</td>
-                                                    <td class="traj-metric-val">
-                                                        @if (pt.Availability == "DATA_MISSING" || pt.MetricValue == null)
-                                                        {
-                                                            <span class="traj-val--na">—</span>
-                                                        }
-                                                        else if (_trajActiveDef?.Type == TrajectoryMetricType.Rate && pt.Denominator is 0)
-                                                        {
-                                                            <span class="traj-val--na">—</span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span>@FormatTrajectoryValue(pt.MetricValue.Value, _trajActiveDef)</span>
-                                                        }
+                                                    <td>@pt.OpponentName</td>
+                                                    <td>@(pt.ResultLabel??"—")</td>
+                                                    <td>@(pt.PlayingTimeStatus==PlayingTimeAvailability.DataMissing?"—":pt.MinutesPlayed?.ToString("0")??"—")</td>
+                                                    <td>
+                                                        @if(pt.Availability=="DATA_MISSING"||pt.MetricValue==null){<span class="data-na">—</span>}
+                                                        else if(_tAD?.Type==TrajectoryMetricType.Rate&&pt.Denominator is 0){<span class="data-na">—</span>}
+                                                        else{<span>@FormatTrajectoryValue(pt.MetricValue.Value,_tAD)</span>}
                                                     </td>
-                                                    <td class="traj-delta @(delta.HasValue ? (isPositiveDelta ? "traj-delta--pos" : "traj-delta--neg") : "")">
-                                                        @(delta.HasValue ? FormatDelta(delta.Value, _trajActiveDef) : "—")
-                                                    </td>
+                                                    <td class="@(_dl.HasValue?(_pd?"delta--pos":"delta--neg"):"")">@(_dl.HasValue?FormatDelta(_dl.Value,_tAD):"—")</td>
                                                 </tr>
                                             }
                                         </tbody>
                                     </table>
-                                </section>
-                            }
+                                </div>
+                            </section>
                         }
-                        else if (ActiveSection == "zones")
-                        {
-                            @if (IsSpatialLoading && Spatial is null)
-                            {
-                                <StateCard Kicker="Chargement"
-                                           Title="Rechargement spatial"
-                                           Message="La carte but et declenchements se recalculent pour cette joueuse."
-                                           Tone="loading"
-                                           CssClass="empty-card-inline" />
-                            }
+                    }
 
-                            <div class="court-context-bar">
-                                <span>@TotalCourtAttempts tirs</span>
-                                <span>@(Spatial?.MatchesPlayed ?? 0) matchs</span>
-                                @if (Profile is not null)
-                                {
-                                    <span>@Profile.PositionCode</span>
-                                }
-                            </div>
+                    @* COURT *@
+                    else if (ActiveSection == "zones")
+                    {
+                        @if (IsSpatialLoading && Spatial is null)
+                        { <StateCard Kicker="Chargement" Title="Rechargement spatial" Message="La carte but et declenchements se recalculent pour cette joueuse." Tone="loading" CssClass="empty-card-inline" /> }
 
-                            <div class="court-filter-bar">
-                                <div class="court-filter-group" role="group" aria-label="Type d’attaque">
-                                    <span class="filter-label">Type</span>
-                                    <button type="button" class="court-filter-btn @(CourtAttackType == PlayerCourtAttackType.All ? "is-active" : "")"
-                                            aria-pressed="@(CourtAttackType == PlayerCourtAttackType.All)"
-                                            @onclick="() => SetCourtAttackTypeAsync(PlayerCourtAttackType.All)">Toutes</button>
-                                    <button type="button" class="court-filter-btn @(CourtAttackType == PlayerCourtAttackType.OpenPlay ? "is-active" : "")"
-                                            aria-pressed="@(CourtAttackType == PlayerCourtAttackType.OpenPlay)"
-                                            @onclick="() => SetCourtAttackTypeAsync(PlayerCourtAttackType.OpenPlay)">Jeu ouvert</button>
-                                    <button type="button" class="court-filter-btn @(CourtAttackType == PlayerCourtAttackType.SevenMeter ? "is-active" : "")"
-                                            aria-pressed="@(CourtAttackType == PlayerCourtAttackType.SevenMeter)"
-                                            @onclick="() => SetCourtAttackTypeAsync(PlayerCourtAttackType.SevenMeter)">7 metres</button>
-                                </div>
-                                <div class="court-filter-group" role="group" aria-label="Lecture">
-                                    <span class="filter-label">Lecture</span>
-                                    <button type="button" class="court-filter-btn @(CourtDisplayMode == PlayerCourtDisplayMode.Volume ? "is-active" : "")"
-                                            aria-pressed="@(CourtDisplayMode == PlayerCourtDisplayMode.Volume)"
-                                            @onclick="() => CourtDisplayMode = PlayerCourtDisplayMode.Volume">Volume</button>
-                                    <button type="button" class="court-filter-btn @(CourtDisplayMode == PlayerCourtDisplayMode.Efficiency ? "is-active" : "")"
-                                            aria-pressed="@(CourtDisplayMode == PlayerCourtDisplayMode.Efficiency)"
-                                            @onclick="() => CourtDisplayMode = PlayerCourtDisplayMode.Efficiency">Efficacite</button>
-                                </div>
-                                <div class="court-filter-group" role="group" aria-label="Vue">
-                                    <span class="filter-label">Vue</span>
-                                    <button type="button" class="court-filter-btn @(CourtScene == PlayerCourtScene.ShotZones ? "is-active" : "")"
-                                            aria-pressed="@(CourtScene == PlayerCourtScene.ShotZones)"
-                                            @onclick="() => CourtScene = PlayerCourtScene.ShotZones">Zones de tir</button>
-                                    <button type="button" class="court-filter-btn @(CourtScene == PlayerCourtScene.TriggerZones ? "is-active" : "")"
-                                            aria-pressed="@(CourtScene == PlayerCourtScene.TriggerZones)"
-                                            @onclick="() => CourtScene = PlayerCourtScene.TriggerZones">Declenchements</button>
-                                </div>
-                            </div>
-
-                            @if (CourtAttackType == PlayerCourtAttackType.SevenMeter && CourtScene == PlayerCourtScene.TriggerZones)
-                            {
-                                <div class="court-seven-meter-note">
-                                    <p>Zones de declenchement des 7m non disponibles — seule la zone d’execution est enregistree.</p>
-                                </div>
-                            }
-
-                            <GoalKpi GoalZones="@CourtShotZones"
-                                     TriggerZones="@CourtTriggerZones"
-                                     IsGoalkeeper="@(Profile?.IsGoalkeeper ?? false)"
-                                     ActiveZoneKey="@ActiveZoneKey"
-                                     OnZoneSelected="HandleZoneSelectionAsync"
-                                     HideZeroZones="@HasSpatialFocus"
-                                     IsLoading="@IsSpatialLoading"
-                                     DisplayMode="@CourtDisplayMode"
-                                     DisplayModeChanged="@(mode => CourtDisplayMode = mode)"
-                                     AttackType="@CourtAttackType"
-                                     ViewMode="@(CourtScene == PlayerCourtScene.ShotZones ? "goal" : "trigger")" />
-
-                            @if (ActiveCourtZone is not null)
-                            {
-                                <aside class="court-zone-detail">
-                                    <header class="court-zone-detail__head">
-                                        <h4>@ActiveCourtZone.Label</h4>
-                                        @if (!ActiveCourtZone.SampleReliable && ActiveCourtZone.Attempts > 0)
-                                        {
-                                            <span class="court-sample-warning">Faible echantillon</span>
-                                        }
+                        <div class="court-tab-grid">
+                            <section class="court-map-panel">
+                                <div class="court-studio">
+                                    <header class="court-studio__head">
+                                        <h3>Zones et déclenchements</h3>
+                                        <div class="filter-chips filter-chips--sm" role="group" aria-label="Type d'attaque">
+                                            <button type="button" class="filter-chip @(CourtAttackType==PlayerCourtAttackType.All?"is-active":"")"        @onclick="()=>SetCourtAttackTypeAsync(PlayerCourtAttackType.All)">Toutes</button>
+                                            <button type="button" class="filter-chip @(CourtAttackType==PlayerCourtAttackType.OpenPlay?"is-active":"")"   @onclick="()=>SetCourtAttackTypeAsync(PlayerCourtAttackType.OpenPlay)">Jeu ouvert</button>
+                                            <button type="button" class="filter-chip @(CourtAttackType==PlayerCourtAttackType.SevenMeter?"is-active":"")" @onclick="()=>SetCourtAttackTypeAsync(PlayerCourtAttackType.SevenMeter)">7 mètres</button>
+                                        </div>
+                                        <div class="filter-chips filter-chips--sm" role="group" aria-label="Lecture">
+                                            <button type="button" class="filter-chip @(CourtDisplayMode==PlayerCourtDisplayMode.Volume?"is-active":"")"     @onclick="()=>CourtDisplayMode=PlayerCourtDisplayMode.Volume">Volume</button>
+                                            <button type="button" class="filter-chip @(CourtDisplayMode==PlayerCourtDisplayMode.Efficiency?"is-active":"")" @onclick="()=>CourtDisplayMode=PlayerCourtDisplayMode.Efficiency">Efficacité</button>
+                                        </div>
                                     </header>
-                                    <div class="court-zone-stats">
-                                        <div class="court-zone-stat">
-                                            <span class="cz-label">Taux</span>
-                                            <strong class="cz-value">@FormatRate(ActiveCourtZone.Rate)%</strong>
-                                            <small class="cz-proof">@ActiveCourtZone.Successes / @ActiveCourtZone.Attempts</small>
+
+                                    <section class="court-stage">
+                                        <header class="court-stage__head">
+                                            <span>Goal frame</span>
+                                            <h4>Précision par secteur</h4>
+                                        </header>
+                                        <GoalKpi GoalZones="@CourtShotZones" TriggerZones="@CourtTriggerZones" IsGoalkeeper="@(Profile?.IsGoalkeeper??false)"
+                                                 ActiveZoneKey="@ActiveZoneKey" OnZoneSelected="HandleZoneSelectionAsync" HideZeroZones="@HasSpatialFocus"
+                                                 IsLoading="@IsSpatialLoading" DisplayMode="@CourtDisplayMode" DisplayModeChanged="@(mode=>CourtDisplayMode=mode)"
+                                                 AttackType="@CourtAttackType" ViewMode="goal" />
+                                    </section>
+
+                                    <section class="court-stage">
+                                        <header class="court-stage__head">
+                                            <span>Court map</span>
+                                            <h4>Déclenchements et angles</h4>
+                                        </header>
+                                        @if (CourtAttackType==PlayerCourtAttackType.SevenMeter)
+                                        { <div class="court-seven-meter-note"><p>Zones de déclenchement des 7m non disponibles.</p></div> }
+                                        else
+                                        {
+                                            <GoalKpi GoalZones="@CourtShotZones" TriggerZones="@CourtTriggerZones" IsGoalkeeper="@(Profile?.IsGoalkeeper??false)"
+                                                     ActiveZoneKey="@ActiveZoneKey" OnZoneSelected="HandleZoneSelectionAsync" HideZeroZones="@HasSpatialFocus"
+                                                     IsLoading="@IsSpatialLoading" DisplayMode="@CourtDisplayMode" DisplayModeChanged="@(mode=>CourtDisplayMode=mode)"
+                                                     AttackType="@CourtAttackType" ViewMode="trigger" />
+                                        }
+                                    </section>
+                                </div>
+
+                                <details class="court-table-alt">
+                                    <summary>Vue tabulaire des zones</summary>
+                                    <table class="court-alt-table" role="grid">
+                                        <thead><tr><th>Zone</th><th>Tirs</th><th>Buts</th><th>Taux</th><th>Fiabilité</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var zone in ActiveCourtZones.Where(z=>z.Attempts>0).OrderByDescending(z=>z.Attempts))
+                                            { <tr><td>@zone.Label</td><td>@zone.Attempts</td><td>@zone.Successes</td><td>@FormatRate(zone.Rate)%</td><td>@(zone.SampleReliable?"Fiable":"Faible")</td></tr> }
+                                        </tbody>
+                                    </table>
+                                </details>
+                            </section>
+
+                            <section class="court-zone-panel">
+                                @if (ActiveCourtZone is not null)
+                                {
+                                    <div class="panel-head">
+                                        <div>
+                                            <p class="section-kicker">Zone active</p>
+                                            <h4>@ActiveCourtZone.Label</h4>
                                         </div>
-                                        <div class="court-zone-stat">
-                                            <span class="cz-label">Tirs</span>
-                                            <strong class="cz-value">@ActiveCourtZone.Attempts</strong>
-                                        </div>
-                                        <div class="court-zone-stat">
-                                            <span class="cz-label">Buts</span>
-                                            <strong class="cz-value">@ActiveCourtZone.Successes</strong>
-                                        </div>
-                                        <div class="court-zone-stat">
-                                            <span class="cz-label">Echecs</span>
-                                            <strong class="cz-value">@ActiveCourtZone.Failures</strong>
-                                        </div>
+                                        <span class="hero-badge">@FormatRate(ActiveCourtZone.Rate)%</span>
+                                    </div>
+                                    <div class="badge-row">
+                                        <div class="mini-card"><span>Volume</span><strong>@ActiveCourtZone.Attempts</strong></div>
+                                        <div class="mini-card"><span>Succès</span><strong>@ActiveCourtZone.Successes</strong></div>
+                                        <div class="mini-card"><span>Échecs</span><strong>@ActiveCourtZone.Failures</strong></div>
                                     </div>
                                     @if (ActiveCourtZone.Outcomes.Any())
                                     {
-                                        <div class="court-zone-outcomes">
-                                            <p class="cz-outcomes-head">Detail</p>
-                                            <ul class="cz-outcomes-list">
-                                                @foreach (var outcome in ActiveCourtZone.Outcomes)
-                                                {
-                                                    <li>@outcome.Label <span>@outcome.Count</span></li>
-                                                }
-                                            </ul>
-                                        </div>
-                                    }
-                                    @if (!ActiveCourtZone.SampleReliable && ActiveCourtZone.Attempts > 0)
-                                    {
-                                        <p class="court-sample-note">Volume limite (@ActiveCourtZone.Attempts tirs) — taux indicatif.</p>
-                                    }
-                                </aside>
-                            }
-
-                            <details class="court-table-alt">
-                                <summary>Vue tabulaire des zones</summary>
-                                <table class="court-alt-table" role="grid" aria-label="Donnees de zones en format tableau">
-                                    <caption>@(CourtScene == PlayerCourtScene.ShotZones ? "Zones de tir" : "Zones de declenchement")</caption>
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">Zone</th>
-                                            <th scope="col">Tirs</th>
-                                            <th scope="col">Buts</th>
-                                            <th scope="col">Taux</th>
-                                            <th scope="col">Fiabilite</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var zone in ActiveCourtZones.Where(z => z.Attempts > 0).OrderByDescending(z => z.Attempts))
-                                        {
-                                            <tr>
-                                                <td>@zone.Label</td>
-                                                <td>@zone.Attempts</td>
-                                                <td>@zone.Successes</td>
-                                                <td>@FormatRate(zone.Rate)%</td>
-                                                <td>@(zone.SampleReliable ? "Fiable" : "Faible")</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </details>
-
-                            @if (HasSpatialFocus)
-                            {
-                                <div class="match-scope-toolbar spatial-focus-toolbar">
-                                    <div class="match-scope-copy">
-                                        <p class="section-kicker">Lecture ciblee</p>
-                                        <span>Zones liees a @SpatialFocusKey</span>
-                                    </div>
-
-                                    <button type="button"
-                                            class="match-scope-button"
-                                            @onclick="ResetSpatialFocusAsync"
-                                            disabled="@IsSpatialLoading">
-                                        Voir toutes les zones
-                                    </button>
-                                </div>
-                            }
-                        }
-                        else if (ActiveSection == "matches")
-                        {
-                            var isGk = profile.IsGoalkeeper;
-                            var rows = FilteredGameRows;
-                            var baseline = GameBaseline;
-                            var total = rows.Count;
-                            var eligibleTime = rows.Count(r =>
-                                r.PlayingTime.Availability != PlayingTimeAvailability.DataMissing &&
-                                r.PlayingTime.Availability != PlayingTimeAvailability.IdentityConflict &&
-                                r.PlayingTime.Minutes.HasValue);
-                            var avgTime = eligibleTime > 0
-                                ? rows.Where(r => r.PlayingTime.Minutes.HasValue).Average(r => r.PlayingTime.Minutes!.Value)
-                                : (double?)null;
-
-                            @* Toolbar *@
-                            <div class="games-toolbar">
-                                <div class="games-search-wrap">
-                                    <input type="search" class="games-search" placeholder="Adversaire, compétition…"
-                                           value="@GamesSearch"
-                                           @oninput="e => GamesSearch = e.Value?.ToString() ?? string.Empty"
-                                           aria-label="Rechercher un match" />
-                                </div>
-                                <div class="games-filter-group">
-                                    <span class="games-filter-label">Période</span>
-                                    <div class="games-win-btns" role="group" aria-label="Fenêtre temporelle">
-                                        <button type="button" class="games-win-btn @(GamesWindow == PlayerGamesWindow.Last5 ? "is-active" : "")"
-                                                @onclick='() => GamesWindow = PlayerGamesWindow.Last5'>5 derniers</button>
-                                        <button type="button" class="games-win-btn @(GamesWindow == PlayerGamesWindow.Last10 ? "is-active" : "")"
-                                                @onclick='() => GamesWindow = PlayerGamesWindow.Last10'>10 derniers</button>
-                                        <button type="button" class="games-win-btn @(GamesWindow == PlayerGamesWindow.Season ? "is-active" : "")"
-                                                @onclick='() => GamesWindow = PlayerGamesWindow.Season'>Saison</button>
-                                    </div>
-                                </div>
-                                <div class="games-filter-group">
-                                    <span class="games-filter-label">Résultat</span>
-                                    <div class="games-result-btns" role="group" aria-label="Filtre résultat">
-                                        <button type="button" class="games-result-btn @(GamesResultFilter == PlayerGamesResultFilter.All ? "is-active" : "")"
-                                                @onclick='() => GamesResultFilter = PlayerGamesResultFilter.All'>Tous</button>
-                                        <button type="button" class="games-result-btn @(GamesResultFilter == PlayerGamesResultFilter.Win ? "is-active" : "")"
-                                                @onclick='() => GamesResultFilter = PlayerGamesResultFilter.Win'>V</button>
-                                        <button type="button" class="games-result-btn @(GamesResultFilter == PlayerGamesResultFilter.Draw ? "is-active" : "")"
-                                                @onclick='() => GamesResultFilter = PlayerGamesResultFilter.Draw'>N</button>
-                                        <button type="button" class="games-result-btn @(GamesResultFilter == PlayerGamesResultFilter.Loss ? "is-active" : "")"
-                                                @onclick='() => GamesResultFilter = PlayerGamesResultFilter.Loss'>D</button>
-                                    </div>
-                                </div>
-                                <div class="games-filter-group">
-                                    <span class="games-filter-label">Mode</span>
-                                    <div class="games-mode-btns" role="group" aria-label="Mode d'affichage">
-                                        <button type="button" class="games-mode-btn @(GamesDisplayMode == PlayerGamesDisplayMode.Values ? "is-active" : "")"
-                                                @onclick='() => GamesDisplayMode = PlayerGamesDisplayMode.Values'>Valeurs</button>
-                                        <button type="button" class="games-mode-btn @(GamesDisplayMode == PlayerGamesDisplayMode.DeltaVsSeason ? "is-active" : "")"
-                                                @onclick='() => GamesDisplayMode = PlayerGamesDisplayMode.DeltaVsSeason'>Écart saison</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            @* Synthèse compacte *@
-                            @if (total > 0)
-                            {
-                                <div class="games-summary-bar">
-                                    <span>@total match@(total > 1 ? "s" : "")</span>
-                                    @if (avgTime.HasValue)
-                                    {
-                                        <span>@avgTime.Value.ToString("0.0") min / match</span>
-                                    }
-                                    @if (eligibleTime < total)
-                                    {
-                                        <span class="games-summary-warn">Temps disponible @eligibleTime / @total</span>
-                                    }
-                                </div>
-                            }
-
-                            @* État vide *@
-                            @if (total == 0)
-                            {
-                                <div class="games-empty">
-                                    @if (!string.IsNullOrWhiteSpace(GamesSearch) || GamesResultFilter != PlayerGamesResultFilter.All)
-                                    {
-                                        <p>Aucun match ne correspond aux filtres.</p>
-                                    }
-                                    else
-                                    {
-                                        <p>Aucun match disponible pour cette joueuse.</p>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                @* Desktop : tableau analytique *@
-                                <div class="games-table-wrap">
-                                    <table class="games-table" aria-label="Historique des matchs">
-                                        <caption class="sr-only">Matchs de @profile.FullName — @total résultats</caption>
-                                        <thead>
-                                            <tr>
-                                                <th scope="col" class="games-th games-th--date">
-                                                    <button type="button" class="games-sort-btn"
-                                                            @onclick='() => GamesSort = GamesSort == "date_desc" ? "date_asc" : "date_desc"'
-                                                            aria-sort="@(GamesSort.StartsWith("date") ? (GamesSort == "date_desc" ? "descending" : "ascending") : "none")">
-                                                        Date
-                                                    </button>
-                                                </th>
-                                                <th scope="col" class="games-th games-th--match">Match</th>
-                                                <th scope="col" class="games-th games-th--result">Rés.</th>
-                                                <th scope="col" class="games-th games-th--time">
-                                                    <button type="button" class="games-sort-btn"
-                                                            @onclick='() => GamesSort = "time_desc"'
-                                                            aria-sort="@(GamesSort == "time_desc" ? "descending" : "none")">Min</button>
-                                                </th>
-                                                @if (!isGk)
-                                                {
-                                                    <th scope="col" class="games-th games-th--num">Buts</th>
-                                                    <th scope="col" class="games-th games-th--num">PD</th>
-                                                    <th scope="col" class="games-th games-th--num">INT</th>
-                                                    <th scope="col" class="games-th games-th--num">Pertes</th>
-                                                }
-                                                else
-                                                {
-                                                    <th scope="col" class="games-th games-th--num">Arrêts</th>
-                                                    <th scope="col" class="games-th games-th--num">PD</th>
-                                                    <th scope="col" class="games-th games-th--num">Pertes</th>
-                                                }
-                                                <th scope="col" class="games-th games-th--detail"><span class="sr-only">Détail</span></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var row in rows)
+                                        <div class="list-stack">
+                                            @foreach (var outcome in ActiveCourtZone.Outcomes)
                                             {
-                                                var isSelected = row.Identity.MatchId == GamesSelectedMatchId;
-                                                var resultClass = row.Identity.Result switch
-                                                {
-                                                    PlayerMatchResult.Win => "games-result--win",
-                                                    PlayerMatchResult.Loss => "games-result--loss",
-                                                    PlayerMatchResult.Draw => "games-result--draw",
-                                                    _ => ""
-                                                };
-                                                var colSpan = isGk ? 8 : 8;
-                                                <tr class="games-row @(isSelected ? "games-row--selected" : "")"
-                                                    @onclick='() => GamesSelectedMatchId = isSelected ? null : row.Identity.MatchId'
-                                                    role="button" tabindex="0"
-                                                    aria-expanded="@isSelected.ToString().ToLowerInvariant()"
-                                                    @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") GamesSelectedMatchId = isSelected ? null : row.Identity.MatchId; }'>
-                                                    <td class="games-td games-td--date">@row.Identity.Date.ToString("dd/MM")</td>
-                                                    <td class="games-td games-td--match">
-                                                        <span class="games-match-opponent">@(row.Identity.OpponentName.Length > 0 ? row.Identity.OpponentName : "—")</span>
-                                                        @if (row.Identity.Team1Score.HasValue && row.Identity.Team2Score.HasValue)
-                                                        {
-                                                            <span class="games-match-score">@PlayerMatchResultResolver.FormatScore(row.Identity.PlayerTeamId, null, row.Identity.Team1Score, row.Identity.Team2Score)</span>
-                                                        }
-                                                    </td>
-                                                    <td class="games-td games-td--result">
-                                                        <span class="games-result @resultClass" title="@PlayerMatchResultResolver.GetResultAccessibleLabel(row.Identity.Result)">
-                                                            @PlayerMatchResultResolver.GetResultLabel(row.Identity.Result)
-                                                        </span>
-                                                    </td>
-                                                    <td class="games-td games-td--time">
-                                                        @if (row.PlayingTime.Availability == PlayingTimeAvailability.DataMissing || row.PlayingTime.Availability == PlayingTimeAvailability.IdentityConflict)
-                                                        {
-                                                            <span class="games-na">—</span>
-                                                        }
-                                                        else if (row.PlayingTime.Minutes.HasValue)
-                                                        {
-                                                            @row.PlayingTime.Minutes.Value.ToString("0")
-                                                            @if (row.PlayingTime.Availability == PlayingTimeAvailability.PartialData)
-                                                            {
-                                                                <span class="games-partial" title="Temps partiel">~</span>
-                                                            }
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="games-na">—</span>
-                                                        }
-                                                    </td>
-                                                    @if (!isGk)
-                                                    {
-                                                        <td class="games-td games-td--num">@RenderCountCell(row.FieldMetrics?.Goals, baseline?.GoalsPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
-                                                        <td class="games-td games-td--num">@RenderCountCell(row.FieldMetrics?.Assists, baseline?.AssistsPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
-                                                        <td class="games-td games-td--num">@RenderCountCell(row.FieldMetrics?.Interceptions, baseline?.InterceptionsPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
-                                                        <td class="games-td games-td--num">@RenderCountCell(row.FieldMetrics?.Turnovers, baseline?.TurnoversPerMatch, TrajectoryMetricDirection.LowerIsBetter)</td>
-                                                    }
-                                                    else
-                                                    {
-                                                        <td class="games-td games-td--num">@RenderCountCell(row.GkMetrics?.Saves, baseline?.SavesPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
-                                                        <td class="games-td games-td--num">@RenderCountCell(row.GkMetrics?.Assists, baseline?.AssistsPerMatch, TrajectoryMetricDirection.HigherIsBetter)</td>
-                                                        <td class="games-td games-td--num">@RenderCountCell(row.GkMetrics?.Turnovers, baseline?.TurnoversPerMatch, TrajectoryMetricDirection.LowerIsBetter)</td>
-                                                    }
-                                                    <td class="games-td games-td--detail">
-                                                        <span class="games-expand-icon" aria-hidden="true">@(isSelected ? "▲" : "▼")</span>
-                                                    </td>
-                                                </tr>
-                                                @* Ligne de détail *@
-                                                @if (isSelected)
-                                                {
-                                                    <tr class="games-detail-row" role="region" aria-label="Détail du match">
-                                                        <td colspan="@(isGk ? 8 : 8)" class="games-detail-cell">
-                                                            <div class="games-detail">
-                                                                <div class="games-detail-header">
-                                                                    <div>
-                                                                        <p class="games-detail-title">@row.Identity.PlayerTeamName vs @(row.Identity.OpponentName.Length > 0 ? row.Identity.OpponentName : "—")</p>
-                                                                        <p class="games-detail-meta">@row.Identity.Date.ToString("dd MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) · J@row.Identity.Day · @row.Identity.CompetitionName</p>
-                                                                    </div>
-                                                                    <a href="/matches?matchId=@row.Identity.MatchId" class="games-open-match-btn">Ouvrir le match</a>
-                                                                </div>
-                                                                @if (row.PlayingTime.Minutes.HasValue)
-                                                                {
-                                                                    <p class="games-detail-time">@row.PlayingTime.Minutes.Value.ToString("0") min</p>
-                                                                }
-                                                                @if (!isGk && row.FieldMetrics is not null)
-                                                                {
-                                                                    <div class="games-detail-sections">
-                                                                        <div class="games-detail-section">
-                                                                            <p class="section-kicker">Attaque</p>
-                                                                            <p>@(row.FieldMetrics.Goals?.ToString() ?? "—") buts</p>
-                                                                            <p>@(row.FieldMetrics.Assists?.ToString() ?? "—") passes déc.</p>
-                                                                        </div>
-                                                                        <div class="games-detail-section">
-                                                                            <p class="section-kicker">Défense</p>
-                                                                            <p>@(row.FieldMetrics.Interceptions?.ToString() ?? "—") interceptions</p>
-                                                                        </div>
-                                                                        <div class="games-detail-section">
-                                                                            <p class="section-kicker">Maîtrise</p>
-                                                                            <p>@(row.FieldMetrics.Turnovers?.ToString() ?? "—") perte@(row.FieldMetrics.Turnovers > 1 ? "s" : "")</p>
-                                                                        </div>
-                                                                    </div>
-                                                                }
-                                                                else if (isGk && row.GkMetrics is not null)
-                                                                {
-                                                                    <div class="games-detail-sections">
-                                                                        <div class="games-detail-section">
-                                                                            <p class="section-kicker">Arrêts</p>
-                                                                            <p>@(row.GkMetrics.Saves?.ToString() ?? "—") arrêts</p>
-                                                                        </div>
-                                                                        <div class="games-detail-section">
-                                                                            <p class="section-kicker">Avec ballon</p>
-                                                                            <p>@(row.GkMetrics.Assists?.ToString() ?? "—") passes déc.</p>
-                                                                            <p>@(row.GkMetrics.Turnovers?.ToString() ?? "—") perte@(row.GkMetrics.Turnovers > 1 ? "s" : "")</p>
-                                                                        </div>
-                                                                    </div>
-                                                                }
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                @* Mobile : cartes compactes *@
-                                <div class="games-cards-mobile">
-                                    @foreach (var row in rows)
-                                    {
-                                        var isSelectedMobile = row.Identity.MatchId == GamesSelectedMatchId;
-                                        <div class="games-card-compact @(isSelectedMobile ? "is-expanded" : "")">
-                                            <div class="games-card-compact__head"
-                                                 @onclick='() => GamesSelectedMatchId = isSelectedMobile ? null : row.Identity.MatchId'
-                                                 role="button" tabindex="0"
-                                                 @onkeydown='e => { if (e.Key == "Enter" || e.Key == " ") GamesSelectedMatchId = isSelectedMobile ? null : row.Identity.MatchId; }'>
-                                                <span class="gcc-date">@row.Identity.Date.ToString("dd/MM")</span>
-                                                <span class="gcc-opponent">@(row.Identity.OpponentName.Length > 0 ? row.Identity.OpponentName : "—")</span>
-                                                <span class="games-result games-result--@row.Identity.Result.ToString().ToLowerInvariant()">
-                                                    @PlayerMatchResultResolver.GetResultLabel(row.Identity.Result)
-                                                    @if (row.Identity.Team1Score.HasValue)
-                                                    {
-                                                        @(" " + PlayerMatchResultResolver.FormatScore(row.Identity.PlayerTeamId, null, row.Identity.Team1Score, row.Identity.Team2Score))
-                                                    }
-                                                </span>
-                                                <span class="gcc-time">
-                                                    @if (row.PlayingTime.Minutes.HasValue && row.PlayingTime.Availability != PlayingTimeAvailability.DataMissing)
-                                                    {
-                                                        @(row.PlayingTime.Minutes.Value.ToString("0") + " min")
-                                                    }
-                                                    else
-                                                    {
-                                                        <text>—</text>
-                                                    }
-                                                </span>
-                                            </div>
-                                            @if (isSelectedMobile)
-                                            {
-                                                <div class="gcc-detail">
-                                                    @if (!isGk && row.FieldMetrics is not null)
-                                                    {
-                                                        <div class="gcc-metrics">
-                                                            <span>@(row.FieldMetrics.Goals?.ToString() ?? "—") buts</span>
-                                                            <span>@(row.FieldMetrics.Assists?.ToString() ?? "—") passes</span>
-                                                            <span>@(row.FieldMetrics.Turnovers?.ToString() ?? "—") perte@(row.FieldMetrics.Turnovers > 1 ? "s" : "")</span>
-                                                        </div>
-                                                    }
-                                                    else if (isGk && row.GkMetrics is not null)
-                                                    {
-                                                        <div class="gcc-metrics">
-                                                            <span>@(row.GkMetrics.Saves?.ToString() ?? "—") arrêts</span>
-                                                            <span>@(row.GkMetrics.Turnovers?.ToString() ?? "—") perte@(row.GkMetrics.Turnovers > 1 ? "s" : "")</span>
-                                                        </div>
-                                                    }
-                                                    <a href="/matches?matchId=@row.Identity.MatchId" class="gcc-open-btn">Détails</a>
+                                                <div class="list-item">
+                                                    <div class="key-metric">
+                                                        <strong>@outcome.Label</strong>
+                                                        <span>@outcome.Count</span>
+                                                    </div>
                                                 </div>
                                             }
                                         </div>
                                     }
-                                </div>
-                            }
+                                    @if (!ActiveCourtZone.SampleReliable&&ActiveCourtZone.Attempts>0)
+                                    { <p class="court-sample-note">Volume limite (@ActiveCourtZone.Attempts tirs) — taux indicatif.</p> }
+                                }
+                                else
+                                {
+                                    <div class="court-zone-empty">
+                                        <p>Sélectionnez une zone pour voir le détail</p>
+                                    </div>
+                                }
+                            </section>
+                        </div>
+
+                        <details class="court-table-alt">
+                            <summary>Vue tabulaire des zones</summary>
+                            <table class="court-alt-table" role="grid"><caption>@(CourtScene==PlayerCourtScene.ShotZones?"Zones de tir":"Zones de declenchement")</caption>
+                                <thead><tr><th>Zone</th><th>Tirs</th><th>Buts</th><th>Taux</th><th>Fiabilite</th></tr></thead>
+                                <tbody>
+                                    @foreach (var zone in ActiveCourtZones.Where(z=>z.Attempts>0).OrderByDescending(z=>z.Attempts))
+                                    { <tr><td>@zone.Label</td><td>@zone.Attempts</td><td>@zone.Successes</td><td>@FormatRate(zone.Rate)%</td><td>@(zone.SampleReliable?"Fiable":"Faible")</td></tr> }
+                                </tbody>
+                            </table>
+                        </details>
+
+                        @if (HasSpatialFocus)
+                        {
+                            <div class="match-scope-toolbar spatial-focus-toolbar">
+                                <div class="match-scope-copy"><p class="section-kicker">Lecture ciblee</p><span>Zones liees a @SpatialFocusKey</span></div>
+                                <button type="button" class="match-scope-button" @onclick="ResetSpatialFocusAsync" disabled="@IsSpatialLoading">Voir toutes les zones</button>
+                            </div>
                         }
                     }
-                </article>
-            </section>
-        }
-    }
-</div>
 
+                    @* MATCHS *@
+                    else if (ActiveSection == "matches")
+                    {
+                        var isGk     = profile.IsGoalkeeper;
+                        var rows     = FilteredGameRows;
+                        var baseline = GameBaseline;
+                        var total    = rows.Count;
+                        var eligT    = rows.Count(r=>r.PlayingTime.Availability!=PlayingTimeAvailability.DataMissing&&r.PlayingTime.Availability!=PlayingTimeAvailability.IdentityConflict&&r.PlayingTime.Minutes.HasValue);
+                        var avgT     = eligT>0?rows.Where(r=>r.PlayingTime.Minutes.HasValue).Average(r=>r.PlayingTime.Minutes!.Value):(double?)null;
+
+                        <div class="match-log-controls">
+                            <div class="match-log-search">
+                                <input type="search" placeholder="Adversaire, compétition…" value="@GamesSearch" @oninput="e=>GamesSearch=e.Value?.ToString()??string.Empty" aria-label="Rechercher un match" />
+                            </div>
+                            <div class="filter-chips filter-chips--sm" role="group" aria-label="Période">
+                                <button type="button" class="filter-chip @(GamesWindow==PlayerGamesWindow.Last5?"is-active":"")"  @onclick='()=>GamesWindow=PlayerGamesWindow.Last5'>5 derniers</button>
+                                <button type="button" class="filter-chip @(GamesWindow==PlayerGamesWindow.Last10?"is-active":"")" @onclick='()=>GamesWindow=PlayerGamesWindow.Last10'>10 derniers</button>
+                                <button type="button" class="filter-chip @(GamesWindow==PlayerGamesWindow.Season?"is-active":"")" @onclick='()=>GamesWindow=PlayerGamesWindow.Season'>Saison</button>
+                            </div>
+                            <div class="filter-chips filter-chips--sm" role="group" aria-label="Résultat">
+                                <button type="button" class="filter-chip @(GamesResultFilter==PlayerGamesResultFilter.All?"is-active":"")"  @onclick='()=>GamesResultFilter=PlayerGamesResultFilter.All'>Tous</button>
+                                <button type="button" class="filter-chip @(GamesResultFilter==PlayerGamesResultFilter.Win?"is-active":"")"  @onclick='()=>GamesResultFilter=PlayerGamesResultFilter.Win'>V</button>
+                                <button type="button" class="filter-chip @(GamesResultFilter==PlayerGamesResultFilter.Draw?"is-active":"")" @onclick='()=>GamesResultFilter=PlayerGamesResultFilter.Draw'>N</button>
+                                <button type="button" class="filter-chip @(GamesResultFilter==PlayerGamesResultFilter.Loss?"is-active":"")" @onclick='()=>GamesResultFilter=PlayerGamesResultFilter.Loss'>D</button>
+                            </div>
+                            <div class="filter-chips filter-chips--sm" role="group" aria-label="Mode">
+                                <button type="button" class="filter-chip @(GamesDisplayMode==PlayerGamesDisplayMode.Values?"is-active":"")"        @onclick='()=>GamesDisplayMode=PlayerGamesDisplayMode.Values'>Valeurs</button>
+                                <button type="button" class="filter-chip @(GamesDisplayMode==PlayerGamesDisplayMode.DeltaVsSeason?"is-active":"")" @onclick='()=>GamesDisplayMode=PlayerGamesDisplayMode.DeltaVsSeason'>Écart saison</button>
+                            </div>
+                        </div>
+
+                        @if (total>0)
+                        {
+                            <div class="games-summary-bar">
+                                <span>@total match@(total>1?"s":"")</span>
+                                @if (avgT.HasValue) { <span>@avgT.Value.ToString("0.0") min / match</span> }
+                                @if (eligT<total) { <span class="games-summary-warn">Temps disponible @eligT / @total</span> }
+                            </div>
+                        }
+
+                        @if (total==0)
+                        {
+                            <div class="games-empty">
+                                @if (!string.IsNullOrWhiteSpace(GamesSearch)||GamesResultFilter!=PlayerGamesResultFilter.All) { <p>Aucun match ne correspond aux filtres.</p> }
+                                else { <p>Aucun match disponible pour cette joueuse.</p> }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-container">
+                                <table class="data-table data-table--match-log" aria-label="Historique des matchs">
+                                    <caption class="sr-only">Matchs de @profile.FullName — @total résultats</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col"><button type="button" class="games-sort-btn" @onclick='()=>GamesSort=GamesSort=="date_desc"?"date_asc":"date_desc"' aria-sort="@(GamesSort.StartsWith("date")?(GamesSort=="date_desc"?"descending":"ascending"):"none")">Date</button></th>
+                                            <th scope="col">Adversaire</th>
+                                            <th scope="col">Résultat</th>
+                                            <th scope="col"><button type="button" class="games-sort-btn" @onclick='()=>GamesSort="time_desc"' aria-sort="@(GamesSort=="time_desc"?"descending":"none")">Min.</button></th>
+                                            @if (!isGk) { <th>Buts</th><th>Passes</th><th>Interc.</th><th>Taux tir</th> }
+                                            else        { <th>Arrêts</th><th>Passes</th><th>Taux arrêt</th> }
+                                            <th scope="col"><span class="sr-only">Détail</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var row in rows)
+                                        {
+                                            var isSel   = row.Identity.MatchId==GamesSelectedMatchId;
+                                            var rbCl    = row.Identity.Result switch{PlayerMatchResult.Win=>"result-badge--v",PlayerMatchResult.Draw=>"result-badge--n",PlayerMatchResult.Loss=>"result-badge--d",_=>""};
+                                            var colspan = isGk ? 8 : 9;
+                                            <tr class="games-row @(isSel?"games-row--selected":"")" @onclick='()=>GamesSelectedMatchId=isSel?null:row.Identity.MatchId'
+                                                role="button" tabindex="0" aria-expanded="@isSel.ToString().ToLowerInvariant()"
+                                                @onkeydown='e=>{if(e.Key=="Enter"||e.Key==" ")GamesSelectedMatchId=isSel?null:row.Identity.MatchId;}'>
+                                                <td>@row.Identity.Date.ToString("dd/MM")</td>
+                                                <td>@(row.Identity.OpponentName.Length>0?row.Identity.OpponentName:"—")</td>
+                                                <td>
+                                                    <span class="result-badge @rbCl" title="@PlayerMatchResultResolver.GetResultAccessibleLabel(row.Identity.Result)">@PlayerMatchResultResolver.GetResultLabel(row.Identity.Result)</span>
+                                                    @if (row.Identity.Team1Score.HasValue&&row.Identity.Team2Score.HasValue) { <span class="games-match-score">@PlayerMatchResultResolver.FormatScore(row.Identity.PlayerTeamId,null,row.Identity.Team1Score,row.Identity.Team2Score)</span> }
+                                                </td>
+                                                <td>
+                                                    @if(row.PlayingTime.Availability==PlayingTimeAvailability.DataMissing||row.PlayingTime.Availability==PlayingTimeAvailability.IdentityConflict){<span class="games-na">—</span>}
+                                                    else if(row.PlayingTime.Minutes.HasValue){@row.PlayingTime.Minutes.Value.ToString("0") @if(row.PlayingTime.Availability==PlayingTimeAvailability.PartialData){<span class="games-partial" title="Temps partiel">~</span>}}
+                                                    else{<span class="games-na">—</span>}
+                                                </td>
+                                                @if (!isGk)
+                                                {
+                                                    <td class="@GetMatchCellClass(row.FieldMetrics?.Goals,        baseline?.GoalsPerMatch,        TrajectoryMetricDirection.HigherIsBetter)">@RenderCountCell(row.FieldMetrics?.Goals,        baseline?.GoalsPerMatch,        TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                    <td class="@GetMatchCellClass(row.FieldMetrics?.Assists,      baseline?.AssistsPerMatch,      TrajectoryMetricDirection.HigherIsBetter)">@RenderCountCell(row.FieldMetrics?.Assists,      baseline?.AssistsPerMatch,      TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                    <td class="@GetMatchCellClass(row.FieldMetrics?.Interceptions,baseline?.InterceptionsPerMatch,TrajectoryMetricDirection.HigherIsBetter)">@RenderCountCell(row.FieldMetrics?.Interceptions,baseline?.InterceptionsPerMatch,TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                    <td><span class="games-na">—</span></td>
+                                                }
+                                                else
+                                                {
+                                                    <td class="@GetMatchCellClass(row.GkMetrics?.Saves,   baseline?.SavesPerMatch,  TrajectoryMetricDirection.HigherIsBetter)">@RenderCountCell(row.GkMetrics?.Saves,   baseline?.SavesPerMatch,  TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                    <td class="@GetMatchCellClass(row.GkMetrics?.Assists, baseline?.AssistsPerMatch,TrajectoryMetricDirection.HigherIsBetter)">@RenderCountCell(row.GkMetrics?.Assists, baseline?.AssistsPerMatch,TrajectoryMetricDirection.HigherIsBetter)</td>
+                                                    <td><span class="games-na">—</span></td>
+                                                }
+                                                <td><span class="games-expand-icon" aria-hidden="true">@(isSel?"▲":"▼")</span></td>
+                                            </tr>
+                                            @if (isSel)
+                                            {
+                                                <tr class="games-detail-row" role="region" aria-label="Détail du match">
+                                                    <td colspan="@colspan" class="games-detail-cell">
+                                                        <div class="games-detail">
+                                                            <div class="games-detail-header">
+                                                                <div>
+                                                                    <p class="games-detail-title">@row.Identity.PlayerTeamName vs @(row.Identity.OpponentName.Length>0?row.Identity.OpponentName:"—")</p>
+                                                                    <p class="games-detail-meta">@row.Identity.Date.ToString("dd MMM yyyy",System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) · J@row.Identity.Day · @row.Identity.CompetitionName</p>
+                                                                </div>
+                                                                <a href="/matches?matchId=@row.Identity.MatchId" class="games-open-match-btn">Ouvrir le match</a>
+                                                            </div>
+                                                            @if (row.PlayingTime.Minutes.HasValue) { <p class="games-detail-time">@row.PlayingTime.Minutes.Value.ToString("0") min</p> }
+                                                            @if (!isGk&&row.FieldMetrics is not null)
+                                                            {
+                                                                <div class="games-detail-sections">
+                                                                    <div class="games-detail-section"><p class="section-kicker">Attaque</p><p>@(row.FieldMetrics.Goals?.ToString()??"—") buts</p><p>@(row.FieldMetrics.Assists?.ToString()??"—") passes déc.</p></div>
+                                                                    <div class="games-detail-section"><p class="section-kicker">Défense</p><p>@(row.FieldMetrics.Interceptions?.ToString()??"—") interceptions</p></div>
+                                                                    <div class="games-detail-section"><p class="section-kicker">Maîtrise</p><p>@(row.FieldMetrics.Turnovers?.ToString()??"—") perte@(row.FieldMetrics.Turnovers>1?"s":"")</p></div>
+                                                                </div>
+                                                            }
+                                                            else if (isGk&&row.GkMetrics is not null)
+                                                            {
+                                                                <div class="games-detail-sections">
+                                                                    <div class="games-detail-section"><p class="section-kicker">Arrêts</p><p>@(row.GkMetrics.Saves?.ToString()??"—") arrêts</p></div>
+                                                                    <div class="games-detail-section"><p class="section-kicker">Avec ballon</p><p>@(row.GkMetrics.Assists?.ToString()??"—") passes déc.</p><p>@(row.GkMetrics.Turnovers?.ToString()??"—") perte@(row.GkMetrics.Turnovers>1?"s":"")</p></div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="games-cards-mobile">
+                                @foreach (var row in rows)
+                                {
+                                    var isSelM = row.Identity.MatchId==GamesSelectedMatchId;
+                                    <div class="games-card-compact @(isSelM?"is-expanded":"")">
+                                        <div class="games-card-compact__head" @onclick='()=>GamesSelectedMatchId=isSelM?null:row.Identity.MatchId' role="button" tabindex="0" @onkeydown='e=>{if(e.Key=="Enter"||e.Key==" ")GamesSelectedMatchId=isSelM?null:row.Identity.MatchId;}'>
+                                            <span class="gcc-date">@row.Identity.Date.ToString("dd/MM")</span>
+                                            <span class="gcc-opponent">@(row.Identity.OpponentName.Length>0?row.Identity.OpponentName:"—")</span>
+                                            <span class="games-result games-result--@row.Identity.Result.ToString().ToLowerInvariant()">@PlayerMatchResultResolver.GetResultLabel(row.Identity.Result)@if(row.Identity.Team1Score.HasValue){@(" "+PlayerMatchResultResolver.FormatScore(row.Identity.PlayerTeamId,null,row.Identity.Team1Score,row.Identity.Team2Score))}</span>
+                                            <span class="gcc-time">@if(row.PlayingTime.Minutes.HasValue&&row.PlayingTime.Availability!=PlayingTimeAvailability.DataMissing){@(row.PlayingTime.Minutes.Value.ToString("0")+" min")}else{<text>—</text>}</span>
+                                        </div>
+                                        @if (isSelM)
+                                        {
+                                            <div class="gcc-detail">
+                                                @if (!isGk&&row.FieldMetrics is not null) { <div class="gcc-metrics"><span>@(row.FieldMetrics.Goals?.ToString()??"—") buts</span><span>@(row.FieldMetrics.Assists?.ToString()??"—") passes</span><span>@(row.FieldMetrics.Turnovers?.ToString()??"—") perte@(row.FieldMetrics.Turnovers>1?"s":"")</span></div> }
+                                                else if (isGk&&row.GkMetrics is not null) { <div class="gcc-metrics"><span>@(row.GkMetrics.Saves?.ToString()??"—") arrêts</span><span>@(row.GkMetrics.Turnovers?.ToString()??"—") perte@(row.GkMetrics.Turnovers>1?"s":"")</span></div> }
+                                                <a href="/matches?matchId=@row.Identity.MatchId" class="gcc-open-btn">Détails</a>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @* ANALYSE *@
+                    else if (ActiveSection == "analyse")
+                    {
+                        <AnalyseTabPanel PlayerId="@SelectedPlayerId"
+                                         CompetitionId="@CompetitionId"
+                                         TeamId="@TeamId"
+                                         Season="@Season" />
+                    }
+
+                    </div>@* /player-detail-pane__body *@
+                }@* /else profile loaded *@
+            </div>@* /player-detail-pane *@
+
+        </div>@* /page-players__layout *@
+    }
+}
+</div>
 @code {
     private AnalyticsReferenceData ReferenceData { get; set; } = AnalyticsReferenceData.Empty;
     private IReadOnlyList<MatchListItemDto> CompetitionOptionMatches { get; set; } = [];
@@ -1369,6 +997,7 @@
     private bool IsBusy { get; set; }
     private bool IsSpatialLoading { get; set; }
     private bool IsDirectoryDrawerOpen { get; set; } = true;
+    private bool IsFilterDrawerOpen { get; set; }
     private bool IsPlayerSheetExportBusy { get; set; }
     private string? ErrorMessage { get; set; }
     private CancellationTokenSource? _searchDebounceCts;
@@ -1655,6 +1284,7 @@
         ApplyGlobalScope();
         ScopeService.Changed += HandleGlobalScopeChanged;
         await LoadAsync(refreshReferenceData: true);
+        CommandBarService.Register(() => { OpenFilterDrawer(); return Task.CompletedTask; }, PlayerDirectory.Count > 0 ? (int?)PlayerDirectory.Count : null, "joueuses");
     }
 
     private Task OnDirectoryScopeChangedAsync()
@@ -1703,6 +1333,9 @@
     {
         IsDirectoryDrawerOpen = !IsDirectoryDrawerOpen;
     }
+
+    private void OpenFilterDrawer() { IsFilterDrawerOpen = true; StateHasChanged(); }
+    private void CloseFilterDrawer() { IsFilterDrawerOpen = false; StateHasChanged(); }
 
     private async Task ResetFiltersAsync()
     {
@@ -2294,6 +1927,7 @@
 
     public void Dispose()
     {
+        CommandBarService.Clear();
         ScopeService.Changed -= HandleGlobalScopeChanged;
         var cts = Interlocked.Exchange(ref _searchDebounceCts, null);
         cts?.Cancel();
@@ -2490,6 +2124,8 @@
     {
         return new StatsQueryOptionsDto
         {
+            CompetitionId = CompetitionId,
+            TeamId = TeamId,
             PositionId = PositionId,
             Year = Year,
             Season = Season,
@@ -2675,6 +2311,34 @@
         var parts = (fullName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return string.Concat(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])));
     }
+
+    private static string GetMatchCellClass(int? value, double? baseline, TrajectoryMetricDirection direction)
+    {
+        if (value == null || !baseline.HasValue || baseline.Value <= 0) return string.Empty;
+        var delta = value.Value - baseline.Value;
+        var isGood = direction == TrajectoryMetricDirection.LowerIsBetter ? delta < -0.1 : delta > 0.1;
+        var isBad  = direction == TrajectoryMetricDirection.LowerIsBetter ? delta >  0.1 : delta < -0.1;
+        return isGood ? "heat-tone-bon" : isBad ? "heat-tone-faible" : string.Empty;
+    }
+
+    private static string GetPositionChipVariant(string? posCode) => (posCode ?? "").ToUpperInvariant() switch
+    {
+        "GK" or "GB" or "G" or "GARDIENNE" or "GARDEN" => "gardienne",
+        var p when p.StartsWith("AR") => "arriere",
+        "PIV" or "PIVOT" => "pivot",
+        "AIL" or "AILIERE" or "AILIÈRE" => "ailiere",
+        "DC" or "DEMI" or "DEMI-CENTRE" or "DEMI-CENTER" => "demi",
+        _ => "neutral"
+    };
+
+    private static string GetKpiTileClass(string? tone) => (tone ?? "").ToLowerInvariant() switch
+    {
+        "fort" => "signal",
+        "bon"  => "court",
+        "moyen" => "warning",
+        "faible" => "danger",
+        _ => "highlight"
+    };
 
     // ── Brief : GLOBAL (joueuse de champ ET gardienne) ──
     // 3 KPI : métrique clé (taux tir ou taux arrêt) · indice technique · matchs joués

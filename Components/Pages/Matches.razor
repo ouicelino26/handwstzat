@@ -1,258 +1,276 @@
-﻿@page "/matches"
+@page "/matches"
 @inject ReferenceDataService ReferenceDataService
 @inject MatchesApiClient MatchesApiClient
 @inject MatchEventsApiClient MatchEventsApiClient
 @inject StatsApiClient StatsApiClient
 @inject IApiAuthService AuthService
 @inject AnalysisScopeService ScopeService
+@inject NavigationManager Navigation
+@inject CommandBarService CommandBarService
 @implements IDisposable
 
-<PageTitle>Games</PageTitle>
+<PageTitle>Matchs</PageTitle>
 
-<div class="games-workspace" data-workspace="games">
-    @if (!AuthService.Session.IsAuthenticated)
-    {
-        <AccessRequiredCard Message="Connectez-vous pour ouvrir les rencontres, les resumes et la lecture spatiale des matchs." />
-    }
-    else
-    {
-        @if (ShowMatchDetailView)
-        {
-            <AudienceLensSelector Kicker="Lecture du match"
-                              Title="Un même match, trois niveaux d'analyse"
-                              Subtitle="Le mode choisi ajuste les indicateurs, les scénarios et la densité des panneaux de détail."
-                              Value="@ActiveLens"
-                              ValueChanged="SetActiveLens" />
-        }
+@if (!AuthService.Session.IsAuthenticated)
+{
+    <div class="matches-auth-wall">
+        <AccessRequiredCard Message="Connectez-vous pour ouvrir les rencontres, les résumés et la lecture spatiale des matchs." />
+    </div>
+}
+else
+{
 
-        <section class="directory-command @(IsBusy ? "is-loading" : string.Empty)">
-            <div class="panel-head panel-head-wrap">
-                <div>
-                    <p class="section-kicker">Game directory</p>
-                    <h3>@(ShowMatchDetailView ? "Contexte de la rencontre" : "Trouver une rencontre")</h3>
-                    <p class="page-subtitle">Le scope, la recherche et le retour a la liste restent memorises.</p>
-                </div>
 
-                <div class="toolbar">
-                    @if (ShowMatchDetailView)
-                    {
-                        <a class="ghost-button filter-ghost" href="/matches">Retour aux cartes</a>
-                    }
-                    else
-                    {
-                        <button type="button" class="ghost-button filter-ghost" @onclick="ResetAsync" disabled="@IsBusy">Reinitialiser</button>
-                    }
-                </div>
+    <div class="matches-shell @(_listCollapsed ? "is-list-collapsed" : string.Empty)">
+
+        <aside class="matches-list-pane @(_listCollapsed ? "is-list-collapsed" : string.Empty)">
+            <div class="matches-filters-bar">
+                <label class="filter-field" style="margin:0;">
+                    <span class="sr-only">Recherche match</span>
+                    <input value="@MatchSearch"
+                           @oninput="OnMatchSearchChangedAsync"
+                           placeholder="Équipe, adversaire ou compétition…" />
+                </label>
             </div>
 
+            <ul class="matches-list" role="list">
+                @if (IsBusy && FilteredMatchList.Count == 0)
+                {
+                    <li style="padding:1.5rem 1rem;">
+                        <StateCard Kicker="Chargement"
+                                   Title="Chargement des matchs"
+                                   Message="La liste se met à jour."
+                                   Tone="loading" />
+                    </li>
+                }
+                else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <li style="padding:1rem;">
+                        <StateCard Kicker="Erreur"
+                                   Title="Erreur de chargement"
+                                   Message="@ErrorMessage"
+                                   Tone="error" />
+                    </li>
+                }
+                else if (FilteredMatchList.Count == 0)
+                {
+                    <li style="padding:1.5rem 1rem;">
+                        <StateCard Kicker="Aucun match"
+                                   Title="Aucune rencontre trouvée"
+                                   Message="Essayez d'autres filtres via le bouton Filtrer."
+                                   Tone="empty" />
+                    </li>
+                }
+                else
+                {
+                    @foreach (var match in FilteredMatchList)
+                    {
+                        var isActive = match.MatchId == MatchIdFromQuery;
+                        var homeScore = match.Team1Score ?? 0;
+                        var awayScore = match.Team2Score ?? 0;
+                        var homeWins = homeScore > awayScore;
+                        var awayWins = awayScore > homeScore;
+                        <li class="match-list-item @(isActive ? "active" : string.Empty)"
+                            @key="match.MatchId"
+                            @onclick="() => NavigateToMatch(match.MatchId)">
+                            <div class="match-list-item__header">
+                                <span class="match-list-item__comp">@MatchFilterCatalog.FormatSeasonDay(match) · @(match.CompetitionName ?? "Compétition")</span>
+                                <span class="match-list-item__date">@(match.Date.HasValue ? match.Date.Value.ToString("d MMM yyyy") : string.Empty)</span>
+                            </div>
+                            <div class="match-list-item__teams">
+                                <span class="match-list-item__team">
+                                    <img class="match-team-logo"
+                                         src="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team1Name, Season)"
+                                         alt="@(match.Team1Name ?? "Équipe")" />
+                                    @(match.Team1Name ?? "Équipe A")
+                                </span>
+                                <div class="match-list-item__score">
+                                    <span class="@(homeWins ? "match-list-item__score--win" : string.Empty)">@homeScore</span>
+                                    <span class="match-list-item__score-sep">–</span>
+                                    <span class="@(awayWins ? "match-list-item__score--win" : string.Empty)">@awayScore</span>
+                                </div>
+                                <span class="match-list-item__team match-list-item__team--away">
+                                    @(match.Team2Name ?? "Équipe B")
+                                    <img class="match-team-logo"
+                                         src="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team2Name, Season)"
+                                         alt="@(match.Team2Name ?? "Équipe")" />
+                                </span>
+                            </div>
+                            <div class="match-list-item__meta">
+                                @if (homeWins)
+                                {
+                                    <span class="badge badge--fort">Victoire</span>
+                                }
+                                else if (awayWins)
+                                {
+                                    <span class="badge badge--faible">Défaite</span>
+                                }
+                                else
+                                {
+                                    <span class="badge">Nul</span>
+                                }
+                            </div>
+                        </li>
+                    }
+                }
+            </ul>
+        </aside>
+
+        <button type="button"
+                class="matches-list-expander"
+                @onclick="ToggleListCollapsed"
+                aria-label="@(_listCollapsed ? "Ouvrir la liste" : "Réduire la liste")">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+        </button>
+
+        <div class="matches-detail-pane">
             @if (!ShowMatchDetailView)
             {
-                <details class="filter-drawer" open>
-                    <summary>
-                        <div>
-                            <strong>Filtres</strong>
+                <div class="matches-detail-empty">
+                    <StateCard Kicker="Matchs"
+                               Title="Sélectionnez une rencontre"
+                               Message="La fiche match, la timeline et la lecture spatiale s'ouvrent après sélection dans la liste."
+                               Tone="empty" />
+                </div>
+            }
+            else if (IsMatchDetailLoading)
+            {
+                <div class="matches-detail-empty">
+                    <StateCard Kicker="Chargement"
+                               Title="Chargement de la rencontre"
+                               Message="Le résumé, la timeline et les cartes se mettent à jour."
+                               Tone="loading" />
+                </div>
+            }
+            else if (SelectedMatch is null || MatchSummary is null)
+            {
+                <div class="matches-detail-empty">
+                    <StateCard Kicker="Aucun match"
+                               Title="Match introuvable"
+                               Message="Ce match n'a pas pu être chargé. Essayez une autre rencontre."
+                               Tone="empty" />
+                </div>
+            }
+            else
+            {
+                <div class="match-scoreboard-wrap">
+                    <div class="scoreboard">
+                        <div class="scoreboard__team">
+                            <img class="scoreboard__team-logo"
+                                 src="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, SelectedMatch.Team1Name, Season)"
+                                 alt="@(SelectedMatch.Team1Name ?? "Équipe A")" />
+                            <div class="scoreboard__team-text">
+                                <span class="scoreboard__code">@GetTeamCode(SelectedMatch.Team1Name, SelectedMatch.Team1Code)</span>
+                                <span class="scoreboard__name">@(SelectedMatch.Team1Name ?? "Équipe A")</span>
+                            </div>
                         </div>
-                    </summary>
-
-                    <div class="filter-drawer-body">
-                        <div class="page-filters">
-                            <label class="filter-field">
-                                <span>Competition</span>
-                                <select @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
-                                    <option value="">Toutes</option>
-                                    @foreach (var competition in AvailableCompetitions)
-                                    {
-                                        <option value="@competition.CompetitionId">@competition.CompetitionName</option>
-                                    }
-                                </select>
-                            </label>
-
-                            <label class="filter-field">
-                                <span>Equipe</span>
-                                <select @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
-                                    <option value="">Toutes</option>
-                                    @foreach (var team in AvailableTeams)
-                                    {
-                                        <option value="@team.TeamId">@team.TeamName</option>
-                                    }
-                                </select>
-                            </label>
-
-                            <label class="filter-field">
-                                <span>Recherche match</span>
-                                <input value="@MatchSearch" @oninput="OnMatchSearchChangedAsync" placeholder="Equipe, adversaire ou competition" />
-                            </label>
-
-                            <label class="filter-field">
-                                <span>Saison</span>
-                                <select value="@Season" @onchange="OnSeasonChangedAsync">
-                                    <option value="">Toutes</option>
-                                    @foreach (var season in SeasonOptions)
-                                    {
-                                        <option value="@season">@season</option>
-                                    }
-                                </select>
-                            </label>
-
-                            <label class="filter-field">
-                                <span>Journee</span>
-                                <select value="@Day" @onchange="OnDayChangedAsync">
-                                    <option value="">Toutes</option>
-                                    @foreach (var day in DayOptions)
-                                    {
-                                        <option value="@day">@day</option>
-                                    }
-                                </select>
-                            </label>
+                        <div class="scoreboard__center">
+                            <div class="scoreboard__scores">
+                                <span class="scoreboard__score @((SelectedMatch.Team1Score ?? 0) > (SelectedMatch.Team2Score ?? 0) ? "scoreboard__score--winner" : string.Empty)">@(SelectedMatch.Team1Score?.ToString() ?? "—")</span>
+                                <span class="scoreboard__sep">–</span>
+                                <span class="scoreboard__score @((SelectedMatch.Team2Score ?? 0) > (SelectedMatch.Team1Score ?? 0) ? "scoreboard__score--winner" : string.Empty)">@(SelectedMatch.Team2Score?.ToString() ?? "—")</span>
+                            </div>
+                            <div class="scoreboard__meta">
+                                @{
+                                    var _sbHome = SelectedMatch.Team1Score ?? 0;
+                                    var _sbAway = SelectedMatch.Team2Score ?? 0;
+                                    var _sbResultClass = _sbHome > _sbAway ? "badge--fort" : _sbHome < _sbAway ? "badge--faible" : "badge--neutral";
+                                    var _sbResultText = _sbHome > _sbAway ? "Victoire domicile" : _sbHome < _sbAway ? "Défaite" : "Match nul";
+                                }
+                                <span class="badge @_sbResultClass" style="display:block;margin-bottom:0.25rem;">@_sbResultText</span>
+                                <span>@(SelectedMatch.CompetitionName ?? "Compétition") · @MatchFilterCatalog.FormatSeasonDay(SelectedMatch)</span>
+                            </div>
+                        </div>
+                        <div class="scoreboard__team scoreboard__team--away">
+                            <div class="scoreboard__team-text">
+                                <span class="scoreboard__code">@GetTeamCode(SelectedMatch.Team2Name, SelectedMatch.Team2Code)</span>
+                                <span class="scoreboard__name">@(SelectedMatch.Team2Name ?? "Équipe B")</span>
+                            </div>
+                            <img class="scoreboard__team-logo"
+                                 src="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, SelectedMatch.Team2Name, Season)"
+                                 alt="@(SelectedMatch.Team2Name ?? "Équipe B")" />
                         </div>
                     </div>
-                </details>
-            }
+                </div>
 
-        </section>
-
-        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
-        {
-            <StateCard Kicker="Erreur"
-                       Title="Impossible de charger les matchs"
-                       Message="@ErrorMessage"
-                       Tone="error" />
-        }
-        else if (IsBusy && !ShowMatchDetailView && FilteredMatchList.Count == 0)
-        {
-            <StateCard Kicker="Chargement"
-                       Title="Mise a jour des matchs"
-                       Message="La selection, les filtres et les cartes se recalculent."
-                       Tone="loading" />
-        }
-        else
-        {
-            <section class="workspace-grid workspace-grid-single">
-                @if (IsBusy)
-                {
-                    <PageLoader Kicker="Chargement"
-                                Title="Actualisation des matchs"
-                                Message="La liste et le detail du match se recalculent." />
-                }
-
-                @if (!ShowMatchDetailView)
-                {
-                <article class="game-directory">
-                            <div class="panel-head">
-                                <div>
-                                    <h3>@FilteredMatchList.Count matchs</h3>
-                                </div>
-                            </div>
-
-                    @if (FilteredMatchList.Count == 0)
-                    {
-                        <StateCard Kicker="Aucun match"
-                                   Title="Le filtre courant ne retourne aucune rencontre"
-                                   Message="Essayez une autre compétition, une autre équipe ou un autre jour."
-                                   Tone="empty"
-                                   CssClass="empty-card-inline" />
-                    }
-                    else
-                    {
-                        <div class="match-mosaic">
-                            @foreach (var match in FilteredMatchList)
+                <div class="match-tabs-area">
+                    <div class="match-tab-bar">
+                        <button type="button"
+                                class="tab @(ActiveSection == "summary" ? "active" : string.Empty)"
+                                @onclick='() => SetActiveSection("summary")'>
+                            Story
+                        </button>
+                        <button type="button"
+                                class="tab @(ActiveSection == "players" ? "active" : string.Empty)"
+                                @onclick='() => SetActiveSection("players")'>
+                            Players
+                            @if (MatchPlayers.Count > 0)
                             {
-                                <MatchCard @key="match.MatchId"
-                                           Title="@($"{match.Team1Name ?? "Equipe A"} vs {match.Team2Name ?? "Equipe B"}")"
-                                           Score="@($"{match.Team1Score ?? 0} - {match.Team2Score ?? 0}")"
-                                           Teams="@ReferenceData.Teams"
-                                           Season="@Season"
-                                           HomeTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team1Name, Season)"
-                                           AwayTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team2Name, Season)"
-                                           Meta="@(match.CompetitionName ?? "Competition")"
-                                           SecondaryMeta="@MatchFilterCatalog.FormatSeasonDay(match)"
-                                           DetailsHref="@($"/matches?matchId={match.MatchId}")"
-                                           DetailsLabel="Voir plus" />
+                                <span class="tab__count">@MatchPlayers.Count</span>
                             }
-                        </div>
-                    }
-                </article>
-                }
-
-                @if (ShowMatchDetailView)
-                {
-                <article class="game-room">
-                    @if (IsMatchDetailLoading)
-                    {
-                        <StateCard Kicker="Chargement"
-                                   Title="Rechargement de la rencontre"
-                                   Message="Le résumé, la timeline et les cartes se mettent à jour pour le match sélectionné."
-                                   Tone="loading" />
-                    }
-                    else if (SelectedMatch is null || MatchSummary is null)
-                    {
-                        <StateCard Kicker="Aucun match"
-                                   Title="Choisissez une rencontre pour afficher son résumé"
-                                   Message="Le détail, la carte et l’effectif s’ouvrent après sélection."
-                                   Tone="empty"
-                                   CssClass="empty-card-inline" />
-                    }
-                    else
-                    {
-                        <header class="game-scoreboard">
-                            <div class="game-scoreboard__team">
-                                <span>Home</span>
-                                <strong>@(SelectedMatch.Team1Name ?? "Equipe A")</strong>
-                            </div>
-                            <div class="game-scoreboard__score">
-                                <span>@(SelectedMatch.CompetitionName ?? "Competition") · @MatchFilterCatalog.FormatSeasonDay(SelectedMatch)</span>
-                                <strong>@(SelectedMatch.Team1Score ?? 0)<i>:</i>@(SelectedMatch.Team2Score ?? 0)</strong>
-                            </div>
-                            <div class="game-scoreboard__team game-scoreboard__team--away">
-                                <span>Away</span>
-                                <strong>@(SelectedMatch.Team2Name ?? "Equipe B")</strong>
-                            </div>
-                        </header>
-
-                        <div class="match-scope-toolbar">
-                            <div class="match-scope-copy">
-                                <p class="section-kicker">Lecture équipe</p>
-                                <span>Basculer la vue sur une seule équipe ou garder le match complet.</span>
-                            </div>
-
-                            <div class="match-scope-toggle" role="group" aria-label="Filtre equipe">
+                        </button>
+                        <button type="button"
+                                class="tab @(ActiveSection == "zones" ? "active" : string.Empty)"
+                                @onclick='() => SetActiveSection("zones")'>
+                            Timeline
+                        </button>
+                        <div class="match-tab-bar__actions">
+                            <div class="team-toggle" role="group" aria-label="Filtre équipe">
                                 <button type="button"
-                                        class="match-scope-button @(IsTeamScopeActive(MatchTeamScopeBoth) ? "is-active" : string.Empty)"
-                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeBoth)"
-                                        disabled="@IsSpatialLoading">
+                                        class="team-toggle__btn @(IsTeamScopeActive(MatchTeamScopeBoth) ? "active" : string.Empty)"
+                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeBoth)">
                                     Les deux
                                 </button>
                                 <button type="button"
-                                        class="match-scope-button @(IsTeamScopeActive(MatchTeamScopeTeam1) ? "is-active" : string.Empty)"
-                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeTeam1)"
-                                        disabled="@IsSpatialLoading">
-                                    @(SelectedMatch.Team1Name ?? "Equipe 1")
+                                        class="team-toggle__btn @(IsTeamScopeActive(MatchTeamScopeTeam1) ? "active" : string.Empty)"
+                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeTeam1)">
+                                    @GetTeamCode(SelectedMatch.Team1Name, SelectedMatch.Team1Code)
                                 </button>
                                 <button type="button"
-                                        class="match-scope-button @(IsTeamScopeActive(MatchTeamScopeTeam2) ? "is-active" : string.Empty)"
-                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeTeam2)"
-                                        disabled="@IsSpatialLoading">
-                                    @(SelectedMatch.Team2Name ?? "Equipe 2")
+                                        class="team-toggle__btn @(IsTeamScopeActive(MatchTeamScopeTeam2) ? "active" : string.Empty)"
+                                        @onclick="() => SetMatchTeamScopeAsync(MatchTeamScopeTeam2)">
+                                    @GetTeamCode(SelectedMatch.Team2Name, SelectedMatch.Team2Code)
                                 </button>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="scene-switcher" role="tablist" aria-label="Scenes du match">
-                            <button type="button" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Story</button>
-                            <button type="button" class="tab-button @(ActiveSection == "zones" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("zones")'>Court</button>
-                            <button type="button" class="tab-button @(ActiveSection == "players" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("players")'>Players</button>
-                        </div>
-
+                    <div class="match-tab-panel">
                         @if (ActiveSection == "summary")
                         {
-                            <div class="stats-grid">
-                                <div class="mini-card"><span>Evenements</span><strong>@MatchSummary.EventCount</strong></div>
-                                <div class="mini-card"><span>Buts</span><strong>@(MatchSummary.GoalCount + MatchSummary.PenaltyGoalCount)</strong></div>
-                                <div class="mini-card"><span>Passes</span><strong>@MatchSummary.AssistCount</strong></div>
-                                <div class="mini-card"><span>Interceptions</span><strong>@MatchSummary.InterceptionCount</strong></div>
-                                <div class="mini-card"><span>Arrets</span><strong>@MatchSummary.SaveCount</strong></div>
-                                <div class="mini-card"><span>Pertes</span><strong>@MatchSummary.TurnoverCount</strong></div>
-                                <div class="mini-card"><span>Sanctions</span><strong>@MatchSummary.SanctionCount</strong></div>
+                            <div class="section-header" style="margin-bottom:1rem;">
+                                <h3 class="section-header__title">Résumé du match</h3>
+                            </div>
+
+                            <div class="stats-grid stats-grid--match" style="margin-bottom:1.5rem;">
+                                <div class="stats-grid__item">
+                                    <span class="stats-grid__value">@MatchSummary.EventCount</span>
+                                    <span class="stats-grid__label">Évènements</span>
+                                </div>
+                                <div class="stats-grid__item stats-grid__item--positive">
+                                    <span class="stats-grid__value">@(MatchSummary.GoalCount + MatchSummary.PenaltyGoalCount)</span>
+                                    <span class="stats-grid__label">Buts</span>
+                                </div>
+                                <div class="stats-grid__item">
+                                    <span class="stats-grid__value">@MatchSummary.AssistCount</span>
+                                    <span class="stats-grid__label">Passes</span>
+                                </div>
+                                <div class="stats-grid__item">
+                                    <span class="stats-grid__value">@MatchSummary.InterceptionCount</span>
+                                    <span class="stats-grid__label">Interceptions</span>
+                                </div>
+                                <div class="stats-grid__item">
+                                    <span class="stats-grid__value">@MatchSummary.SaveCount</span>
+                                    <span class="stats-grid__label">Arrêts</span>
+                                </div>
+                                <div class="stats-grid__item stats-grid__item--negative">
+                                    <span class="stats-grid__value">@MatchSummary.TurnoverCount</span>
+                                    <span class="stats-grid__label">Pertes</span>
+                                </div>
+                                <div class="stats-grid__item stats-grid__item--negative">
+                                    <span class="stats-grid__value">@MatchSummary.SanctionCount</span>
+                                    <span class="stats-grid__label">Sanctions</span>
+                                </div>
                             </div>
 
                             @if (ShowMatchSummaryKpis)
@@ -262,126 +280,195 @@
 
                             @if (SelectedMatchTimeline.Count >= 2)
                             {
-                                <section class="page-panel">
+                                <section class="page-panel" style="margin-bottom:1.5rem;">
                                     <div class="panel-head panel-head-wrap">
                                         <div>
                                             <p class="section-kicker">Lecture de score</p>
-                                        <h4>Évolution des deux équipes pendant le match</h4>
-                                            <p class="page-subtitle">Une lecture directe du scenario, des runs et des bascules de leader.</p>
+                                            <h4>Évolution pendant le match</h4>
                                         </div>
-
-                                        <span class="hero-badge">Score final @((SelectedMatch.Team1Score ?? 0) + " - " + (SelectedMatch.Team2Score ?? 0))</span>
+                                        <span class="hero-badge">Score @FinalScoreLabel</span>
                                     </div>
 
-                                        <ApexChart @key="SelectedMatchLoadToken" TItem="ScoreTimelinePoint" Height="320" Options="@GetScoreTimelineChartOptions()">
-                                            @if (ShowTeam1TimelineSeries)
-                                            {
-                                                <ApexPointSeries TItem="ScoreTimelinePoint"
-                                                                 Items="@SelectedMatchTimeline"
-                                                                 Name="@(SelectedMatch.Team1Name ?? "Equipe 1")"
-                                                                 SeriesType="SeriesType.Line"
-                                                                 XValue="point => point.Label"
-                                                                 YValue="point => (decimal?)point.Team1Score" />
-                                            }
-                                            @if (ShowTeam2TimelineSeries)
-                                            {
-                                                <ApexPointSeries TItem="ScoreTimelinePoint"
-                                                                 Items="@SelectedMatchTimeline"
-                                                                 Name="@(SelectedMatch.Team2Name ?? "Equipe 2")"
-                                                                 SeriesType="SeriesType.Line"
-                                                                 XValue="point => point.Label"
-                                                                 YValue="point => (decimal?)point.Team2Score" />
-                                            }
-                                        </ApexChart>
-
-                                    @if (ShowMatchScenarioInsights)
-                                    {
-                                        <div class="badge-row timeline-insight-grid">
-                                            @foreach (var insight in TimelineInsights)
-                                            {
-                                                <div class="mini-card timeline-insight-card">
-                                                    <span>@insight.Label</span>
-                                                    <strong>@insight.Value</strong>
-                                                    <p class="tiny-note">@insight.Detail</p>
-                                                </div>
-                                            }
-                                        </div>
-                                    }
-
-                                    @if (ShowMatchTimelineKpis)
-                                    {
-                                        <KpiTileGrid Items="@TimelineKpis" />
-                                    }
+                                    <ApexChart @key="SelectedMatchLoadToken" TItem="ScoreTimelinePoint" Height="240" Options="@GetScoreTimelineChartOptions()">
+                                        @if (ShowTeam1TimelineSeries)
+                                        {
+                                            <ApexPointSeries TItem="ScoreTimelinePoint"
+                                                             Items="@SelectedMatchTimeline"
+                                                             Name="@(SelectedMatch.Team1Name ?? "Équipe 1")"
+                                                             SeriesType="SeriesType.Line"
+                                                             XValue="point => point.Label"
+                                                             YValue="point => (decimal?)point.Team1Score" />
+                                        }
+                                        @if (ShowTeam2TimelineSeries)
+                                        {
+                                            <ApexPointSeries TItem="ScoreTimelinePoint"
+                                                             Items="@SelectedMatchTimeline"
+                                                             Name="@(SelectedMatch.Team2Name ?? "Équipe 2")"
+                                                             SeriesType="SeriesType.Line"
+                                                             XValue="point => point.Label"
+                                                             YValue="point => (decimal?)point.Team2Score" />
+                                        }
+                                    </ApexChart>
 
                                     @if (TimelineMoments.Count > 0)
                                     {
-                                        <section class="timeline-moments">
-                                            <div class="panel-head">
-                                                <div>
-                                                    <p class="section-kicker">Temps forts</p>
-                                                    <h4>Moments qui racontent le scenario</h4>
+                                        <details class="timeline-detail-disclosure" style="margin-top:1rem;">
+                                            <summary>
+                                                <span>Voir détails</span>
+                                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;"><path d="M9 18l6-6-6-6"></path></svg>
+                                            </summary>
+                                            <div class="timeline-detail-panel">
+                                                @if (ShowMatchTimelineKpis)
+                                                {
+                                                    <KpiTileGrid Items="@TimelineKpis" />
+                                                }
+                                                <div class="timeline-moment-list">
+                                                    @foreach (var moment in TimelineMoments)
+                                                    {
+                                                        <article class="timeline-moment-card @GetToneClass(moment.Tone)">
+                                                            <div class="timeline-moment-meta">
+                                                                <span>@moment.ClockLabel</span>
+                                                                <strong>@moment.ScoreLabel</strong>
+                                                            </div>
+                                                            <div class="timeline-moment-copy">
+                                                                <h5>@moment.Title</h5>
+                                                                <p>@moment.Detail</p>
+                                                            </div>
+                                                        </article>
+                                                    }
                                                 </div>
                                             </div>
-
-                                            <div class="timeline-moment-list">
-                                                @foreach (var moment in TimelineMoments)
-                                                {
-                                                    <article class="timeline-moment-card @GetToneClass(moment.Tone)">
-                                                        <div class="timeline-moment-meta">
-                                                            <span>@moment.ClockLabel</span>
-                                                            <strong>@moment.ScoreLabel</strong>
-                                                        </div>
-                                                        <div class="timeline-moment-copy">
-                                                            <h5>@moment.Title</h5>
-                                                            <p>@moment.Detail</p>
-                                                        </div>
-                                                    </article>
-                                                }
-                                            </div>
-                                        </section>
+                                        </details>
                                     }
                                 </section>
                             }
 
+                            <div class="match-story-grid">
+                                <div>
+                                    <div class="section-header" style="margin-bottom:0.75rem;">
+                                        <h3 class="section-header__title">Top scoreuses</h3>
+                                    </div>
+                                    @{
+                                        var topScorers = (MatchSummary.TopScorers?.Where(s => IsPlayerInTeamScope(s.TeamName)) ?? []).Take(5).ToList();
+                                    }
+                                    <div class="top-scorers">
+                                        @if (topScorers.Count == 0)
+                                        {
+                                            <div class="top-scorer-row">
+                                                <span style="color:var(--text-muted);font-size:0.75rem;padding:0.5rem 0;">Aucune scoreuse</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @for (int i = 0; i < topScorers.Count; i++)
+                                            {
+                                                var scorer = topScorers[i];
+                                                var rank = i + 1;
+                                                var scorerInitials = GetPlayerInitials(scorer.FullName);
+                                                <div class="top-scorer-row">
+                                                    <span class="top-scorer-row__rank">@rank</span>
+                                                    <div class="top-scorer-row__avatar">@scorerInitials</div>
+                                                    <a href="/players?playerId=@scorer.PlayerId" class="top-scorer-row__name">@scorer.FullName</a>
+                                                    <span class="top-scorer-row__team">@scorer.TeamName</span>
+                                                    <span class="top-scorer-row__goals">@scorer.Value</span>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="section-header" style="margin-bottom:0.75rem;">
+                                        <h3 class="section-header__title">Duel d'équipes</h3>
+                                    </div>
+                                    @{
+                                        var duelT1 = MatchPlayers.Where(p => p.TeamId.HasValue && p.TeamId == SelectedMatch.Team1Id).ToList();
+                                        var duelT2 = MatchPlayers.Where(p => p.TeamId.HasValue && p.TeamId == SelectedMatch.Team2Id).ToList();
+                                        var duelT1Goals = SelectedMatch.Team1Score ?? 0;
+                                        var duelT2Goals = SelectedMatch.Team2Score ?? 0;
+                                        int duelT1Ast, duelT2Ast, duelT1Sav, duelT2Sav, duelT1Int, duelT2Int, duelT1Tur, duelT2Tur, duelT1Shot, duelT2Shot, duelT1San, duelT2San;
+                                        if (duelT1.Count > 0 || duelT2.Count > 0)
+                                        {
+                                            duelT1Ast = duelT1.Sum(p => p.AssistCount);
+                                            duelT2Ast = duelT2.Sum(p => p.AssistCount);
+                                            duelT1Sav = duelT1.Sum(p => p.SaveCount);
+                                            duelT2Sav = duelT2.Sum(p => p.SaveCount);
+                                            duelT1Int = duelT1.Sum(p => p.InterceptionCount);
+                                            duelT2Int = duelT2.Sum(p => p.InterceptionCount);
+                                            duelT1Tur = duelT1.Sum(p => p.TurnoverCount);
+                                            duelT2Tur = duelT2.Sum(p => p.TurnoverCount);
+                                            duelT1Shot = duelT1.Sum(p => p.ShotAttempts);
+                                            duelT2Shot = duelT2.Sum(p => p.ShotAttempts);
+                                            duelT1San = duelT1.Sum(p => p.SanctionCount);
+                                            duelT2San = duelT2.Sum(p => p.SanctionCount);
+                                        }
+                                        else
+                                        {
+                                            duelT1Ast = MatchSummary.AssistCount; duelT2Ast = 0;
+                                            duelT1Sav = MatchSummary.SaveCount; duelT2Sav = 0;
+                                            duelT1Int = MatchSummary.InterceptionCount; duelT2Int = 0;
+                                            duelT1Tur = MatchSummary.TurnoverCount; duelT2Tur = 0;
+                                            duelT1Shot = MatchSummary.Technical.ShotAttempts; duelT2Shot = 0;
+                                            duelT1San = MatchSummary.SanctionCount; duelT2San = 0;
+                                        }
+                                    }
+                                    <div class="duel-stat-list">
+                                        <div class="duel-stat-row">
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Goals >= duelT2Goals && (duelT1Goals > 0 || duelT2Goals > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Goals</span>
+                                            <span class="duel-stat-row__label">Buts</span>
+                                            <span class="duel-stat-row__val @(duelT2Goals > duelT1Goals ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Goals</span>
+                                        </div>
+                                        <div class="duel-stat-row">
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Shot >= duelT2Shot && (duelT1Shot > 0 || duelT2Shot > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Shot</span>
+                                            <span class="duel-stat-row__label">Tirs</span>
+                                            <span class="duel-stat-row__val @(duelT2Shot > duelT1Shot ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Shot</span>
+                                        </div>
+                                        <div class="duel-stat-row">
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Ast >= duelT2Ast && (duelT1Ast > 0 || duelT2Ast > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Ast</span>
+                                            <span class="duel-stat-row__label">Passes</span>
+                                            <span class="duel-stat-row__val @(duelT2Ast > duelT1Ast ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Ast</span>
+                                        </div>
+                                        <div class="duel-stat-row">
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Sav >= duelT2Sav && (duelT1Sav > 0 || duelT2Sav > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Sav</span>
+                                            <span class="duel-stat-row__label">Arrêts</span>
+                                            <span class="duel-stat-row__val @(duelT2Sav > duelT1Sav ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Sav</span>
+                                        </div>
+                                        <div class="duel-stat-row">
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Int >= duelT2Int && (duelT1Int > 0 || duelT2Int > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Int</span>
+                                            <span class="duel-stat-row__label">Interceptions</span>
+                                            <span class="duel-stat-row__val @(duelT2Int > duelT1Int ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Int</span>
+                                        </div>
+                                        <div class="duel-stat-row">
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Tur <= duelT2Tur && (duelT1Tur > 0 || duelT2Tur > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Tur</span>
+                                            <span class="duel-stat-row__label">Pertes</span>
+                                            <span class="duel-stat-row__val @(duelT2Tur < duelT1Tur ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Tur</span>
+                                        </div>
+                                        <div class="duel-stat-row">
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1San <= duelT2San && (duelT1San > 0 || duelT2San > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1San</span>
+                                            <span class="duel-stat-row__label">Sanctions</span>
+                                            <span class="duel-stat-row__val @(duelT2San < duelT1San ? "duel-stat-row__val--winner" : string.Empty)">@duelT2San</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             @if (ShowMatchSummaryCharts)
                             {
-                                <section class="page-panel matches-comparison-panel">
+                                <section class="page-panel" style="margin-bottom:1.5rem;">
                                     <div class="panel-head panel-head-wrap">
                                         <div>
-                                            <p class="section-kicker">Comparaison d'equipe</p>
+                                            <p class="section-kicker">Comparaison d'équipe</p>
                                             <h4>Actions majeures par camp</h4>
-                                            <p class="page-subtitle">Une lecture horizontale pour comparer buts, passes, defense, pertes et sanctions des deux equipes.</p>
                                         </div>
-
                                         <span class="hero-badge">@FinalScoreLabel</span>
                                     </div>
 
-                                    <div class="comparison-story">
-                                        <article class="comparison-card comparison-story-card">
-                                            <span>Camp 1</span>
-                                            <strong>@(SelectedMatch.Team1Name ?? "Equipe 1")</strong>
-                                            <p>@((int)Math.Round(MatchTeam1ComparisonSeries.Sum(point => point.Value))) points d'activite</p>
-                                        </article>
-
-                                        <article class="comparison-card comparison-story-card comparison-story-card-center">
-                                            <span>Lecture commune</span>
-                                            <strong>@FinalScoreLabel</strong>
-                                            <p>@MatchFilterCatalog.FormatSeasonDay(SelectedMatch)</p>
-                                        </article>
-
-                                        <article class="comparison-card comparison-story-card">
-                                            <span>Camp 2</span>
-                                            <strong>@(SelectedMatch.Team2Name ?? "Equipe 2")</strong>
-                                            <p>@((int)Math.Round(MatchTeam2ComparisonSeries.Sum(point => point.Value))) points d'activite</p>
-                                        </article>
-                                    </div>
-
-                                    <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="340" Options="@GetMatchComparisonChartOptions()">
+                                    <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="280" Options="@GetMatchComparisonChartOptions()">
                                         @if (ShowTeam1TimelineSeries)
                                         {
                                             <ApexPointSeries TItem="MetricPlotPoint"
                                                              Items="@MatchTeam1ComparisonSeries"
-                                                             Name="@(SelectedMatch?.Team1Name ?? "Equipe 1")"
+                                                             Name="@(SelectedMatch?.Team1Name ?? "Équipe 1")"
                                                              SeriesType="SeriesType.Bar"
                                                              XValue="point => point.Label"
                                                              YValue="point => (decimal?)point.Value" />
@@ -390,7 +477,7 @@
                                         {
                                             <ApexPointSeries TItem="MetricPlotPoint"
                                                              Items="@MatchTeam2ComparisonSeries"
-                                                             Name="@(SelectedMatch?.Team2Name ?? "Equipe 2")"
+                                                             Name="@(SelectedMatch?.Team2Name ?? "Équipe 2")"
                                                              SeriesType="SeriesType.Bar"
                                                              XValue="point => point.Label"
                                                              YValue="point => (decimal?)point.Value" />
@@ -401,11 +488,11 @@
 
                             @if (ShowMatchAnalystPanels)
                             {
-                                <div class="dual-grid">
+                                <div class="dual-grid" style="margin-bottom:1.5rem;">
                                     <section class="page-panel">
                                         <p class="section-kicker">Profil du match</p>
                                         <h4>Volume des actions majeures</h4>
-                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="300" Options="@GetMatchProfileChartOptions()">
+                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="260" Options="@GetMatchProfileChartOptions()">
                                             <ApexPointSeries TItem="MetricPlotPoint"
                                                              Items="@MatchProfileSeries"
                                                              Name="Volume"
@@ -416,9 +503,9 @@
                                     </section>
 
                                     <section class="page-panel">
-                                        <p class="section-kicker">Joueuses decisives</p>
+                                        <p class="section-kicker">Joueuses décisives</p>
                                         <h4>Actions directes sur la rencontre</h4>
-                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="300" Options="@GetMatchImpactChartOptions()">
+                                        <ApexChart @key="SelectedMatchLoadToken" TItem="MetricPlotPoint" Height="260" Options="@GetMatchImpactChartOptions()">
                                             <ApexPointSeries TItem="MetricPlotPoint"
                                                              Items="@MatchPlayerImpactSeries"
                                                              Name="Buts + passes"
@@ -429,150 +516,182 @@
                                     </section>
                                 </div>
                             }
-
-                            <section class="page-panel">
-                                <p class="section-kicker">Top scoreuses</p>
-                                <h4>Production sur le match - @MatchTeamScopeLabel</h4>
-                                <div class="list-stack">
-                                    @foreach (var scorer in (MatchSummary.TopScorers?.Where(scorer => IsPlayerInTeamScope(scorer.TeamName)) ?? []))
-                                    {
-                                        <div class="list-item">
-                                            <div class="key-metric">
-                                                <strong>@scorer.FullName</strong>
-                                                <span>@scorer.Value buts</span>
-                                            </div>
-                                            <p class="tiny-note">@scorer.TeamName</p>
-                                        </div>
-                                    }
-                                </div>
-                            </section>
                         }
                         else if (ActiveSection == "zones")
                         {
                             <ErrorBoundary>
                                 <ChildContent>
-                                    @if (IsSpatialLoading && MatchSpatial is null)
+                                    <div class="court-filters-bar">
+                                        <span>Type :</span>
+                                        <div class="pill-group">
+                                            <button type="button"
+                                                    class="pill-btn @(MatchAttackTypeFilter is "all" or "" ? "active" : string.Empty)"
+                                                    @onclick='() => SetMatchAttackTypeFilterAsync("all")'
+                                                    disabled="@_isCourtBothLoading">
+                                                Toutes
+                                            </button>
+                                            <button type="button"
+                                                    class="pill-btn @(MatchAttackTypeFilter == "openplay" ? "active" : string.Empty)"
+                                                    @onclick='() => SetMatchAttackTypeFilterAsync("openplay")'
+                                                    disabled="@_isCourtBothLoading">
+                                                Jeu ouvert
+                                            </button>
+                                            <button type="button"
+                                                    class="pill-btn @(MatchAttackTypeFilter == "sevenm" ? "active" : string.Empty)"
+                                                    @onclick='() => SetMatchAttackTypeFilterAsync("sevenm")'
+                                                    disabled="@_isCourtBothLoading">
+                                                7m
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    @if (_isCourtBothLoading && _spatialHome is null && _spatialAway is null)
                                     {
                                         <StateCard Kicker="Chargement"
-                                                   Title="Rechargement spatial"
-                                                   Message=$"La carte but et déclenchements se recalcule pour {MatchSpatialLabel}."
+                                                   Title="Cartes de terrain"
+                                                   Message="Chargement des cartes but et déclenchements des deux équipes."
                                                    Tone="loading" />
                                     }
-                                    else if (MatchSpatial is null)
+                                    else if (_spatialHome is null && _spatialAway is null)
                                     {
                                         <StateCard Kicker="Aucune carte"
-                                                   Title="La lecture but et déclenchements n’a pas encore été chargée pour ce scope"
-                                                   Message="Essayez un autre match ou changez le périmètre d’équipe."
+                                                   Title="Lecture spatiale indisponible"
+                                                   Message="Aucune donnée de terrain disponible pour ce match."
                                                    Tone="empty"
                                                    CssClass="empty-card-inline" />
                                     }
                                     else
                                     {
-                                        @if (string.Equals(MatchTeamScope, MatchTeamScopeBoth, StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            <p class="tiny-note spatial-scope-note">
-                                                La lecture spatiale s'ouvre sur @MatchSpatialLabel. Utilisez les boutons d'equipe pour basculer vers l'autre camp.
-                                            </p>
-                                        }
-
-                                        <div class="match-scope-toolbar spatial-attack-filter">
-                                            <div class="match-scope-copy">
-                                                <p class="section-kicker">Type d'attaque</p>
-                                            </div>
-                                            <button type="button"
-                                                    class="match-scope-button @(MatchAttackTypeFilter == "all" ? "is-active" : string.Empty)"
-                                                    @onclick='() => SetMatchAttackTypeFilterAsync("all")'
-                                                    disabled="@IsSpatialLoading">
-                                                Toutes
-                                            </button>
-                                            <button type="button"
-                                                    class="match-scope-button @(MatchAttackTypeFilter == "openplay" ? "is-active" : string.Empty)"
-                                                    @onclick='() => SetMatchAttackTypeFilterAsync("openplay")'
-                                                    disabled="@IsSpatialLoading">
-                                                Jeu ouvert
-                                            </button>
-                                            <button type="button"
-                                                    class="match-scope-button @(MatchAttackTypeFilter == "sevenm" ? "is-active" : string.Empty)"
-                                                    @onclick='() => SetMatchAttackTypeFilterAsync("sevenm")'
-                                                    disabled="@IsSpatialLoading">
-                                                7 metres
-                                            </button>
-                                        </div>
-
-                                        @if (HasSpatialFocus)
-                                        {
-                                            <div class="match-scope-toolbar spatial-focus-toolbar">
-                                                <div class="match-scope-copy">
-                                                    <p class="section-kicker">Lecture ciblee</p>
-                                                    <span>Zones liees a @SpatialFocusKey</span>
-                                                </div>
-
-                                                <button type="button"
-                                                        class="match-scope-button"
-                                                        @onclick="ResetSpatialFocusAsync"
-                                                        disabled="@IsSpatialLoading">
-                                                    Voir toutes les zones
-                                                </button>
-                                            </div>
-                                        }
-
-                                        <div class="dual-grid">
-                                            <section class="page-panel @(IsSpatialLoading ? "is-loading" : string.Empty)">
-                                                <p class="section-kicker">Spatial match</p>
-                                                <h4>But et declenchements</h4>
-                                                <GoalKpi GoalZones="@GoalZones"
-                                                         TriggerZones="@TriggerZones"
-                                                         IsGoalkeeper="false"
-                                                         ActiveZoneKey="@ActiveZoneKey"
-                                                         OnZoneSelected="HandleZoneSelectionAsync"
-                                                         HideZeroZones="@HasSpatialFocus"
-                                                         IsLoading="@IsSpatialLoading" />
-                                            </section>
-
-                                            <section class="page-panel">
-                                                <div class="panel-head">
-                                                    <div>
-                                                        <p class="section-kicker">Zone active</p>
-                                                        <h4>@(CurrentZone?.Label ?? "Selectionnez une zone")</h4>
+                                        <section class="court-comparison">
+                                            @* Équipe domicile *@
+                                            <div class="court-team-panel">
+                                                <div class="court-team-head">
+                                                    <div class="court-team-title">
+                                                        <span class="court-team-kicker">Domicile</span>
+                                                        <span class="court-team-name">@(SelectedMatch?.Team1Name ?? "Équipe 1")</span>
                                                     </div>
-                                                    @if (IsSpatialLoading)
-                                                    {
-                                                        <span class="hero-badge">Chargement spatial</span>
+                                                    @{
+                                                        var homeAttempts = HomeGoalZones.Sum(z => z.Attempts);
+                                                        var homeEff = homeAttempts > 0 ? (int)Math.Round(100.0 * HomeGoalZones.Sum(z => z.Successes) / homeAttempts) : 0;
                                                     }
-                                                    else if (CurrentZone is not null)
-                                                    {
-                                                        <span class="hero-badge">@FormatRate(CurrentZone.Rate)%</span>
-                                                    }
+                                                    <div class="court-team-summary"><strong>@homeEff%</strong><span>eff.</span></div>
                                                 </div>
-
-                                                @if (CurrentZone is not null)
-                                                {
-                                                    <div class="badge-row">
-                                                        <div class="mini-card"><span>Volume</span><strong>@CurrentZone.Attempts</strong></div>
-                                                        <div class="mini-card"><span>Succes</span><strong>@CurrentZone.Successes</strong></div>
-                                                        <div class="mini-card"><span>Echecs</span><strong>@CurrentZone.Failures</strong></div>
-                                                    </div>
-
-                                                    <div class="list-stack">
-                                                        @foreach (var outcome in CurrentZone.Outcomes)
-                                                        {
-                                                            <div class="list-item">
-                                                                <div class="key-metric">
-                                                                    <strong>@outcome.Label</strong>
-                                                                    <span>@outcome.Count</span>
+                                                <div class="court-team-maps">
+                                                    <div class="court-map-block">
+                                                        <div class="court-map-label"><span>But</span><strong>Précision</strong></div>
+                                                        <div class="court-svg-outer">
+                                                            <GoalKpi GoalZones="@HomeGoalZones"
+                                                                     TriggerZones="@HomeTriggerZones"
+                                                                     IsGoalkeeper="false"
+                                                                     ViewMode="goal"
+                                                                     IsLoading="@_isCourtBothLoading" />
+                                                        </div>
+                                                        <details class="court-zone-detail">
+                                                            <summary>Détail zones but</summary>
+                                                            <div class="court-zone-detail__body">
+                                                                <div class="court-zone-detail__grid">
+                                                                    @{
+                                                                        var bestHomeGoal = HomeGoalZones.OrderByDescending(z => z.Rate).FirstOrDefault(z => z.Attempts > 0);
+                                                                    }
+                                                                    <div class="court-zone-mini"><span>Zone forte</span><strong>@(bestHomeGoal is not null ? $"{bestHomeGoal.Label} · {(int)Math.Round(bestHomeGoal.Rate)}%" : "–")</strong></div>
+                                                                    <div class="court-zone-mini"><span>Volume</span><strong>@homeAttempts tirs</strong></div>
+                                                                    <div class="court-zone-mini"><span>Buts</span><strong>@HomeGoalZones.Sum(z => z.Successes)</strong></div>
                                                                 </div>
                                                             </div>
-                                                        }
+                                                        </details>
                                                     </div>
-                                                }
-                                            </section>
-                                        </div>
+                                                    <div class="court-map-block">
+                                                        <div class="court-map-label"><span>Déclenchements</span><strong>Zones d'action</strong></div>
+                                                        <div class="court-svg-outer">
+                                                            <GoalKpi GoalZones="@HomeGoalZones"
+                                                                     TriggerZones="@HomeTriggerZones"
+                                                                     IsGoalkeeper="false"
+                                                                     ViewMode="trigger"
+                                                                     IsLoading="@_isCourtBothLoading" />
+                                                        </div>
+                                                        <details class="court-zone-detail">
+                                                            <summary>Détail zones déclenchement</summary>
+                                                            <div class="court-zone-detail__body">
+                                                                <div class="court-zone-detail__grid">
+                                                                    @{
+                                                                        var topHomeTrig = HomeTriggerZones.OrderByDescending(z => z.Attempts).FirstOrDefault();
+                                                                    }
+                                                                    <div class="court-zone-mini"><span>Zone principale</span><strong>@(topHomeTrig?.Label ?? "–")</strong></div>
+                                                                    <div class="court-zone-mini"><span>Déclenchements</span><strong>@HomeTriggerZones.Sum(z => z.Attempts)</strong></div>
+                                                                </div>
+                                                            </div>
+                                                        </details>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            @* Équipe extérieure *@
+                                            <div class="court-team-panel court-team-panel--away">
+                                                <div class="court-team-head">
+                                                    <div class="court-team-title">
+                                                        <span class="court-team-kicker">Extérieur</span>
+                                                        <span class="court-team-name">@(SelectedMatch?.Team2Name ?? "Équipe 2")</span>
+                                                    </div>
+                                                    @{
+                                                        var awayAttempts = AwayGoalZones.Sum(z => z.Attempts);
+                                                        var awayEff = awayAttempts > 0 ? (int)Math.Round(100.0 * AwayGoalZones.Sum(z => z.Successes) / awayAttempts) : 0;
+                                                    }
+                                                    <div class="court-team-summary"><strong>@awayEff%</strong><span>eff.</span></div>
+                                                </div>
+                                                <div class="court-team-maps">
+                                                    <div class="court-map-block">
+                                                        <div class="court-map-label"><span>But</span><strong>Précision</strong></div>
+                                                        <div class="court-svg-outer">
+                                                            <GoalKpi GoalZones="@AwayGoalZones"
+                                                                     TriggerZones="@AwayTriggerZones"
+                                                                     IsGoalkeeper="false"
+                                                                     ViewMode="goal"
+                                                                     IsLoading="@_isCourtBothLoading" />
+                                                        </div>
+                                                        <details class="court-zone-detail">
+                                                            <summary>Détail zones but</summary>
+                                                            <div class="court-zone-detail__body">
+                                                                <div class="court-zone-detail__grid">
+                                                                    @{
+                                                                        var bestAwayGoal = AwayGoalZones.OrderByDescending(z => z.Rate).FirstOrDefault(z => z.Attempts > 0);
+                                                                    }
+                                                                    <div class="court-zone-mini"><span>Zone forte</span><strong>@(bestAwayGoal is not null ? $"{bestAwayGoal.Label} · {(int)Math.Round(bestAwayGoal.Rate)}%" : "–")</strong></div>
+                                                                    <div class="court-zone-mini"><span>Volume</span><strong>@awayAttempts tirs</strong></div>
+                                                                    <div class="court-zone-mini"><span>Buts</span><strong>@AwayGoalZones.Sum(z => z.Successes)</strong></div>
+                                                                </div>
+                                                            </div>
+                                                        </details>
+                                                    </div>
+                                                    <div class="court-map-block">
+                                                        <div class="court-map-label"><span>Déclenchements</span><strong>Zones d'action</strong></div>
+                                                        <div class="court-svg-outer">
+                                                            <GoalKpi GoalZones="@AwayGoalZones"
+                                                                     TriggerZones="@AwayTriggerZones"
+                                                                     IsGoalkeeper="false"
+                                                                     ViewMode="trigger"
+                                                                     IsLoading="@_isCourtBothLoading" />
+                                                        </div>
+                                                        <details class="court-zone-detail">
+                                                            <summary>Détail zones déclenchement</summary>
+                                                            <div class="court-zone-detail__body">
+                                                                <div class="court-zone-detail__grid">
+                                                                    @{
+                                                                        var topAwayTrig = AwayTriggerZones.OrderByDescending(z => z.Attempts).FirstOrDefault();
+                                                                    }
+                                                                    <div class="court-zone-mini"><span>Zone principale</span><strong>@(topAwayTrig?.Label ?? "–")</strong></div>
+                                                                    <div class="court-zone-mini"><span>Déclenchements</span><strong>@AwayTriggerZones.Sum(z => z.Attempts)</strong></div>
+                                                                </div>
+                                                            </div>
+                                                        </details>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </section>
                                     }
                                 </ChildContent>
                                 <ErrorContent Context="zoneError">
                                     <StateCard Kicker="Erreur"
-                                               Title="La lecture spatiale n’a pas pu se rendre"
-                                               Message="Une erreur de rendu a été interceptée dans la carte des zones. Vous pouvez recharger la fiche match ou changer de camp pour réessayer."
+                                               Title="La lecture spatiale n'a pas pu se rendre"
+                                               Message="Une erreur de rendu a été interceptée dans la carte des zones."
                                                Tone="error"
                                                CssClass="empty-card-inline" />
                                 </ErrorContent>
@@ -580,67 +699,193 @@
                         }
                         else
                         {
-                            <section class="page-panel">
-                                <div class="panel-head">
+                            <div class="match-players-section" style="--match-player-accent: var(--court-400);">
+                                <div class="match-players-section__header">
                                     <div>
-                                        <p class="section-kicker">Joueuses du match</p>
-                                        <h4>@FilteredMatchPlayers.Count lignes retournees</h4>
+                                        <span class="match-players-section__eyebrow">Effectif</span>
+                                        <h3>Joueuses du match — @MatchTeamScopeLabel</h3>
+                                        <p>@FilteredMatchPlayers.Count lignes retournées</p>
+                                    </div>
+                                    <div class="match-players-section__actions">
+                                        <label class="filter-field" style="margin:0;">
+                                            <span class="sr-only">Filtrer les joueuses</span>
+                                            <input value="@MatchPlayerSearch"
+                                                   @oninput="OnMatchPlayerSearchChanged"
+                                                   placeholder="Joueuse, équipe ou poste…" />
+                                        </label>
                                     </div>
                                 </div>
 
-                                <div class="table-toolbar">
-                                    <label class="filter-field table-search">
-                                        <span>Filtrer le tableau</span>
-                                <input value="@MatchPlayerSearch" @oninput="OnMatchPlayerSearchChanged" placeholder="Joueuse, équipe ou poste" />
-                                    </label>
-                                </div>
-
-                                @{
-                                    var matchPlayerRows = FilteredMatchPlayers.ToArray();
-                                }
-
-                                <div class="table-wrap">
-                                    <table class="stat-table">
-                                        <thead>
-                                            <tr>
-                                                <th>@TableHeader("name", "Joueuse", SetMatchPlayerSort)</th>
-                                                <th>@TableHeader("team", "Equipe", SetMatchPlayerSort)</th>
-                                                <th>@TableHeader("position", "Poste", SetMatchPlayerSort)</th>
-                                                <th>@TableHeader("goals", "Buts", SetMatchPlayerSort)</th>
-                                                <th>@TableHeader("assists", "Passes", SetMatchPlayerSort)</th>
-                                                <th>@TableHeader("interceptions", "Interceptions", SetMatchPlayerSort)</th>
-                                                <th>@TableHeader("saves", "Arrets", SetMatchPlayerSort)</th>
-                                                <th>@TableHeader("turnovers", "Pertes", SetMatchPlayerSort)</th>
-                                                <th>@TableHeader("shot", "Taux tir", SetMatchPlayerSort)</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var player in matchPlayerRows)
+                                <div class="match-player-grid">
+                                    @foreach (var player in FilteredMatchPlayers.Take(12))
+                                    {
+                                        var playerInitials = GetPlayerInitials(player.FullName);
+                                        var isAway = player.TeamId.HasValue && player.TeamId == SelectedMatch.Team2Id;
+                                        var isGK = player.IsGoalkeeper;
+                                        var cardClass = isGK ? "match-player-card--goalkeeper" : isAway ? "match-player-card--away" : string.Empty;
+                                        var effRate = isGK ? player.GoalkeeperSaveRate : player.ShotSuccessRate;
+                                        var signal = isGK && player.GoalkeeperSaveRate >= 0.5 ? "Impact gardienne"
+                                            : player.TotalGoals >= 5 ? "Performance forte"
+                                            : player.AssistCount >= 3 ? "Volume + création"
+                                            : player.InterceptionCount >= 3 ? "Impact défensif"
+                                            : (string?)null;
+                                        <article class="match-player-card @cardClass" @key="@($"{player.PlayerId}_{player.TeamId}")">
+                                            <div class="match-player-card__header">
+                                                <div class="match-player-card__avatar">
+                                                    @playerInitials
+                                                    @if (player.Number.HasValue)
+                                                    {
+                                                        <span>#@player.Number</span>
+                                                    }
+                                                </div>
+                                                <div class="match-player-card__identity">
+                                                    <span class="match-player-card__position">@(player.PositionCode ?? player.PositionName ?? "–")</span>
+                                                    <h4>@player.FullName</h4>
+                                                    <span class="match-player-card__team">@(player.TeamCode ?? player.TeamName)</span>
+                                                </div>
+                                                @if (effRate > 0)
+                                                {
+                                                    <span class="match-player-card__rating">@FormatRate(effRate)%</span>
+                                                }
+                                            </div>
+                                            <div class="match-player-card__hero">
+                                                @if (isGK)
+                                                {
+                                                    <div><span class="match-player-card__hero-label">Arrêts</span><strong>@player.SaveCount</strong></div>
+                                                    <div class="match-player-card__efficiency"><strong>@FormatRate(player.GoalkeeperSaveRate)%</strong><span>arrêts</span></div>
+                                                }
+                                                else
+                                                {
+                                                    <div><span class="match-player-card__hero-label">Buts</span><strong>@player.TotalGoals</strong></div>
+                                                    <div class="match-player-card__efficiency"><strong>@FormatRate(player.ShotSuccessRate)%</strong><span>efficacité</span></div>
+                                                }
+                                            </div>
+                                            <div class="match-player-card__stats">
+                                                <div><strong>@player.AssistCount</strong><span>Passes</span></div>
+                                                <div><strong>@player.InterceptionCount</strong><span>Inter.</span></div>
+                                                <div><strong>@player.TurnoverCount</strong><span>Pertes</span></div>
+                                                <div><strong>@((int)Math.Round(player.PlayingTimeMinutes))'</strong><span>Temps</span></div>
+                                            </div>
+                                            @if (signal is not null)
                                             {
-                                                <tr>
-                                                    <td>@player.FullName</td>
-                                                    <td>@player.TeamName</td>
-                                                    <td>@(player.PositionCode ?? player.PositionName ?? "-")</td>
-                                                    <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.TotalGoals, player)">@player.TotalGoals</td>
-                                                    <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.AssistCount, player)">@player.AssistCount</td>
-                                                    <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.InterceptionCount, player)">@player.InterceptionCount</td>
-                                                    <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.SaveCount, player)">@player.SaveCount</td>
-                                                    <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.TurnoverCount, player, higherIsBetter: false)">@player.TurnoverCount</td>
-                                                    <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.ShotSuccessRate, player)">@FormatRate(player.ShotSuccessRate)%</td>
-                                                </tr>
+                                                <div class="match-player-card__footer">
+                                                    <span class="match-player-card__signal"><i></i>@signal</span>
+                                                </div>
                                             }
-                                        </tbody>
-                                    </table>
+                                        </article>
+                                    }
                                 </div>
-                            </section>
+                            </div>
+
+                            <div class="section-header" style="margin-bottom:0.75rem;margin-top:1rem;">
+                                <h3 class="section-header__title">Tableau complet</h3>
+                            </div>
+
+                            <div class="table-wrap">
+                                <table class="stat-table">
+                                    <thead>
+                                        <tr>
+                                            <th>@TableHeader("name", "Joueuse", SetMatchPlayerSort)</th>
+                                            <th>@TableHeader("team", "Équipe", SetMatchPlayerSort)</th>
+                                            <th>@TableHeader("position", "Poste", SetMatchPlayerSort)</th>
+                                            <th>Min.</th>
+                                            <th>@TableHeader("goals", "Buts", SetMatchPlayerSort)</th>
+                                            <th>@TableHeader("assists", "Passes", SetMatchPlayerSort)</th>
+                                            <th>@TableHeader("interceptions", "Interceptions", SetMatchPlayerSort)</th>
+                                            <th>@TableHeader("saves", "Arrêts", SetMatchPlayerSort)</th>
+                                            <th>@TableHeader("turnovers", "Pertes", SetMatchPlayerSort)</th>
+                                            <th>@TableHeader("shot", "Taux tir", SetMatchPlayerSort)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{
+                                            var matchPlayerRows = FilteredMatchPlayers.ToArray();
+                                        }
+                                        @foreach (var player in matchPlayerRows)
+                                        {
+                                            <tr>
+                                                <td>@player.FullName</td>
+                                                <td>@player.TeamName</td>
+                                                <td>@(player.PositionCode ?? player.PositionName ?? "–")</td>
+                                                <td>@((int)Math.Round(player.PlayingTimeMinutes))'</td>
+                                                <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.TotalGoals, player)">@player.TotalGoals</td>
+                                                <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.AssistCount, player)">@player.AssistCount</td>
+                                                <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.InterceptionCount, player)">@player.InterceptionCount</td>
+                                                <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.SaveCount, player)">@player.SaveCount</td>
+                                                <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.TurnoverCount, player, higherIsBetter: false)">@player.TurnoverCount</td>
+                                                <td class="@TableHeatToneHelper.HeatClass(matchPlayerRows, row => (double?)row.ShotSuccessRate, player)">@FormatRate(player.ShotSuccessRate)%</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
                         }
-                    }
-                </article>
-                }
-            </section>
-        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (_filterOpen)
+    {
+        <div class="filter-drawer-overlay" @onclick="CloseMatchFilterDrawer" role="dialog" aria-modal="true" aria-label="Filtres matchs">
+            <div class="filter-drawer" @onclick:stopPropagation="true">
+                <header class="filter-drawer__head">
+                    <h3 class="filter-drawer__title">Filtres</h3>
+                    <button type="button" class="filter-drawer__close" @onclick="CloseMatchFilterDrawer">×</button>
+                </header>
+                <div class="filter-drawer__body">
+                    <div class="filter-section">
+                        <span class="filter-section__label">Compétition</span>
+                        <select class="form-select" @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var competition in AvailableCompetitions)
+                            {
+                                <option value="@competition.CompetitionId">@competition.CompetitionName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="filter-section">
+                        <span class="filter-section__label">Équipe</span>
+                        <select class="form-select" @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var team in AvailableTeams)
+                            {
+                                <option value="@team.TeamId">@team.TeamName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="filter-section">
+                        <span class="filter-section__label">Saison</span>
+                        <select class="form-select" value="@Season" @onchange="OnSeasonChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var season in SeasonOptions)
+                            {
+                                <option value="@season">@season</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="filter-section">
+                        <span class="filter-section__label">Journée</span>
+                        <select class="form-select" value="@Day" @onchange="OnDayChangedAsync">
+                            <option value="">Toutes</option>
+                            @foreach (var day in DayOptions)
+                            {
+                                <option value="@day">@day</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <footer class="filter-drawer__foot">
+                    <div class="filter-drawer__foot-actions">
+                        <button type="button" class="ghost-button" @onclick="async () => { await ResetAsync(); CloseMatchFilterDrawer(); }">Réinitialiser</button>
+                        <button type="button" class="primary-button" @onclick="CloseMatchFilterDrawer">Appliquer</button>
+                    </div>
+                </footer>
+            </div>
+        </div>
     }
-</div>
+}
 
 @code {
     private const string MatchTeamScopeBoth = "both";
@@ -657,6 +902,9 @@
     private MatchListItemDto? SelectedMatch { get; set; }
     private MatchSummaryDto? MatchSummary { get; set; }
     private MatchSpatialStatsDto? MatchSpatial { get; set; }
+    private MatchSpatialStatsDto? _spatialHome;
+    private MatchSpatialStatsDto? _spatialAway;
+    private bool _isCourtBothLoading;
     private readonly Dictionary<int, MatchDetailCacheItem> MatchDetailCache = new();
     private bool IsBusy { get; set; }
     private bool IsMatchDetailLoading { get; set; }
@@ -681,11 +929,17 @@
     private long SelectedMatchLoadToken { get; set; }
     private long SpatialLoadToken;
     private bool _publishingScope;
+    private bool _filterOpen;
+    private bool _listCollapsed;
     private bool ShowMatchDetailView => MatchIdFromQuery.HasValue;
     private string? SpatialFocusKey { get; set; }
 
     private IReadOnlyList<CourtZoneStat> GoalZones => MatchSpatial?.Zones.Select(CourtZoneMapper.MapShotZone).ToList() ?? [];
     private IReadOnlyList<CourtZoneStat> TriggerZones => MatchSpatial?.Triggers.Select(CourtZoneMapper.MapTriggerZone).ToList() ?? [];
+    private IReadOnlyList<CourtZoneStat> HomeGoalZones => _spatialHome?.Zones.Select(CourtZoneMapper.MapShotZone).ToList() ?? [];
+    private IReadOnlyList<CourtZoneStat> HomeTriggerZones => _spatialHome?.Triggers.Select(CourtZoneMapper.MapTriggerZone).ToList() ?? [];
+    private IReadOnlyList<CourtZoneStat> AwayGoalZones => _spatialAway?.Zones.Select(CourtZoneMapper.MapShotZone).ToList() ?? [];
+    private IReadOnlyList<CourtZoneStat> AwayTriggerZones => _spatialAway?.Triggers.Select(CourtZoneMapper.MapTriggerZone).ToList() ?? [];
     private bool HasSpatialFocus => !string.IsNullOrWhiteSpace(SpatialFocusKey);
     private string MatchSpatialScopeKey => MatchTeamScope switch
     {
@@ -701,17 +955,17 @@
     };
     private string MatchSpatialLabel => MatchTeamScope switch
     {
-        MatchTeamScopeTeam1 => SelectedMatch?.Team1Name ?? "Equipe 1",
-        MatchTeamScopeTeam2 => SelectedMatch?.Team2Name ?? "Equipe 2",
-        _ => SelectedMatch?.Team1Name ?? SelectedMatch?.Team2Name ?? "Equipe 1"
+        MatchTeamScopeTeam1 => SelectedMatch?.Team1Name ?? "Équipe 1",
+        MatchTeamScopeTeam2 => SelectedMatch?.Team2Name ?? "Équipe 2",
+        _ => SelectedMatch?.Team1Name ?? SelectedMatch?.Team2Name ?? "Équipe 1"
     };
     private IReadOnlyList<KpiTile> MatchKpis => BuildMatchKpis();
     private IReadOnlyList<KpiTile> TimelineKpis => MatchScenarioAnalyzer.BuildTimelineKpis(SelectedMatchTimeline, SelectedMatch?.Team1Name, SelectedMatch?.Team2Name);
     private IReadOnlyList<MatchTimelineInsight> TimelineInsights => MatchScenarioAnalyzer.BuildPhaseInsights(SelectedMatchTimeline, SelectedMatch?.Team1Name, SelectedMatch?.Team2Name);
     private IReadOnlyList<MatchTimelineMoment> TimelineMoments => MatchScenarioAnalyzer.BuildKeyMoments(SelectedMatchTimeline, SelectedMatch?.Team1Name, SelectedMatch?.Team2Name);
     private IReadOnlyList<MetricPlotPoint> MatchProfileSeries => BuildMatchProfileSeries();
-    private IReadOnlyList<MetricPlotPoint> MatchTeam1ComparisonSeries => BuildMatchTeamComparisonSeries(SelectedMatch?.Team1Name ?? "Equipe 1");
-    private IReadOnlyList<MetricPlotPoint> MatchTeam2ComparisonSeries => BuildMatchTeamComparisonSeries(SelectedMatch?.Team2Name ?? "Equipe 2");
+    private IReadOnlyList<MetricPlotPoint> MatchTeam1ComparisonSeries => BuildMatchTeamComparisonSeries(SelectedMatch?.Team1Id, SelectedMatch?.Team1Name ?? "Équipe 1");
+    private IReadOnlyList<MetricPlotPoint> MatchTeam2ComparisonSeries => BuildMatchTeamComparisonSeries(SelectedMatch?.Team2Id, SelectedMatch?.Team2Name ?? "Équipe 2");
     private IReadOnlyList<MetricPlotPoint> MatchPlayerImpactSeries => BuildMatchPlayerImpactSeries();
     private IReadOnlyList<MatchListItemDto> FilteredMatchList => GetFilteredMatches();
     private IReadOnlyList<PlayerGlobalStatsDto> FilteredMatchPlayers => GetFilteredMatchPlayers();
@@ -774,6 +1028,10 @@
         ApplyGlobalScope();
         ScopeService.Changed += HandleGlobalScopeChanged;
         await ApplyFiltersAsync();
+        CommandBarService.Register(
+            () => { _filterOpen = true; return InvokeAsync(StateHasChanged); },
+            FilteredMatchList.Count,
+            "matchs");
     }
 
     protected override async Task OnParametersSetAsync()
@@ -840,6 +1098,7 @@
                 Day = null;
             }
 
+            CommandBarService.UpdateCount(FilteredMatchList.Count, "matchs");
             ActiveSection = "summary";
             await SyncSelectedMatchAsync();
         }
@@ -905,6 +1164,7 @@
     public void Dispose()
     {
         ScopeService.Changed -= HandleGlobalScopeChanged;
+        CommandBarService.Clear();
     }
 
     private void HandleGlobalScopeChanged()
@@ -966,7 +1226,7 @@
         }
         else if (section == "zones")
         {
-            await EnsureMatchSpatialLoadedAsync();
+            await LoadCourtBothTeamsAsync();
         }
     }
 
@@ -1002,6 +1262,9 @@
         MatchSummary = null;
         MatchPlayers = [];
         MatchSpatial = null;
+        _spatialHome = null;
+        _spatialAway = null;
+        _isCourtBothLoading = false;
         SelectedMatchTimeline = [];
         ActiveZoneKey = null;
         SpatialFocusKey = null;
@@ -1172,6 +1435,87 @@
         await LoadSelectedSpatialAsync(SpatialFocusKey);
     }
 
+    private async Task LoadCourtBothTeamsAsync()
+    {
+        if (!SelectedMatchId.HasValue || SelectedMatch is null)
+        {
+            _spatialHome = null;
+            _spatialAway = null;
+            _isCourtBothLoading = false;
+            return;
+        }
+
+        var matchId = SelectedMatchId.Value;
+        var attackFilter = MatchAttackTypeFilter is "all" or "" ? null : MatchAttackTypeFilter;
+        var attackSuffix = attackFilter is null ? string.Empty : $"|{attackFilter}";
+        var cacheKeyHome = $"court-home{attackSuffix}";
+        var cacheKeyAway = $"court-away{attackSuffix}";
+        var cache = GetMatchDetailCache(matchId);
+
+        var homeHit = cache.SpatialByContext.TryGetValue(cacheKeyHome, out var cachedHome) && cachedHome is not null;
+        var awayHit = cache.SpatialByContext.TryGetValue(cacheKeyAway, out var cachedAway) && cachedAway is not null;
+
+        if (homeHit && awayHit)
+        {
+            _spatialHome = cachedHome;
+            _spatialAway = cachedAway;
+            _isCourtBothLoading = false;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        _isCourtBothLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var opts = BuildMatchSpatialQueryOptions(null);
+            var team1Id = SelectedMatch.Team1Id;
+            var team2Id = SelectedMatch.Team2Id;
+
+            var homeTask = homeHit
+                ? Task.FromResult<MatchSpatialStatsDto?>(cachedHome)
+                : StatsApiClient.GetMatchSpatialAsync(matchId, team1Id, attackFilter, opts);
+            var awayTask = awayHit
+                ? Task.FromResult<MatchSpatialStatsDto?>(cachedAway)
+                : StatsApiClient.GetMatchSpatialAsync(matchId, team2Id, attackFilter, opts);
+
+            await Task.WhenAll(homeTask, awayTask);
+
+            if (!SelectedMatchId.HasValue || SelectedMatchId.Value != matchId)
+            {
+                return;
+            }
+
+            var homeResult = await homeTask;
+            var awayResult = await awayTask;
+
+            if (homeResult is not null) cache.SpatialByContext[cacheKeyHome] = homeResult;
+            if (awayResult is not null) cache.SpatialByContext[cacheKeyAway] = awayResult;
+
+            _spatialHome = homeResult;
+            _spatialAway = awayResult;
+        }
+        catch
+        {
+            if (!SelectedMatchId.HasValue || SelectedMatchId.Value != matchId)
+            {
+                return;
+            }
+
+            _spatialHome = null;
+            _spatialAway = null;
+        }
+        finally
+        {
+            if (SelectedMatchId.HasValue && SelectedMatchId.Value == matchId)
+            {
+                _isCourtBothLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
     private async Task LoadSelectedSpatialAsync(string? focusZoneKey = null)
     {
         if (!SelectedMatchId.HasValue || SelectedMatch is null)
@@ -1339,8 +1683,6 @@
         MatchList = ScopedMatches;
     }
 
-    // MapZone and MapTrigger replaced by CourtZoneMapper.MapShotZone / MapTriggerZone
-
     private IReadOnlyList<KpiTile> BuildMatchKpis()
     {
         return MatchKpiCatalog.BuildSummaryKpis(MatchSummary, SelectedMatch, []);
@@ -1365,16 +1707,16 @@
         ];
     }
 
-    private IReadOnlyList<MetricPlotPoint> BuildMatchTeamComparisonSeries(string teamName)
+    private IReadOnlyList<MetricPlotPoint> BuildMatchTeamComparisonSeries(int? teamId, string? teamName)
     {
-        if (SelectedMatch is null || MatchPlayers.Count == 0 || string.IsNullOrWhiteSpace(teamName))
+        if (SelectedMatch is null || MatchPlayers.Count == 0)
         {
             return [];
         }
 
-        var teamPlayers = MatchPlayers
-            .Where(player => string.Equals(player.TeamName?.Trim(), teamName.Trim(), StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        var teamPlayers = teamId.HasValue
+            ? MatchPlayers.Where(player => player.TeamId == teamId).ToList()
+            : MatchPlayers.Where(player => string.Equals(player.TeamName?.Trim(), teamName?.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
 
         if (teamPlayers.Count == 0)
         {
@@ -1617,9 +1959,9 @@
 
     private string MatchTeamScopeLabel => MatchTeamScope switch
     {
-        MatchTeamScopeTeam1 => SelectedMatch?.Team1Name ?? "Equipe 1",
-        MatchTeamScopeTeam2 => SelectedMatch?.Team2Name ?? "Equipe 2",
-        _ => "Les deux equipes"
+        MatchTeamScopeTeam1 => SelectedMatch?.Team1Name ?? "Équipe 1",
+        MatchTeamScopeTeam2 => SelectedMatch?.Team2Name ?? "Équipe 2",
+        _ => "Les deux équipes"
     };
 
     private bool IsTeamScopeActive(string scope) => string.Equals(MatchTeamScope, scope, StringComparison.OrdinalIgnoreCase);
@@ -1668,7 +2010,7 @@
 
         if (ActiveSection == "zones")
         {
-            await EnsureMatchSpatialLoadedAsync();
+            await LoadCourtBothTeamsAsync();
         }
 
         await InvokeAsync(StateHasChanged);
@@ -1760,6 +2102,45 @@
     }
 
     private static string FormatRate(double value) => value.ToString("0.#");
+
+    private void NavigateToMatch(int matchId) =>
+        Navigation.NavigateTo($"/matches?matchId={matchId}");
+
+    private void ToggleListCollapsed() => _listCollapsed = !_listCollapsed;
+
+    private void CloseMatchFilterDrawer()
+    {
+        _filterOpen = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static string GetPlayerInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "–";
+        }
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[^1][0])}"
+            : name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
+    }
+
+    private static string GetTeamCode(string? name, string? code)
+    {
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            return code.ToUpperInvariant();
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "–";
+        }
+
+        return name.Length >= 3 ? name[..3].ToUpperInvariant() : name.ToUpperInvariant();
+    }
 
     private sealed class MatchDetailCacheItem
     {

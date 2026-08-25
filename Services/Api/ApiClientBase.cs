@@ -16,6 +16,7 @@ public abstract class ApiClientBase
     };
 
     private readonly ConcurrentDictionary<string, string> _etagCache = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, object?> _responseCache = new(StringComparer.Ordinal);
     private readonly HttpClient _httpClient;
     private readonly ApiSettings _settings;
     private readonly IApiAuthService _authService;
@@ -130,6 +131,10 @@ public abstract class ApiClientBase
         {
             if (response.StatusCode == HttpStatusCode.NotModified)
             {
+                if (cacheKey is not null && _responseCache.TryGetValue(cacheKey, out var cached))
+                {
+                    return ApiGetResult<T>.NotModifiedWithValue((T?)cached);
+                }
                 return ApiGetResult<T>.NotModified();
             }
 
@@ -138,12 +143,14 @@ public abstract class ApiClientBase
                 throw await CreateRequestExceptionAsync(request, response, cancellationToken);
             }
 
+            var value = await response.Content.ReadFromJsonAsync<T>(SerializerOptions, cancellationToken);
+
             if (cacheKey is not null && response.Headers.ETag is { Tag: { Length: > 0 } etag })
             {
                 _etagCache[cacheKey] = etag;
+                _responseCache[cacheKey] = value;
             }
 
-            var value = await response.Content.ReadFromJsonAsync<T>(SerializerOptions, cancellationToken);
             return ApiGetResult<T>.Ok(value);
         }
     }
@@ -282,4 +289,8 @@ public readonly struct ApiGetResult<T>
     public static ApiGetResult<T> Ok(T? value) => new(value, notModified: false);
 
     public static ApiGetResult<T> NotModified() => new(default, notModified: true);
+
+    // 304 with cached value: preserves IsNotModified flag so callers can skip re-processing,
+    // but Value carries the previously received data so callers that only read Value get it.
+    public static ApiGetResult<T> NotModifiedWithValue(T? value) => new(value, notModified: true);
 }

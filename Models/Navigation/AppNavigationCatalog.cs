@@ -58,16 +58,6 @@ public static class AppNavigationCatalog
             NavLinkMatch.Prefix,
             """<svg viewBox="0 0 24 24"><path d="M8 3v5l-4 9a3 3 0 0 0 3 4h10a3 3 0 0 0 3-4l-4-9V3"></path><path d="M7 14h10M9 3h6"></path></svg>"""),
         new(
-            "position-profiles",
-            "Role benchmark",
-            "Cohort lab",
-            "Cohorte, mediane et axes normalises /60.",
-            "05B",
-            NavLinkMatch.Prefix,
-            """<svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7l7-4Zm0 4.2-3.8 2.2v4.4L12 16l3.8-2.2V9.4L12 7.2Z" /></svg>""",
-            ShowOnMobile: false,
-            ShowInRail: false),
-        new(
             "export",
             "Export",
             "Data out",

@@ -5,514 +5,659 @@
 @inject StatsApiClient StatsApiClient
 @inject IApiAuthService AuthService
 @inject AnalysisScopeService ScopeService
+@inject CommandBarService CommandBarService
 @implements IDisposable
 
-<PageTitle>Lab</PageTitle>
+<PageTitle>Compare</PageTitle>
 
-<div class="lab-workspace" data-workspace="lab">
-    @if (!AuthService.Session.IsAuthenticated)
+@if (!AuthService.Session.IsAuthenticated)
+{
+    <AccessRequiredCard Message="Connectez-vous pour comparer plusieurs joueuses sur un meme perimetre statistique." />
+}
+else
+{
+    @* ── Filter Drawer ── *@
+    @if (_filterOpen)
     {
-        <AccessRequiredCard Message="Connectez-vous pour comparer plusieurs joueuses sur un meme perimetre statistique." />
+        <div class="drawer drawer--open" id="compare-filters">
+            <div class="drawer__overlay" @onclick="CloseCompareFilterDrawer"></div>
+            <div class="drawer__panel">
+                <div class="drawer__header">
+                    <h2 class="drawer__title">Filtres Lab</h2>
+                    <button type="button" class="studio-icon-button" @onclick="CloseCompareFilterDrawer" aria-label="Fermer">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+                    </button>
+                </div>
+                <div class="drawer__body">
+                    <div class="filter-panel">
+                        <div class="filter-section open">
+                            <div class="filter-section__body">
+                                <div class="dashboard-filter-grid">
+                                    <label class="dashboard-filter-field">
+                                        <span>Compétition</span>
+                                        <select @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
+                                            <option value="">Toutes</option>
+                                            @foreach (var c in AvailableCompetitions)
+                                            {
+                                                <option value="@c.CompetitionId">@c.CompetitionName</option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <label class="dashboard-filter-field">
+                                        <span>Equipe</span>
+                                        <select @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
+                                            <option value="">Toutes</option>
+                                            @foreach (var t in AvailableTeams)
+                                            {
+                                                <option value="@t.TeamId">@t.TeamName</option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <label class="dashboard-filter-field">
+                                        <span>Poste</span>
+                                        <select @bind="PositionId" @bind:after="OnScopeSelectionChangedAsync">
+                                            <option value="">Tous</option>
+                                            @foreach (var p in AvailablePositions)
+                                            {
+                                                <option value="@p.Id">@p.Name</option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <label class="dashboard-filter-field">
+                                        <span>Saison</span>
+                                        <select @bind="Season" @bind:after="OnScopeSelectionChangedAsync">
+                                            <option value="">Toutes</option>
+                                            @foreach (var s in SeasonOptions)
+                                            {
+                                                <option value="@s">@s</option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <label class="dashboard-filter-field">
+                                        <span>Journee</span>
+                                        <select @bind="Day" @bind:after="OnScopeSelectionChangedAsync">
+                                            <option value="">Toutes</option>
+                                            @foreach (var d in DayOptions)
+                                            {
+                                                <option value="@d">@d</option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <label class="dashboard-filter-field">
+                                        <span>Nb joueuses</span>
+                                        <select @bind="CompareSlotCount" @bind:after="OnCompareSlotCountChangedAsync">
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
+                                            <option value="5">5</option>
+                                            <option value="6">6</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="drawer__footer">
+                    <button type="button" class="btn btn-ghost" @onclick="ResetCompareFiltersAsync">Réinitialiser</button>
+                    <button type="button" class="btn btn-primary" @onclick="CloseCompareFilterDrawer">Appliquer</button>
+                </div>
+            </div>
+        </div>
+    }
+
+
+
+    @* ── Subtoolbar ── *@
+    <div class="studio-subtoolbar">
+        <button type="button" class="btn btn-ghost btn-sm" @onclick="() => { _filterOpen = true; _ = InvokeAsync(StateHasChanged); }">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;flex-shrink:0"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
+            Filtrer
+        </button>
+        @if (CompetitionId.HasValue)
+        {
+            <span class="cmp-scope-sep">·</span>
+            <span>@(AvailableCompetitions.FirstOrDefault(c => c.CompetitionId == CompetitionId)?.CompetitionName ?? "Compétition")</span>
+        }
+        @if (!string.IsNullOrWhiteSpace(Season))
+        {
+            <span class="cmp-scope-sep">·</span>
+            <span>@Season</span>
+        }
+        <span class="cmp-scope-sep">·</span>
+        <span>Données normalisées / match</span>
+    </div>
+
+    @* ── Comparison Bar ── *@
+    <div class="cmp-bar">
+        @foreach (var slot in CompareSlots)
+        {
+            var slotPlayer = GetSelectedPlayer(slot);
+            <div class="cmp-player @(_pickerSlot == slot ? "cmp-player--active" : "")" @onclick="() => OpenPicker(slot)">
+                <div class="cmp-player__avatar" style="background: @GetSlotColor(slot); color: var(--surface);">
+                    @GetPlayerInitials(slotPlayer?.FullName)
+                </div>
+                <div>
+                    <div class="cmp-player__name">@(slotPlayer?.FullName ?? $"Joueuse {slot + 1}")</div>
+                    <div class="cmp-player__meta">
+                        @if (slotPlayer != null)
+                        {
+                            @((slotPlayer.PositionCode ?? slotPlayer.PositionName ?? "–") + " · " + slotPlayer.TeamName)
+                        }
+                        else
+                        {
+                            <span>Sélectionner</span>
+                        }
+                    </div>
+                </div>
+                @if (slotPlayer != null)
+                {
+                    <button type="button" class="cmp-player__remove" title="Retirer"
+                            @onclick:stopPropagation="true"
+                            @onclick="() => ClearPlayerSlot(slot)">✕</button>
+                }
+            </div>
+        }
+        @if (CompareSlotCount < 6)
+        {
+            <button type="button" class="cmp-add-btn" @onclick="AddSlotAndOpenPickerAsync">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+                Ajouter
+            </button>
+        }
+    </div>
+
+    @* ── Picker Panel ── *@
+    @if (_pickerSlot >= 0 && _pickerSlot < CompareSlotCount)
+    {
+        <div class="cmp-picker-panel">
+            <div class="cmp-picker-panel__head">
+                <span>Joueuse @(_pickerSlot + 1)</span>
+                <button type="button" class="studio-icon-button" @onclick="ClosePicker" aria-label="Fermer">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+                </button>
+            </div>
+            <div class="cmp-picker-panel__search">
+                <input class="cmp-picker-search" type="search"
+                       value="@GetPlayerSlotSearch(_pickerSlot)"
+                       @oninput="args => OnPlayerSlotSearchChanged(_pickerSlot, args)"
+                       placeholder="Nom, équipe ou poste..." />
+            </div>
+            <div class="cmp-picker-panel__list">
+                @{
+                    var pickerItems = GetSelectablePlayers(_pickerSlot);
+                }
+                @foreach (var pickerPlayer in pickerItems)
+                {
+                    <button type="button"
+                            class="cmp-picker-player @(SelectedPlayerIds[_pickerSlot] == pickerPlayer.PlayerId ? "is-selected" : "")"
+                            @onclick="() => SelectAndClosePicker(_pickerSlot, pickerPlayer.PlayerId)">
+                        <strong>@pickerPlayer.FullName</strong>
+                        <span>@(pickerPlayer.PositionCode ?? pickerPlayer.PositionName ?? "–") · @pickerPlayer.TeamName</span>
+                    </button>
+                }
+                @if (!pickerItems.Any())
+                {
+                    <div class="cmp-picker-empty">Aucune joueuse trouvée</div>
+                }
+            </div>
+        </div>
+    }
+
+    @* ── State Cards ── *@
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <StateCard Kicker="Erreur"
+                   Title="Impossible de lancer la comparaison"
+                   Message="@ErrorMessage"
+                   Tone="error" />
+    }
+    else if (IsBusy && Response is null)
+    {
+        <StateCard Kicker="Chargement"
+                   Title="Mise a jour de la comparaison"
+                   Message="La liste et les graphes se recalculent pour le perimetre choisi."
+                   Tone="loading" />
+    }
+    else if (Response is null)
+    {
+        <StateCard Kicker="Comparaison en attente"
+                   Title="Choisissez au moins deux joueuses"
+                   Message="La comparaison se lance ensuite sur un même périmètre statistique."
+                   Tone="empty" />
     }
     else
     {
-        <header class="lab-manifesto">
-            <span>Experiment 01 / Compare</span>
-            <h2 data-page-title>Mettre les profils sous la meme lumiere.</h2>
-            <p>Le tray conserve de deux a six joueuses et verrouille un scope commun pour toutes les preuves.</p>
-            <a href="/position-profiles">Ouvrir Role benchmark <span aria-hidden="true">↗</span></a>
-        </header>
-
-        @if (Response is not null)
+        @if (IsBusy)
         {
-            <AudienceLensSelector Kicker="Mode de comparaison"
-                              Title="Choisissez la profondeur de lecture"
-                              Subtitle="Passez d'une synthèse staff à une analyse complète ou à une restitution claire pour les joueuses."
-                              Value="@ActiveLens"
-                              ValueChanged="SetActiveLens" />
+            <PageLoader Kicker="Chargement"
+                        Title="Actualisation de la comparaison"
+                        Message="Les KPI, graphes et tableaux se recalculent." />
         }
 
-        <section class="lab-setup @(IsBusy ? "is-loading" : string.Empty)">
-            <div class="panel-head panel-head-wrap">
-                <div>
-                    <p class="section-kicker">Comparison tray</p>
-                    <h3>Construire l'experience</h3>
-                </div>
-            </div>
+        <div class="tab-group">
+            <nav class="tab-bar" role="tablist" style="margin-top:1.25rem">
+                <button type="button" class="tab @(_activeTab == "brief" ? "active" : "")" role="tab" @onclick='() => SetActiveTab("brief")'>Brief</button>
+                <button type="button" class="tab @(_activeTab == "lab" ? "active" : "")" role="tab" @onclick='() => SetActiveTab("lab")'>Visual Lab</button>
+            </nav>
 
-            <details class="filter-drawer" open>
-                <summary>
-                    <div>
-                        <strong>Afficher les filtres de comparaison</strong>
-                        <span>Cadre commun, saison, journée et taille du face à face.</span>
-                    </div>
-                </summary>
+            @* ── BRIEF TAB ── *@
+            @if (_activeTab == "brief")
+            {
+                <div class="tab-panel active" role="tabpanel">
 
-                <div class="filter-drawer-body">
-                    <div class="page-filters">
-                        <label class="filter-field">
-                            <span>Competition</span>
-                            <select @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var competition in AvailableCompetitions)
-                                {
-                                    <option value="@competition.CompetitionId">@competition.CompetitionName</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Equipe</span>
-                            <select @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var team in AvailableTeams)
-                                {
-                                    <option value="@team.TeamId">@team.TeamName</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Poste</span>
-                            <select @bind="PositionId" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Tous</option>
-                                @foreach (var position in AvailablePositions)
-                                {
-                                    <option value="@position.Id">@position.Name</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Saison</span>
-                            <select @bind="Season" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var season in SeasonOptions)
-                                {
-                                    <option value="@season">@season</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Journee</span>
-                            <select @bind="Day" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var day in DayOptions)
-                                {
-                                    <option value="@day">@day</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Nb joueuses</span>
-                            <select @bind="CompareSlotCount" @bind:after="OnCompareSlotCountChangedAsync">
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                                <option value="6">6</option>
-                            </select>
-                        </label>
-                    </div>
-                </div>
-            </details>
-
-            <div class="comparison-tray">
-                @foreach (var slot in CompareSlots)
-                {
-                    var selectedPlayer = GetSelectedPlayer(slot);
-
-                    <article class="comparison-slot">
-                        <div class="panel-head panel-head-wrap">
-                            <div>
-                                <p class="section-kicker">Selection</p>
-                                <h4>Joueuse @(slot + 1)</h4>
-                            </div>
-
-                            @if (selectedPlayer is not null)
+                    <div class="cmp-section" style="margin-top:1.75rem">
+                        <div class="cmp-label"><span class="cmp-label__text">Comparison Read</span></div>
+                        <div class="team-performer-grid">
+                            @foreach (var cmpPlayer in Response.Players)
                             {
-                                <button type="button" class="ghost-button filter-ghost" @onclick="() => ClearPlayerSlot(slot)">Retirer</button>
-                            }
-                        </div>
-
-                        <label class="filter-field">
-                            <span>Recherche rapide</span>
-                            <input value="@GetPlayerSlotSearch(slot)" @oninput="args => OnPlayerSlotSearchChanged(slot, args)" placeholder="Nom, équipe ou poste" />
-                        </label>
-
-                        @if (selectedPlayer is not null)
-                        {
-                            <div class="mini-card comparison-selected-card">
-                                <span>@selectedPlayer.TeamName</span>
-                                <strong>@selectedPlayer.FullName</strong>
-                                <p class="tiny-note">@(selectedPlayer.PositionCode ?? selectedPlayer.PositionName ?? "Poste non renseigne")</p>
-                            </div>
-                        }
-
-                        <div class="list-stack list-stack-scrollable comparison-picker-list">
-                            @foreach (var player in GetSelectablePlayers(slot))
-                            {
-                                <div class="list-item @(SelectedPlayerIds[slot] == player.PlayerId ? "is-selected" : string.Empty)">
-                                    <button type="button" @onclick="() => SelectPlayerSlot(slot, player.PlayerId)">
-                                        <div class="key-metric">
-                                            <strong>@player.FullName</strong>
-                                            <span>@(player.PositionCode ?? player.PositionName ?? "-")</span>
+                                var cmpPosVariant = GetPositionCardVariant(cmpPlayer.PositionCode);
+                                var cmpInitials = GetPlayerInitials(cmpPlayer.FullName);
+                                var cmpPhotoUrl = PlayerPhotoAssetResolver.Resolve(cmpPlayer.Photo, cmpPlayer.PlayerId, cmpPlayer.FullName, cmpPlayer.TeamName);
+                                var cmpIsGK = cmpPlayer.IsGoalkeeper;
+                                var cmpEffRate = cmpIsGK ? cmpPlayer.GoalkeeperSaveRate : cmpPlayer.ShotSuccessRate;
+                                var cmpSignal = GetPerformerSignal(cmpPlayer);
+                                <article class="team-performer-card @(cmpPosVariant != "" ? $"team-performer-card--{cmpPosVariant}" : "")"
+                                         @key="cmpPlayer.PlayerId">
+                                    <div class="team-performer-card__header">
+                                        <div class="team-performer-card__avatar">
+                                            @if (cmpPhotoUrl != null)
+                                            {
+                                                <img src="@cmpPhotoUrl" alt="@cmpPlayer.FullName" />
+                                            }
+                                            else
+                                            {
+                                                @cmpInitials
+                                            }
+                                            @if (cmpPlayer.Number.HasValue) { <span>#@cmpPlayer.Number</span> }
                                         </div>
-                                        <p class="tiny-note">@player.TeamName</p>
-                                    </button>
-                                </div>
+                                        <div class="team-performer-card__identity">
+                                            <span class="team-performer-card__position">@(cmpPlayer.PositionCode ?? cmpPlayer.PositionName ?? "–")</span>
+                                            <h4>@cmpPlayer.FullName</h4>
+                                            <span class="team-performer-card__team">@cmpPlayer.TeamName</span>
+                                        </div>
+                                        @if (cmpEffRate > 0) { <span class="team-performer-card__rating">@FormatRate(cmpEffRate)%</span> }
+                                    </div>
+                                    <div class="team-performer-card__hero">
+                                        @if (cmpIsGK)
+                                        {
+                                            <div><span class="team-performer-card__hero-label">Arrêts</span><strong>@cmpPlayer.SaveCount</strong></div>
+                                            <div class="team-performer-card__efficiency"><strong>@FormatRate(cmpPlayer.GoalkeeperSaveRate)%</strong><span>arrêts</span></div>
+                                        }
+                                        else
+                                        {
+                                            <div><span class="team-performer-card__hero-label">Buts</span><strong>@cmpPlayer.TotalGoals</strong></div>
+                                            <div class="team-performer-card__efficiency"><strong>@FormatRate(cmpPlayer.ShotSuccessRate)%</strong><span>tir</span></div>
+                                        }
+                                    </div>
+                                    <div class="team-performer-card__stats">
+                                        <div><strong>@cmpPlayer.AssistCount</strong><span>Passes</span></div>
+                                        <div><strong>@cmpPlayer.InterceptionCount</strong><span>Inter.</span></div>
+                                        <div><strong>@cmpPlayer.TurnoverCount</strong><span>Pertes</span></div>
+                                        <div><strong>@cmpPlayer.MatchesPlayed</strong><span>Matchs</span></div>
+                                    </div>
+                                    <div class="team-performer-card__footer">
+                                        <span class="team-performer-card__signal"><i></i>@(string.IsNullOrEmpty(cmpSignal) ? "–" : cmpSignal)</span>
+                                        <a href="/players?playerId=@cmpPlayer.PlayerId" class="team-performer-card__link">Voir la fiche →</a>
+                                    </div>
+                                </article>
                             }
                         </div>
-                    </article>
-                }
-            </div>
-        </section>
+                    </div>
 
-        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
-        {
-            <StateCard Kicker="Erreur"
-                       Title="Impossible de lancer la comparaison"
-                       Message="@ErrorMessage"
-                       Tone="error" />
-        }
-        else if (IsBusy && Response is null)
-        {
-            <StateCard Kicker="Chargement"
-                       Title="Mise a jour de la comparaison"
-                       Message="La liste et les graphes se recalculent pour le perimetre choisi."
-                       Tone="loading" />
-        }
-        else if (Response is null)
-        {
-            <StateCard Kicker="Comparaison en attente"
-                       Title="Choisissez au moins deux joueuses"
-                       Message="La comparaison se lance ensuite sur un même périmètre statistique."
-                       Tone="empty" />
-        }
-        else
-        {
-            @if (IsBusy)
-            {
-                <PageLoader Kicker="Chargement"
-                            Title="Actualisation de la comparaison"
-                            Message="Les KPI, graphes et tableaux se recalculent." />
-            }
-
-            <ScopeSummaryBar Kicker="Lecture comparee"
-                             Title="Les graphes et KPI sont lus sur une base commune"
-                             Subtitle="Chaque profil garde le meme perimetre pour que les ecarts soient vraiment exploitables."
-                             Items="@ComparedPlayerScopeItems"
-                             Message="La vue tabulaire et les graphes reutilisent exactement la meme selection de joueuses." />
-
-            <div class="scene-switcher" role="tablist" aria-label="Scenes de comparaison">
-                <button type="button" class="section-chip @(ActiveComparisonSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetComparisonSection("summary")'>
-                    Brief
-                    <small>Ecarts cles</small>
-                </button>
-                <button type="button" class="section-chip @(ActiveComparisonSection == "charts" ? "is-active" : string.Empty)" @onclick='() => SetComparisonSection("charts")'>
-                    Visual lab
-                    <small>Radars et volumes</small>
-                </button>
-                <button type="button" class="section-chip @(ActiveComparisonSection == "table" ? "is-active" : string.Empty)" @onclick='() => SetComparisonSection("table")'>
-                    Evidence
-                    <small>Table complete</small>
-                </button>
-            </div>
-
-            @if (ActiveComparisonSection == "summary")
-            {
-                <section class="badge-row">
-                    @foreach (var player in Response.Players)
-                    {
-                        <article class="mini-card comparison-card">
-                            <span>@player.TeamName</span>
-                            <strong>@player.FullName</strong>
-                            <p class="tiny-note">@player.MatchesPlayed matchs - @player.TotalGoals buts - @FormatRate(player.ShotSuccessRate)% au tir ouvert</p>
-                        </article>
+                    @{
+                        var diffPlayers = Response.Players.ToList();
+                        var finValues = diffPlayers.Select(p => (p, v: p.IsGoalkeeper ? p.GoalkeeperSaveRate : p.ShotSuccessRate)).ToList();
+                        var finMax = finValues.Count > 0 ? finValues.Max(x => x.v) : 1.0;
+                        var finBestId = finValues.OrderByDescending(x => x.v).Select(x => x.p.PlayerId).FirstOrDefault();
+                        var volValues = diffPlayers.Select(p => (p, v: (double)p.TotalGoals)).ToList();
+                        var volMax = volValues.Count > 0 ? volValues.Max(x => x.v) : 1.0;
+                        var volBestId = volValues.OrderByDescending(x => x.v).Select(x => x.p.PlayerId).FirstOrDefault();
+                        var secValues = diffPlayers.Select(p => (p, v: p.MatchesPlayed > 0 ? (double)p.TurnoverCount / p.MatchesPlayed : 0.0)).OrderBy(x => x.v).ToList();
+                        var secMin = secValues.Count > 0 ? secValues.Min(x => x.v) : 0.0;
+                        var secBestId = secValues.Select(x => x.p.PlayerId).FirstOrDefault();
+                        var defValues = diffPlayers.Select(p => (p, v: (double)p.InterceptionCount)).OrderByDescending(x => x.v).ToList();
+                        var defMax = defValues.Count > 0 ? defValues.Max(x => x.v) : 1.0;
+                        var defBestId = defValues.Select(x => x.p.PlayerId).FirstOrDefault();
                     }
-                </section>
 
-                @if (ShowComparisonKpiCards)
-                {
-                    <section class="triple-grid">
-                        @foreach (var player in Response.Players)
-                        {
-                            <article class="page-panel section-stack">
-                                <div>
-                                    <p class="section-kicker">Lecture analyste</p>
-                                    <h4>@player.FullName</h4>
-                                    <p class="page-subtitle">@player.TeamName - @(player.PositionCode ?? player.PositionName ?? "Poste non renseigne")</p>
-                                </div>
+                    <div class="cmp-section">
+                        <div class="cmp-label"><span class="cmp-label__text">Key Differentiators</span></div>
 
-                                <PlayerTeamHistoryPanel Profile="@player"
-                                                       Kicker="Historique de club"
-                                                       Title="Lecture des changements de club"
-                                                       Subtitle="Le club principal est affiche en premier; les autres clubs aident a garder la comparaison propre."
-                                                       Footnote="Chaque joueuse garde son contexte club pour que les KPI restent comparables et sans ambiguite." />
-
-                                <BarGaugeKpiGrid Items="@GetComparisonGaugeKpis(player)"
-                                                 CssClass="gauge-kpi-grid gauge-kpi-grid-compact" />
-
-                                <KpiTileGrid Items="@GetComparisonKpis(player)" />
-                            </article>
-                        }
-                    </section>
-                }
-            }
-            else if (ActiveComparisonSection == "charts")
-            {
-                @if (Response is null)
-                {
-                    <StateCard Kicker="Aucune comparaison"
-                               Title="Lancez une comparaison pour afficher les graphiques"
-                               Message="Les vues radar, volumes et efficacite s'ouvrent une fois au moins deux joueuses comparees."
-                               Tone="empty"
-                               CssClass="empty-card-inline" />
-                }
-                else
-                {
-                    var response = Response!;
-                    @if (ShowComparisonRadarChart)
-                    {
-                        <section class="page-panel comparison-chart-panel comparison-chart-panel--radar">
-                            <div class="panel-head">
-                                <div>
-                                    <p class="section-kicker">Radar</p>
-                                    <h3>Comparer les profils sur les axes qui comptent vraiment</h3>
-                                    <p class="page-subtitle">Buts, passes, defense, efficacite, securite et volume sont ramenes sur une echelle commune pour une lecture rapide.</p>
-                                </div>
+                        <div class="cmp-diff-item">
+                            <div class="cmp-diff-meta">
+                                <span class="cmp-diff-title">Finition</span>
+                                <span class="cmp-diff-sub">Taux de tir jeu ouvert</span>
                             </div>
-
-                            <ApexChart @key="response.Players.Count" TItem="MetricPlotPoint" Height="360" Options="@GetComparisonRadarChartOptions(response.Players.Count)">
-                                @foreach (var player in response.Players)
+                            <div class="cmp-diff-rows">
+                                @foreach (var (fp, fv) in finValues.OrderByDescending(x => x.v))
                                 {
-                                    <ApexPointSeries TItem="MetricPlotPoint"
-                                                     Items="@GetComparisonRadarSeries(player)"
-                                                     Name="@player.FullName"
-                                                     SeriesType="SeriesType.Line"
-                                                     XValue="point => point.Label"
-                                                     YValue="point => (decimal?)point.Value" />
+                                    var fColor = GetPlayerColor(fp.PlayerId);
+                                    var fPct = finMax > 0 ? (int)(fv / finMax * 100) : 0;
+                                    <div class="cmp-diff-row">
+                                        <span class="cmp-diff-row__dot" style="background:@fColor"></span>
+                                        <span class="cmp-diff-row__name">@fp.FullName</span>
+                                        <div class="cmp-diff-row__track"><div class="cmp-diff-row__fill" style="width:@fPct%;background:@fColor"></div></div>
+                                        <span class="cmp-diff-row__value">@FormatRate(fv)%</span>
+                                        @if (fp.PlayerId == finBestId) { <span class="cmp-diff-row__best">Best</span> } else { <span class="cmp-diff-row__best cmp-diff-row__best--empty">·</span> }
+                                    </div>
                                 }
-                            </ApexChart>
-                        </section>
-                    }
-
-                    <section class="dual-grid comparison-chart-grid">
-                        @if (ShowComparisonVolumeChart)
-                        {
-                            <article class="page-panel comparison-chart-panel">
-                                <div class="panel-head">
-                                    <div>
-                                        <p class="section-kicker">Volumes cles</p>
-                                        <h3>Impact brut des joueuses</h3>
-                                </div>
                             </div>
+                        </div>
 
-                                <ApexChart TItem="MetricPlotPoint" Height="330" Options="@GetComparisonBarChartOptions(response.Players.Count)">
-                                    @foreach (var player in response.Players)
+                        <div class="cmp-diff-item">
+                            <div class="cmp-diff-meta">
+                                <span class="cmp-diff-title">Volume offensif</span>
+                                <span class="cmp-diff-sub">Buts marqués · saison</span>
+                            </div>
+                            <div class="cmp-diff-rows">
+                                @foreach (var (vp, vv) in volValues.OrderByDescending(x => x.v))
+                                {
+                                    var vColor = GetPlayerColor(vp.PlayerId);
+                                    var vPct = volMax > 0 ? (int)(vv / volMax * 100) : 0;
+                                    <div class="cmp-diff-row">
+                                        <span class="cmp-diff-row__dot" style="background:@vColor"></span>
+                                        <span class="cmp-diff-row__name">@vp.FullName</span>
+                                        <div class="cmp-diff-row__track"><div class="cmp-diff-row__fill" style="width:@vPct%;background:@vColor"></div></div>
+                                        <span class="cmp-diff-row__value">@((int)vv)</span>
+                                        @if (vp.PlayerId == volBestId) { <span class="cmp-diff-row__best">Best</span> } else { <span class="cmp-diff-row__best cmp-diff-row__best--empty">·</span> }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="cmp-diff-item">
+                            <div class="cmp-diff-meta">
+                                <span class="cmp-diff-title">Sécurité de balle</span>
+                                <span class="cmp-diff-sub">Pertes / match — moins = mieux</span>
+                            </div>
+                            <div class="cmp-diff-rows">
+                                @foreach (var (sp, sv) in secValues)
+                                {
+                                    var sColor = GetPlayerColor(sp.PlayerId);
+                                    var sPct = sv > 0 ? (int)Math.Min(secMin / sv * 100, 100) : 100;
+                                    <div class="cmp-diff-row">
+                                        <span class="cmp-diff-row__dot" style="background:@sColor"></span>
+                                        <span class="cmp-diff-row__name">@sp.FullName</span>
+                                        <div class="cmp-diff-row__track"><div class="cmp-diff-row__fill" style="width:@sPct%;background:@sColor"></div></div>
+                                        <span class="cmp-diff-row__value">@sv.ToString("0.#") /m</span>
+                                        @if (sp.PlayerId == secBestId) { <span class="cmp-diff-row__best">Best</span> } else { <span class="cmp-diff-row__best cmp-diff-row__best--empty">·</span> }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="cmp-diff-item">
+                            <div class="cmp-diff-meta">
+                                <span class="cmp-diff-title">Présence défensive</span>
+                                <span class="cmp-diff-sub">Interceptions · saison</span>
+                            </div>
+                            <div class="cmp-diff-rows">
+                                @foreach (var (dp, dv) in defValues)
+                                {
+                                    var dColor = GetPlayerColor(dp.PlayerId);
+                                    var dPct = defMax > 0 ? (int)(dv / defMax * 100) : 0;
+                                    <div class="cmp-diff-row">
+                                        <span class="cmp-diff-row__dot" style="background:@dColor"></span>
+                                        <span class="cmp-diff-row__name">@dp.FullName</span>
+                                        <div class="cmp-diff-row__track"><div class="cmp-diff-row__fill" style="width:@dPct%;background:@dColor"></div></div>
+                                        <span class="cmp-diff-row__value">@((int)dv)</span>
+                                        @if (dp.PlayerId == defBestId) { <span class="cmp-diff-row__best">Best</span> } else { <span class="cmp-diff-row__best cmp-diff-row__best--empty">·</span> }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            }
+
+            @* ── VISUAL LAB TAB ── *@
+            @if (_activeTab == "lab")
+            {
+                var labResponse = Response!;
+                <div class="tab-panel active" role="tabpanel">
+
+                    <div class="cmp-section" style="margin-top:1.75rem">
+                        <div class="cmp-label"><span class="cmp-label__text">Visual Profile</span></div>
+                        <div class="cmp-radar-hero">
+                            <div class="cmp-radar-hero__chart">
+                                @if (ShowComparisonRadarChart)
+                                {
+                                    <ApexChart @key="labResponse.Players.Count" TItem="MetricPlotPoint" Height="340" Options="@GetComparisonRadarChartOptions(labResponse.Players.Count)">
+                                        @foreach (var rp in labResponse.Players)
+                                        {
+                                            <ApexPointSeries TItem="MetricPlotPoint"
+                                                             Items="@GetComparisonRadarSeries(rp)"
+                                                             Name="@rp.FullName"
+                                                             SeriesType="SeriesType.Line"
+                                                             XValue="point => point.Label"
+                                                             YValue="point => (decimal?)point.Value" />
+                                        }
+                                    </ApexChart>
+                                }
+                            </div>
+                            <div class="cmp-radar-hero__panel">
+                                <div class="cmp-label" style="margin-bottom:0.625rem"><span class="cmp-label__text">Profile Read</span></div>
+                                @foreach (var rp in labResponse.Players)
+                                {
+                                    <div class="cmp-profile-entry">
+                                        <span class="cmp-profile-entry__dot" style="background:@GetPlayerColor(rp.PlayerId)"></span>
+                                        <div>
+                                            <div class="cmp-profile-entry__name">@(rp.FullName.Split(' ').FirstOrDefault() ?? rp.FullName)</div>
+                                            <div class="cmp-profile-entry__traits">@GetProfileTraits(rp)</div>
+                                        </div>
+                                    </div>
+                                }
+                                <p class="cmp-radar-legend">Normalisé 0–100<br>6 axes : Buts · Passes · Défense · Efficacité · Sécurité · Volume</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cmp-section">
+                        <div class="cmp-label"><span class="cmp-label__text">Volumes &amp; Efficacité</span></div>
+                        <div class="cmp-charts-grid">
+                            <div class="cmp-chart-block">
+                                <div class="cmp-chart-block__head">
+                                    <span class="cmp-chart-block__title">Volumes bruts</span>
+                                    <span class="cmp-chart-block__sub">par catégorie</span>
+                                </div>
+                                <ApexChart TItem="MetricPlotPoint" Height="240" Options="@GetComparisonBarChartOptions(labResponse.Players.Count)">
+                                    @foreach (var vp in labResponse.Players)
                                     {
                                         <ApexPointSeries TItem="MetricPlotPoint"
-                                                         Items="@GetVolumeSeries(player)"
-                                                         Name="@player.FullName"
+                                                         Items="@GetVolumeSeries(vp)"
+                                                         Name="@vp.FullName"
                                                          SeriesType="SeriesType.Bar"
                                                          XValue="point => point.Label"
                                                          YValue="point => (decimal?)point.Value" />
                                     }
                                 </ApexChart>
-                            </article>
-                        }
-
-                        @if (ShowComparisonEfficiencyChart)
-                        {
-                            <article class="page-panel comparison-chart-panel">
-                                <div class="panel-head">
-                                    <div>
-                                        <p class="section-kicker">Efficacite</p>
-                                        <h3>Pourcentages de reussite</h3>
-                                </div>
                             </div>
-
-                            <ApexChart TItem="MetricPlotPoint" Height="330" Options="@GetComparisonLineChartOptions(response.Players.Count)">
-                                    @foreach (var player in response.Players)
+                            <div class="cmp-chart-block">
+                                <div class="cmp-chart-block__head">
+                                    <span class="cmp-chart-block__title">Efficacité comparée</span>
+                                    <span class="cmp-chart-block__sub">taux tir · conversion · 7m</span>
+                                </div>
+                                <ApexChart TItem="MetricPlotPoint" Height="240" Options="@GetComparisonLineChartOptions(labResponse.Players.Count)">
+                                    @foreach (var ep in labResponse.Players)
                                     {
                                         <ApexPointSeries TItem="MetricPlotPoint"
-                                                         Items="@GetEfficiencySeries(player)"
-                                                         Name="@player.FullName"
+                                                         Items="@GetEfficiencySeries(ep)"
+                                                         Name="@ep.FullName"
                                                          SeriesType="SeriesType.Line"
                                                          XValue="point => point.Label"
                                                          YValue="point => (decimal?)point.Value" />
                                     }
                                 </ApexChart>
-                            </article>
-                        }
-                    </section>
-
-                    @if (ShowComparisonTechnicalChart)
-                    {
-                        <section class="page-panel comparison-chart-panel">
-                            <div class="panel-head">
-                                <div>
-                                    <p class="section-kicker">Technique</p>
-                                    <h3>Tirs engages, dechets et pertes techniques</h3>
-                                </div>
                             </div>
-
-                            <ApexChart TItem="MetricPlotPoint" Height="330" Options="@GetComparisonBarChartOptions(response.Players.Count)">
-                                @foreach (var player in response.Players)
-                                {
-                                    <ApexPointSeries TItem="MetricPlotPoint"
-                                                     Items="@GetTechnicalSeries(player)"
-                                                     Name="@player.FullName"
-                                                     SeriesType="SeriesType.Bar"
-                                                     XValue="point => point.Label"
-                                                     YValue="point => (decimal?)point.Value" />
-                                }
-                            </ApexChart>
-                        </section>
-                    }
+                        </div>
+                    </div>
 
                     @if (ShowComparisonPerMatchChart)
                     {
-                        <section class="page-panel comparison-chart-panel">
-                            <div class="panel-head">
-                                <div>
-                                    <p class="section-kicker">Production par match</p>
-                                    <h3>Comparer les profils sur un meme niveau d'exposition</h3>
+                        <div class="cmp-section">
+                            <div class="cmp-label"><span class="cmp-label__text">Production par match</span></div>
+                            <div class="cmp-chart-block">
+                                <div class="cmp-chart-block__head">
+                                    <span class="cmp-chart-block__title">Production par match</span>
+                                    <span class="cmp-chart-block__sub">Buts · Tirs · Passes · Pertes · Sanctions · Impact déf.</span>
                                 </div>
-                            </div>
-
-                            <ApexChart TItem="MetricPlotPoint" Height="330" Options="@GetComparisonBarChartOptions(response.Players.Count)">
-                                @foreach (var player in response.Players)
-                                {
-                                    <ApexPointSeries TItem="MetricPlotPoint"
-                                                     Items="@GetPerMatchSeries(player)"
-                                                     Name="@player.FullName"
-                                                     SeriesType="SeriesType.Bar"
-                                                     XValue="point => point.Label"
-                                                     YValue="point => (decimal?)point.Value" />
-                                }
-                            </ApexChart>
-                        </section>
-                    }
-                }
-            }
-            else if (ShowComparisonTable)
-            {
-                <section class="page-panel comparison-evidence-panel">
-                    @{
-                        var comparedPlayers = Response.Players.ToArray();
-                    }
-
-                    <div class="table-wrap">
-                        <table class="stat-table">
-                            <thead>
-                                <tr>
-                                    <th>Metrique</th>
-                                    @foreach (var player in Response.Players)
+                                <ApexChart TItem="MetricPlotPoint" Height="240" Options="@GetComparisonBarChartOptions(labResponse.Players.Count)">
+                                    @foreach (var pp in labResponse.Players)
                                     {
-                                        <th>@player.FullName</th>
+                                        <ApexPointSeries TItem="MetricPlotPoint"
+                                                         Items="@GetPerMatchSeries(pp)"
+                                                         Name="@pp.FullName"
+                                                         SeriesType="SeriesType.Bar"
+                                                         XValue="point => point.Label"
+                                                         YValue="point => (decimal?)point.Value" />
                                     }
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Matchs</td>
-                                    @foreach (var player in comparedPlayers) { <td>@player.MatchesPlayed</td> }
-                                </tr>
-                                <tr>
-                                    <td>Buts</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)row.TotalGoals, player)">@player.TotalGoals</td> }
-                                </tr>
-                                <tr>
-                                    <td>Passes</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)row.AssistCount, player)">@player.AssistCount</td> }
-                                </tr>
-                                <tr>
-                                    <td>Interceptions</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)row.InterceptionCount, player)">@player.InterceptionCount</td> }
-                                </tr>
-                                <tr>
-                                    <td>Arrets</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)row.SaveCount, player)">@player.SaveCount</td> }
-                                </tr>
-                                <tr>
-                                    <td>Pertes</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)row.TurnoverCount, player, higherIsBetter: false)">@player.TurnoverCount</td> }
-                                </tr>
-                                <tr>
-                                    <td>Taux tir</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)row.ShotSuccessRate, player)">@FormatRate(player.ShotSuccessRate)%</td> }
-                                </tr>
-                                <tr>
-                                    <td>Taux penalty</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)row.PenaltySuccessRate, player)">@FormatRate(player.PenaltySuccessRate)%</td> }
-                                </tr>
-                                <tr>
-                                    <td>Buts 7m</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)(GetOffense(row.PlayerId)?.Buts7m ?? 0), player)">@GetOffense(player.PlayerId)?.Buts7m</td> }
-                                </tr>
-                                <tr>
-                                    <td>Tirs engages</td>
-                                    @foreach (var player in comparedPlayers) { <td>@(GetTechnical(player.PlayerId)?.ShotAttempts ?? HandballKpiHelper.ShotAttempts(GetOffense(player.PlayerId)))</td> }
-                                </tr>
-                                <tr>
-                                    <td>Dechet tir</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)(GetTechnical(row.PlayerId)?.ShotWaste ?? HandballKpiHelper.ShotWaste(GetOffense(row.PlayerId))), player, higherIsBetter: false)">@((GetTechnical(player.PlayerId)?.ShotWaste ?? HandballKpiHelper.ShotWaste(GetOffense(player.PlayerId))))</td> }
-                                </tr>
-                                <tr>
-                                    <td>Contres</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)GetDefense(row.PlayerId)?.Contres, player)">@GetDefense(player.PlayerId)?.Contres</td> }
-                                </tr>
-                                <tr>
-                                    <td>Neutralisations</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)GetDefense(row.PlayerId)?.Neutralisations, player)">@GetDefense(player.PlayerId)?.Neutralisations</td> }
-                                </tr>
-                                <tr>
-                                    <td>Pertes techniques</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)(GetTechnical(row.PlayerId)?.TechnicalLosses ?? HandballKpiHelper.TechnicalLosses(GetPassing(row.PlayerId))), player, higherIsBetter: false)">@((GetTechnical(player.PlayerId)?.TechnicalLosses ?? HandballKpiHelper.TechnicalLosses(GetPassing(player.PlayerId))))</td> }
-                                </tr>
-                                <tr>
-                                    <td>Conversions globales</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)(GetTechnical(row.PlayerId)?.OverallShotSuccessRate ?? HandballKpiHelper.OverallShotSuccessRate(GetOffense(row.PlayerId))), player)">@FormatRate((GetTechnical(player.PlayerId)?.OverallShotSuccessRate ?? HandballKpiHelper.OverallShotSuccessRate(GetOffense(player.PlayerId))))%</td> }
-                                </tr>
-                                <tr>
-                                    <td>Mauvaises passes</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)GetPassing(row.PlayerId)?.MauvaisePasse, player, higherIsBetter: false)">@GetPassing(player.PlayerId)?.MauvaisePasse</td> }
-                                </tr>
-                                <tr>
-                                    <td>Total pertes</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)GetPassing(row.PlayerId)?.TotalPertes, player, higherIsBetter: false)">@GetPassing(player.PlayerId)?.TotalPertes</td> }
-                                </tr>
-                                <tr>
-                                    <td>Deux minutes</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)GetSanctions(row.PlayerId)?.DeuxMinutes, player, higherIsBetter: false)">@GetSanctions(player.PlayerId)?.DeuxMinutes</td> }
-                                </tr>
-                                <tr>
-                                    <td>Penalties conced.</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)GetSanctions(row.PlayerId)?.PenaltyConcede, player, higherIsBetter: false)">@GetSanctions(player.PlayerId)?.PenaltyConcede</td> }
-                                </tr>
-                                <tr>
-                                    <td>Taux d'arret</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)(GetTechnical(row.PlayerId)?.GoalkeeperSaveRate ?? GetGoalkeeper(row.PlayerId)?.TauxArret ?? 0), player)">@FormatRate(GetTechnical(player.PlayerId)?.GoalkeeperSaveRate ?? GetGoalkeeper(player.PlayerId)?.TauxArret ?? 0)%</td> }
-                                </tr>
-                                <tr>
-                                    <td>Stop 7m</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)(GetTechnical(row.PlayerId)?.GoalkeeperPenaltyStopRate ?? HandballKpiHelper.GoalkeeperPenaltyStopRate(GetGoalkeeper(row.PlayerId))), player)">@FormatRate(GetTechnical(player.PlayerId)?.GoalkeeperPenaltyStopRate ?? HandballKpiHelper.GoalkeeperPenaltyStopRate(GetGoalkeeper(player.PlayerId)))%</td> }
-                                </tr>
-                                <tr>
-                                    <td>Buts pris</td>
-                                    @foreach (var player in comparedPlayers) { <td class="@TableHeatToneHelper.HeatClass(comparedPlayers, row => (double?)(GetTechnical(row.PlayerId)?.GoalkeeperConcededGoals ?? HandballKpiHelper.GoalkeeperConcededGoals(GetGoalkeeper(row.PlayerId))), player, higherIsBetter: false)">@((GetTechnical(player.PlayerId)?.GoalkeeperConcededGoals ?? HandballKpiHelper.GoalkeeperConcededGoals(GetGoalkeeper(player.PlayerId))))</td> }
-                                </tr>
-                            </tbody>
-                        </table>
+                                </ApexChart>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="cmp-section">
+                        <div class="cmp-label"><span class="cmp-label__text">Detailed Evidence</span></div>
+                        <div class="cmp-evidence">
+                            <div class="cmp-evidence__head">
+                                <span class="cmp-evidence__title">22 métriques</span>
+                                <span class="cmp-evidence__count">
+                                    @(CompetitionId.HasValue
+                                        ? AvailableCompetitions.FirstOrDefault(c => c.CompetitionId == CompetitionId)?.CompetitionName ?? "Compétition"
+                                        : "Toutes compétitions")
+                                    @if (!string.IsNullOrWhiteSpace(Season)) { <text> · @Season</text> }
+                                </span>
+                            </div>
+                            @{
+                                var evidencePlayers = labResponse.Players.ToArray();
+                            }
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Métrique</th>
+                                            @foreach (var ep in evidencePlayers)
+                                            {
+                                                <th class="text-right" style="color:@GetPlayerColor(ep.PlayerId)">@ep.FullName</th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="cmp-evidence-group"><td colspan="@(evidencePlayers.Length + 1)">Offensif</td></tr>
+                                        <tr>
+                                            <td>Matchs</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right">@ep.MatchesPlayed</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Buts</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)row.TotalGoals, ep)">@ep.TotalGoals</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Buts 7m</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)(GetOffense(row.PlayerId)?.Buts7m ?? 0), ep)">@(GetOffense(ep.PlayerId)?.Buts7m ?? 0)</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Tirs engagés</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right">@(GetTechnical(ep.PlayerId)?.ShotAttempts ?? HandballKpiHelper.ShotAttempts(GetOffense(ep.PlayerId)))</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Taux tir</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)row.ShotSuccessRate, ep)">@FormatRate(ep.ShotSuccessRate)%</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Taux penalty</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)row.PenaltySuccessRate, ep)">@FormatRate(ep.PenaltySuccessRate)%</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Conv. globale</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)(GetTechnical(row.PlayerId)?.OverallShotSuccessRate ?? HandballKpiHelper.OverallShotSuccessRate(GetOffense(row.PlayerId))), ep)">@FormatRate(GetTechnical(ep.PlayerId)?.OverallShotSuccessRate ?? HandballKpiHelper.OverallShotSuccessRate(GetOffense(ep.PlayerId)))%</td> }
+                                        </tr>
+                                        <tr class="cmp-evidence-group"><td colspan="@(evidencePlayers.Length + 1)">Création</td></tr>
+                                        <tr>
+                                            <td>Passes déc.</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)row.AssistCount, ep)">@ep.AssistCount</td> }
+                                        </tr>
+                                        <tr class="cmp-evidence-group"><td colspan="@(evidencePlayers.Length + 1)">Défensif</td></tr>
+                                        <tr>
+                                            <td>Interceptions</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)row.InterceptionCount, ep)">@ep.InterceptionCount</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Contres</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)GetDefense(row.PlayerId)?.Contres, ep)">@(GetDefense(ep.PlayerId)?.Contres ?? 0)</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Neutralisations</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)GetDefense(row.PlayerId)?.Neutralisations, ep)">@(GetDefense(ep.PlayerId)?.Neutralisations ?? 0)</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Arrêts</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)row.SaveCount, ep)">@ep.SaveCount</td> }
+                                        </tr>
+                                        <tr class="cmp-evidence-group"><td colspan="@(evidencePlayers.Length + 1)">Pertes &amp; Risque</td></tr>
+                                        <tr>
+                                            <td>Total pertes</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)GetPassing(row.PlayerId)?.TotalPertes, ep, higherIsBetter: false)">@(GetPassing(ep.PlayerId)?.TotalPertes ?? ep.TurnoverCount)</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Pertes tech.</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)(GetTechnical(row.PlayerId)?.TechnicalLosses ?? HandballKpiHelper.TechnicalLosses(GetPassing(row.PlayerId))), ep, higherIsBetter: false)">@(GetTechnical(ep.PlayerId)?.TechnicalLosses ?? HandballKpiHelper.TechnicalLosses(GetPassing(ep.PlayerId)))</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Mauvaises passes</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)GetPassing(row.PlayerId)?.MauvaisePasse, ep, higherIsBetter: false)">@(GetPassing(ep.PlayerId)?.MauvaisePasse ?? 0)</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Déchet tir</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)(GetTechnical(row.PlayerId)?.ShotWaste ?? HandballKpiHelper.ShotWaste(GetOffense(row.PlayerId))), ep, higherIsBetter: false)">@(GetTechnical(ep.PlayerId)?.ShotWaste ?? HandballKpiHelper.ShotWaste(GetOffense(ep.PlayerId)))</td> }
+                                        </tr>
+                                        <tr class="cmp-evidence-group"><td colspan="@(evidencePlayers.Length + 1)">Discipline</td></tr>
+                                        <tr>
+                                            <td>2 minutes</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)GetSanctions(row.PlayerId)?.DeuxMinutes, ep, higherIsBetter: false)">@(GetSanctions(ep.PlayerId)?.DeuxMinutes ?? 0)</td> }
+                                        </tr>
+                                        <tr>
+                                            <td>Penalties concédés</td>
+                                            @foreach (var ep in evidencePlayers) { <td class="text-right @TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)GetSanctions(row.PlayerId)?.PenaltyConcede, ep, higherIsBetter: false)">@(GetSanctions(ep.PlayerId)?.PenaltyConcede ?? 0)</td> }
+                                        </tr>
+                                        <tr class="cmp-evidence-group"><td colspan="@(evidencePlayers.Length + 1)">Gardien</td></tr>
+                                        <tr>
+                                            <td>Taux d'arrêt</td>
+                                            @foreach (var ep in evidencePlayers)
+                                            {
+                                                var gkRate = GetTechnical(ep.PlayerId)?.GoalkeeperSaveRate ?? GetGoalkeeper(ep.PlayerId)?.TauxArret ?? 0;
+                                                <td class="text-right @(ep.IsGoalkeeper ? TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)(GetTechnical(row.PlayerId)?.GoalkeeperSaveRate ?? GetGoalkeeper(row.PlayerId)?.TauxArret ?? 0), ep) : "text-muted")">@(ep.IsGoalkeeper ? FormatRate(gkRate) + "%" : "—")</td>
+                                            }
+                                        </tr>
+                                        <tr>
+                                            <td>Stop 7m</td>
+                                            @foreach (var ep in evidencePlayers)
+                                            {
+                                                var stopRate = GetTechnical(ep.PlayerId)?.GoalkeeperPenaltyStopRate ?? HandballKpiHelper.GoalkeeperPenaltyStopRate(GetGoalkeeper(ep.PlayerId));
+                                                <td class="text-right @(ep.IsGoalkeeper ? TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)(GetTechnical(row.PlayerId)?.GoalkeeperPenaltyStopRate ?? HandballKpiHelper.GoalkeeperPenaltyStopRate(GetGoalkeeper(row.PlayerId))), ep) : "text-muted")">@(ep.IsGoalkeeper ? FormatRate(stopRate) + "%" : "—")</td>
+                                            }
+                                        </tr>
+                                        <tr>
+                                            <td>Buts pris</td>
+                                            @foreach (var ep in evidencePlayers)
+                                            {
+                                                var conceded = GetTechnical(ep.PlayerId)?.GoalkeeperConcededGoals ?? HandballKpiHelper.GoalkeeperConcededGoals(GetGoalkeeper(ep.PlayerId));
+                                                <td class="text-right @(ep.IsGoalkeeper ? TableHeatToneHelper.HeatClass(evidencePlayers, row => (double?)(GetTechnical(row.PlayerId)?.GoalkeeperConcededGoals ?? HandballKpiHelper.GoalkeeperConcededGoals(GetGoalkeeper(row.PlayerId))), ep, higherIsBetter: false) : "text-muted")">@(ep.IsGoalkeeper ? conceded.ToString() : "—")</td>
+                                            }
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                </section>
+
+                </div>
             }
-        }
+        </div>
     }
-</div>
+}
 
 @code {
     private AnalyticsReferenceData ReferenceData { get; set; } = AnalyticsReferenceData.Empty;
@@ -533,6 +678,10 @@
     private string ActiveComparisonSection { get; set; } = "summary";
     private int CompareSlotCount { get; set; } = 3;
     private bool _publishingScope;
+    private bool _filterOpen;
+    private int _pickerSlot = -1;
+    private string _activeTab = "brief";
+    private static readonly string[] _slotColors = ["var(--court-400)", "var(--electric-400)", "var(--signal-500)", "var(--court-300)", "var(--electric-300)", "var(--signal-300)"];
     private List<int?> SelectedPlayerIds { get; set; } = [null, null, null];
     private List<string> PlayerSearchTerms { get; set; } = [string.Empty, string.Empty, string.Empty];
     private IReadOnlyList<string> SeasonOptions => MatchFilterCatalog.GetSeasons(ScopedMatches);
@@ -591,6 +740,7 @@
     {
         ApplyGlobalScope();
         ScopeService.Changed += HandleGlobalScopeChanged;
+        CommandBarService.Register(() => { _filterOpen = true; return InvokeAsync(StateHasChanged); });
         await RefreshPlayersAsync();
     }
 
@@ -603,6 +753,7 @@
     public void Dispose()
     {
         ScopeService.Changed -= HandleGlobalScopeChanged;
+        CommandBarService.Clear();
     }
 
     private void HandleGlobalScopeChanged()
@@ -669,6 +820,105 @@
         ActiveComparisonSection = section;
         return InvokeAsync(StateHasChanged);
     }
+
+    private Task SetActiveTab(string tab)
+    {
+        _activeTab = tab;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenPicker(int slot) => _pickerSlot = _pickerSlot == slot ? -1 : slot;
+    private void ClosePicker() => _pickerSlot = -1;
+
+    private async Task AddSlotAndOpenPickerAsync()
+    {
+        if (CompareSlotCount >= 6) return;
+        CompareSlotCount++;
+        await OnCompareSlotCountChangedAsync();
+        _pickerSlot = CompareSlotCount - 1;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SelectAndClosePicker(int slot, int playerId)
+    {
+        _pickerSlot = -1;
+        await SelectPlayerSlot(slot, playerId);
+    }
+
+    private void CloseCompareFilterDrawer()
+    {
+        _filterOpen = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ResetCompareFiltersAsync()
+    {
+        CompetitionId = null;
+        TeamId = null;
+        PositionId = null;
+        Season = null;
+        Day = null;
+        _filterOpen = false;
+        await OnScopeSelectionChangedAsync();
+    }
+
+    private string GetPerformerSignal(PlayerGlobalStatsDto player)
+    {
+        if (Response is null || Response.Players.Count == 0) return string.Empty;
+        if (player.IsGoalkeeper && player.GoalkeeperSaveRate >= 50) return "Impact gardienne";
+        var maxGoals = Response.Players.Max(p => p.TotalGoals);
+        if (maxGoals > 0 && player.TotalGoals >= maxGoals * 0.9) return "Dominance offensive";
+        var maxRate = Response.Players.Max(p => p.ShotSuccessRate);
+        if (maxRate > 0 && player.ShotSuccessRate >= maxRate * 0.95) return "Finition d'élite";
+        var maxAssist = Response.Players.Max(p => p.AssistCount);
+        if (maxAssist > 0 && player.AssistCount >= maxAssist) return "Créativité";
+        var maxInter = Response.Players.Max(p => p.InterceptionCount);
+        if (maxInter > 0 && player.InterceptionCount >= maxInter) return "Impact défensif";
+        return "Profil sécurisé";
+    }
+
+    private string GetProfileTraits(PlayerGlobalStatsDto player)
+    {
+        if (Response is null || Response.Players.Count == 0) return string.Empty;
+        var traits = new List<string>();
+        var maxGoals = Response.Players.Max(p => p.TotalGoals);
+        if (maxGoals > 0 && player.TotalGoals >= maxGoals * 0.88) traits.Add("Volume");
+        var maxRate = Response.Players.Max(p => p.ShotSuccessRate);
+        if (maxRate > 0 && player.ShotSuccessRate >= maxRate * 0.93) traits.Add("Finition");
+        var maxAssist = Response.Players.Max(p => p.AssistCount);
+        if (maxAssist > 0 && player.AssistCount >= maxAssist * 0.88) traits.Add("Création");
+        var minTurnover = Response.Players.Min(p => p.TurnoverCount);
+        if (player.TurnoverCount <= minTurnover * 1.15) traits.Add("Sécurité");
+        var maxInter = Response.Players.Max(p => p.InterceptionCount);
+        if (maxInter > 0 && player.InterceptionCount >= maxInter * 0.88) traits.Add("Défense");
+        if (player.IsGoalkeeper && player.GoalkeeperSaveRate >= 45) traits.Add("Gardienne");
+        if (traits.Count == 0) traits.Add("Équilibre");
+        return string.Join(" · ", traits.Take(2));
+    }
+
+    private static string GetSlotColor(int slot) => slot < _slotColors.Length ? _slotColors[slot] : "var(--text-muted)";
+
+    private string GetPlayerColor(int playerId)
+    {
+        var idx = SelectedPlayerIds.FindIndex(id => id.HasValue && id.Value == playerId);
+        return idx >= 0 ? GetSlotColor(idx) : "var(--text-muted)";
+    }
+
+    private static string GetPlayerInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        return string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpperInvariant(p[0])));
+    }
+
+    private static string GetPositionCardVariant(string? posCode) => (posCode ?? "").ToUpperInvariant() switch
+    {
+        "GK" or "GB" or "G" or "GARDIENNE" or "GARDEN" => "gardienne",
+        var p when p.StartsWith("AR") => "arriere",
+        "PIV" or "PIVOT" => "pivot",
+        "AIL" or "AILG" or "ALD" or "AIL-G" or "AIL-D" or "AILIERE" or "AILIÈRE" => "ailiere",
+        "DC" or "DCE" or "DEMI" or "DEMI-CENTRE" => "demi",
+        _ => ""
+    };
 
     private async Task RefreshPlayersAsync()
     {

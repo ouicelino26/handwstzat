@@ -1,0 +1,110 @@
+@inherits AnalyseTabPanelBase
+
+@if (!PlayerId.HasValue)
+{
+    <StateCard Kicker="En attente"
+               Title="Selectionnez une joueuse pour ouvrir l'analyse"
+               Message="Le profil poste, le radar et les axes s'afficheront ici apres selection."
+               Tone="empty"
+               CssClass="empty-card-inline" />
+}
+else if (IsBusy && PositionProfile is null)
+{
+    <PageLoader Kicker="Chargement"
+                Title="Analyse du profil poste en cours"
+                Message="Lecture de la cohorte, du radar et des axes normalises." />
+}
+else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <StateCard Kicker="Erreur"
+               Title="Profil poste indisponible"
+               Message="@ErrorMessage"
+               Tone="error" />
+}
+else if (PositionProfile?.SelectedPlayer is null || PositionProfile.MedianProfile is null)
+{
+    <StateCard Kicker="Profil indisponible"
+               Title="Donnees de profil poste insuffisantes"
+               Message="Aucune cohorte disponible pour cette joueuse dans le contexte actuel."
+               Tone="empty"
+               CssClass="empty-card-inline" />
+}
+else
+{
+    var selected = PositionProfile.SelectedPlayer;
+    var insights = PositionProfileInsights;
+
+    <div class="anlz-tab">
+        <ScopeSummaryBar Items="@PositionProfileScopeItems" />
+
+        <CoachCards Kicker="Lecture coach"
+                    Title="Ce que le staff doit retenir tout de suite"
+                    Subtitle="@insights.ContextualInsight"
+                    Cards="@insights.CoachCards" />
+
+        <section class="page-panel position-profile-snapshot-panel">
+            <div class="panel-head panel-head-wrap">
+                <div>
+                    <p class="section-kicker">Snapshot de profil</p>
+                    <h4>Lecture synthese</h4>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(insights.PerformanceLevel))
+                {
+                    <span class="hero-badge">@insights.PerformanceLevel</span>
+                }
+            </div>
+            <KpiTileGrid Items="@insights.SnapshotKpis" />
+        </section>
+
+        <div class="anlz-charts-row">
+            <PositionProfileHistogram @key="AnlzHistogramKey"
+                                      Kicker="Histogramme poste"
+                                      Title="Valeurs de la joueuse face a la mediane du poste"
+                                      ChartKey="@AnlzHistogramKey"
+                                      Axes="@PositionProfileChartRows"
+                                      HighlightedAxisKeys="@insights.HighlightAxisKeys"
+                                      AlertAxisKeys="@insights.AlertAxisKeys"
+                                      SelectedSeriesLabel="@selected.FullName"
+                                      MedianSeriesLabel="Mediane du poste"
+                                      Height="440" />
+
+            <PositionRadarChart @key="AnlzRadarKey"
+                                Kicker="Radar normalise"
+                                Title="Forme du profil (normalisee)"
+                                Subtitle="Forme du profil normalisee face a la mediane du poste."
+                                ChartKey="@AnlzRadarKey"
+                                Axes="@PositionProfileChartRows"
+                                MedianSeries="@PositionProfileChartMedianRadarSeries"
+                                HighlightedAxisKeys="@insights.HighlightAxisKeys"
+                                AlertAxisKeys="@insights.AlertAxisKeys"
+                                SelectedSeriesLabel="@selected.FullName"
+                                MedianSeriesLabel="Mediane du poste"
+                                AxisCount="@PositionProfileChartRows.Count"
+                                Width="720"
+                                Height="560" />
+        </div>
+
+        <div class="anlz-legend">
+            <span class="anlz-legend-dot anlz-legend-dot--player"></span>
+            <span>@selected.FullName</span>
+            <span class="anlz-legend-dot anlz-legend-dot--median"></span>
+            <span>Mediane du poste</span>
+        </div>
+
+        <DetailedTable Kicker="Lecture detaillee"
+                       Title="Chaque axe du poste"
+                       Subtitle="Tri par impact pour faire remonter les ecarts les plus importants avant le match."
+                       Rows="@PositionProfileDetailRows"
+                       HighlightedAxisKeys="@insights.HighlightAxisKeys"
+                       AlertAxisKeys="@insights.AlertAxisKeys" />
+
+        <div class="anlz-export-toolbar">
+            <button type="button" class="ghost-button" @onclick="ExportCsvAsync" disabled="@IsBusy">Exporter CSV</button>
+        </div>
+
+        @if (IsBusy)
+        {
+            <div class="anlz-refresh-indicator"><span>Actualisation…</span></div>
+        }
+    </div>
+}

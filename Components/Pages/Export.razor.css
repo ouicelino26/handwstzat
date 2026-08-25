@@ -935,6 +935,108 @@ details[open] .advanced-options__chevron {
     border: 0;
 }
 
+/* ── Wizard stepper ─────────────────────────────────────────────────────────── */
+
+.wizard__steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 2rem;
+}
+
+.wizard__step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.wizard__step--active {
+    color: var(--court-400);
+    font-weight: 600;
+}
+
+.wizard__step--active .wizard__step-num {
+    background: var(--court-soft);
+    color: var(--court-400);
+    border-color: var(--court-400);
+}
+
+.wizard__step--done {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.wizard__step--done .wizard__step-num {
+    background: var(--surface-soft);
+}
+
+.wizard__step-num {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--line);
+    font-weight: 700;
+    font-size: 0.75rem;
+    background: var(--surface-raised);
+    flex-shrink: 0;
+}
+
+.wizard__step-label { font-size: 0.8125rem; }
+
+.wizard__step-sep {
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+    min-width: 2rem;
+}
+
+.wizard__nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+}
+
+.wizard__panel { /* container naturel */ }
+
+/* ── Toast ──────────────────────────────────────────────────────────────────── */
+
+.toast {
+    position: fixed;
+    bottom: calc(var(--tray-height, 3.15rem) + 1rem);
+    right: 1.5rem;
+    z-index: 800;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow: var(--shadow-float);
+    animation: toast-in 200ms ease both;
+}
+
+.toast--success {
+    background: var(--court-soft);
+    color: var(--court-400);
+    border: 1px solid rgba(143, 225, 178, 0.3);
+}
+
+@keyframes toast-in {
+    from { transform: translateY(0.5rem); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    1024px
    ───────────────────────────────────────────────────────────────────────────── */

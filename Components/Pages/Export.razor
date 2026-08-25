@@ -7,7 +7,7 @@
 @inject MatchesApiClient MatchesClient
 @implements IDisposable
 
-<PageTitle>Exporter les données</PageTitle>
+<PageTitle>Export</PageTitle>
 
 <div class="export-workspace" data-workspace="export">
     @if (!AuthService.Session.IsAuthenticated)
@@ -16,178 +16,117 @@
     }
     else
     {
-        <header class="lab-manifesto">
-            <div>
-                <span>Workspace 06</span>
-                <h2 data-page-title>Exporter les données</h2>
-                <p>Préparez un classeur à partir du périmètre actuellement analysé.</p>
+        <div class="wizard__steps" role="navigation" aria-label="Étapes d'export">
+            <div class="@WizardStepCss(1)">
+                <span class="wizard__step-num">1</span>
+                <span class="wizard__step-label">Cible</span>
             </div>
-        </header>
-
-        <section class="export-quick" aria-labelledby="season-export-heading">
-            <div class="export-quick__content">
-                <p class="section-kicker">Export recommandé</p>
-                <h3 id="season-export-heading">Bilan final de la saison</h3>
-                <p>
-                    Un seul fichier Excel avec une ligne par joueuse, ses totaux de saison,
-                    ses classements, les statistiques complètes du tableau global et les leaders.
-                </p>
-                <p class="export-quick__scope">@_scope.ToDisplayLine()</p>
-                <ul class="export-quick__metrics" aria-label="Statistiques incluses">
-                    <li>Buts et tirs</li>
-                    <li>Passes et pertes</li>
-                    <li>7 m et sanctions provoqués</li>
-                    <li>Interceptions, PF et neutralisations</li>
-                    <li>Arrêts des gardiennes</li>
-                </ul>
-                @if (string.IsNullOrWhiteSpace(_scope.Season))
-                {
-                    <p class="export-quick__notice" role="note">
-                        Sélectionnez une saison dans le périmètre pour activer cet export.
-                    </p>
-                }
-                @if (_errorMessage is not null)
-                {
-                    <p class="export-quick__error" role="alert">@_errorMessage</p>
-                }
-                @if (_status == ExportGenerationStatus.Completed && _generatedFileName is not null)
-                {
-                    <p class="export-quick__success" role="status">
-                        Fichier prêt : @_generatedFileName
-                        @if (FormattedFileSize is not null)
-                        {
-                            <span>(@FormattedFileSize)</span>
-                        }
-                    </p>
-                }
+            <div class="wizard__step-sep"></div>
+            <div class="@WizardStepCss(2)">
+                <span class="wizard__step-num">2</span>
+                <span class="wizard__step-label">Contenu</span>
             </div>
-            <div class="export-quick__actions">
-                <button type="button"
-                        class="export-btn export-btn--primary export-quick__button"
-                        disabled="@(IsBusy || string.IsNullOrWhiteSpace(_scope.Season))"
-                        aria-busy="@IsBusy"
-                        @onclick="ExportSeasonAsync">
-                    @(IsBusy ? GetStatusLabel() : "Exporter la saison")
-                </button>
-                @if (IsBusy)
-                {
-                    <button type="button" class="export-btn export-btn--secondary" @onclick="Cancel">
-                        Annuler
-                    </button>
-                }
+            <div class="wizard__step-sep"></div>
+            <div class="@WizardStepCss(3)">
+                <span class="wizard__step-num">3</span>
+                <span class="wizard__step-label">Options</span>
             </div>
-        </section>
+        </div>
 
-        <details class="export-custom-builder">
-            <summary class="export-custom-builder__summary">
-                <span>Créer un export personnalisé</span>
-                <small>Choisir la cible, les feuilles et les options avancées</small>
-            </summary>
+        @if (_exportStep == 1)
+        {
+            <div class="wizard__panel">
 
-        <div class="export-layout">
-
-            <!-- ── Left column: configuration ── -->
-            <div class="export-config">
-
-                <!-- 0. Scope summary ─────────────────────────────────────── -->
-                <section class="export-panel export-panel--scope">
-                    <div class="panel-head">
-                        <p class="section-kicker">Périmètre actuel</p>
-                    </div>
-                    <div class="scope-display">
-                        <p class="scope-display__line">@_scope.ToDisplayLine()</p>
-                        @if (!string.IsNullOrWhiteSpace(_scope.Day))
-                        {
-                            <p class="scope-display__day-note" role="note">
-                                <span class="scope-display__day-badge">@_scope.Day</span>
-                                Ce filtre est appliqué au fichier généré.
-                            </p>
-                        }
-                    </div>
-                    @if (_refData.Competitions.Count > 0)
-                    {
-                        <details class="export-scope-edit">
-                            <summary class="export-scope-edit__toggle">Modifier le périmètre</summary>
-                            <div class="export-scope-edit__body">
-                                <div class="scope-field">
-                                    <label class="scope-field__label" for="exp-competition">Compétition</label>
-                                    <select id="exp-competition"
-                                            class="scope-field__select"
-                                            value="@_scope.CompetitionId"
-                                            @onchange="OnCompetitionChangedAsync">
-                                        <option value="">— Toutes les compétitions —</option>
-                                        @foreach (var c in _refData.Competitions)
-                                        {
-                                            <option value="@c.CompetitionId">@c.CompetitionName</option>
-                                        }
-                                    </select>
-                                </div>
-                                <div class="scope-field">
-                                    <label class="scope-field__label" for="exp-team">Équipe</label>
-                                    <select id="exp-team"
-                                            class="scope-field__select"
-                                            value="@_scope.TeamId"
-                                            @onchange="OnTeamChangedAsync">
-                                        <option value="">— Toutes les équipes —</option>
-                                        @foreach (var t in _scope.GetFilteredTeams(_refData))
-                                        {
-                                            <option value="@t.TeamId">@t.TeamName</option>
-                                        }
-                                    </select>
-                                </div>
-                                @if (_availableSeasons.Count > 0)
-                                {
-                                    <div class="scope-field">
-                                        <label class="scope-field__label" for="exp-season">Saison</label>
-                                        <select id="exp-season"
-                                                class="scope-field__select"
-                                                value="@_scope.Season"
-                                                @onchange="OnSeasonChangedAsync">
-                                            <option value="">— Toutes les saisons —</option>
-                                            @foreach (var s in _availableSeasons)
-                                            {
-                                                <option value="@s">@s</option>
-                                            }
-                                        </select>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="scope-field">
-                                        <label class="scope-field__label" for="exp-season-text">Saison</label>
-                                        <input id="exp-season-text"
-                                               class="scope-field__input"
-                                               type="text"
-                                               placeholder="ex : 2025-2026"
-                                               value="@_scope.Season"
-                                               @oninput="OnSeasonInputAsync" />
-                                    </div>
-                                }
-                                @if (_availableDays.Count > 0)
-                                {
-                                    <div class="scope-field">
-                                        <label class="scope-field__label" for="exp-day">Journée</label>
-                                        <select id="exp-day"
-                                                class="scope-field__select"
-                                                value="@_scope.Day"
-                                                @onchange="OnDayChanged">
-                                            <option value="">— Toutes les journées —</option>
-                                            @foreach (var d in _availableDays)
-                                            {
-                                                <option value="@d">@d</option>
-                                            }
-                                        </select>
-                                    </div>
-                                }
-                                <button type="button" class="export-scope-edit__reset" @onclick="ResetScopeAsync">
-                                    Reprendre le périmètre actuel
-                                </button>
+                <!-- Scope selectors -->
+                @if (_refData.Competitions.Count > 0)
+                {
+                    <div class="export-scope-edit">
+                        <div class="export-scope-edit__body">
+                            <div class="scope-field">
+                                <label class="scope-field__label" for="exp-competition">Compétition</label>
+                                <select id="exp-competition"
+                                        class="scope-field__select"
+                                        value="@_scope.CompetitionId"
+                                        @onchange="OnCompetitionChangedAsync">
+                                    <option value="">— Toutes les compétitions —</option>
+                                    @foreach (var c in _refData.Competitions)
+                                    {
+                                        <option value="@c.CompetitionId">@c.CompetitionName</option>
+                                    }
+                                </select>
                             </div>
-                        </details>
-                    }
-                </section>
+                            <div class="scope-field">
+                                <label class="scope-field__label" for="exp-team">Équipe</label>
+                                <select id="exp-team"
+                                        class="scope-field__select"
+                                        value="@_scope.TeamId"
+                                        @onchange="OnTeamChangedAsync">
+                                    <option value="">— Toutes les équipes —</option>
+                                    @foreach (var t in _scope.GetFilteredTeams(_refData))
+                                    {
+                                        <option value="@t.TeamId">@t.TeamName</option>
+                                    }
+                                </select>
+                            </div>
+                            @if (_availableSeasons.Count > 0)
+                            {
+                                <div class="scope-field">
+                                    <label class="scope-field__label" for="exp-season">Saison</label>
+                                    <select id="exp-season"
+                                            class="scope-field__select"
+                                            value="@_scope.Season"
+                                            @onchange="OnSeasonChangedAsync">
+                                        <option value="">— Toutes les saisons —</option>
+                                        @foreach (var s in _availableSeasons)
+                                        {
+                                            <option value="@s">@s</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="scope-field">
+                                    <label class="scope-field__label" for="exp-season-text">Saison</label>
+                                    <input id="exp-season-text"
+                                           class="scope-field__input"
+                                           type="text"
+                                           placeholder="ex : 2025-2026"
+                                           value="@_scope.Season"
+                                           @oninput="OnSeasonInputAsync" />
+                                </div>
+                            }
+                            @if (_availableDays.Count > 0)
+                            {
+                                <div class="scope-field">
+                                    <label class="scope-field__label" for="exp-day">Journée</label>
+                                    <select id="exp-day"
+                                            class="scope-field__select"
+                                            value="@_scope.Day"
+                                            @onchange="OnDayChanged">
+                                        <option value="">— Toutes les journées —</option>
+                                        @foreach (var d in _availableDays)
+                                        {
+                                            <option value="@d">@d</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                            <button type="button" class="export-scope-edit__reset" @onclick="ResetScopeAsync">
+                                Reprendre le périmètre actuel
+                            </button>
+                        </div>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_scope.Day))
+                {
+                    <p class="scope-display__day-note" role="note">
+                        <span class="scope-display__day-badge">@_scope.Day</span>
+                        Ce filtre est appliqué au fichier généré.
+                    </p>
+                }
 
-                <!-- 1. Target ────────────────────────────────────────────── -->
+                <!-- 1. Target -->
                 <section class="export-panel" aria-labelledby="target-heading">
                     <div class="panel-head">
                         <p class="section-kicker">Étape 1</p>
@@ -326,7 +265,18 @@
                     }
                 </section>
 
-                <!-- 2. Content ───────────────────────────────────────────── -->
+                <div class="wizard__nav">
+                    <span></span>
+                    <button class="btn btn-primary" @onclick='() => _exportStep = 2' type="button">Suivant →</button>
+                </div>
+
+            </div>
+        }
+        else if (_exportStep == 2)
+        {
+            <div class="wizard__panel">
+
+                <!-- 2. Content -->
                 <section class="export-panel" aria-labelledby="content-heading">
                     <div class="panel-head">
                         <p class="section-kicker">Étape 2</p>
@@ -381,7 +331,18 @@
                     }
                 </section>
 
-                <!-- 3. Advanced options ──────────────────────────────────── -->
+                <div class="wizard__nav">
+                    <button class="btn btn-ghost" @onclick='() => _exportStep = 1' type="button">← Retour</button>
+                    <button class="btn btn-primary" @onclick='() => _exportStep = 3' type="button">Suivant →</button>
+                </div>
+
+            </div>
+        }
+        else if (_exportStep == 3)
+        {
+            <div class="wizard__panel">
+
+                <!-- 3. Advanced options -->
                 <section class="export-panel">
                     <details class="advanced-options">
                         <summary class="advanced-options__toggle">
@@ -428,55 +389,6 @@
                             </div>
                         </div>
                     </details>
-                </section>
-
-            </div><!-- end .export-config -->
-
-            <!-- ── Right column: summary + action ── -->
-            <aside class="export-summary" aria-label="Résumé de l'export">
-
-                <section class="export-panel export-panel--summary" aria-labelledby="summary-heading">
-                    <h3 id="summary-heading" class="export-summary__title">Résumé de l'export</h3>
-
-                    <dl class="export-summary__list">
-                        <div class="export-summary__row">
-                            <dt>Périmètre</dt>
-                            <dd>@_scope.ToDisplayLine()</dd>
-                        </div>
-                        <div class="export-summary__row">
-                            <dt>Cible</dt>
-                            <dd>@GetPreview().TargetLabel</dd>
-                        </div>
-                        @if (GetPreview().PlayerCount > 0)
-                        {
-                            <div class="export-summary__row">
-                                <dt>Joueuses</dt>
-                                <dd>@GetPreview().PlayerCount sélectionnée(s)</dd>
-                            </div>
-                        }
-                        @if (GetPreview().MatchCount > 0)
-                        {
-                            <div class="export-summary__row">
-                                <dt>Matchs</dt>
-                                <dd>@GetPreview().MatchCount sélectionné(s)</dd>
-                            </div>
-                        }
-                        <div class="export-summary__row">
-                            <dt>Contenu</dt>
-                            <dd>@GetPreview().SectionCount feuille(s)</dd>
-                        </div>
-                        <div class="export-summary__row">
-                            <dt>Options</dt>
-                            <dd>
-                                @(GetPreview().IncludeDataQuality ? "✓" : "✗") Qualité des données<br />
-                                @(GetPreview().IncludeRawEvents ? "✓" : "✗") Événements bruts
-                            </dd>
-                        </div>
-                        <div class="export-summary__row">
-                            <dt>Format</dt>
-                            <dd>@GetPreview().FormatLabel</dd>
-                        </div>
-                    </dl>
 
                     <!-- Validation errors -->
                     @if (_validationErrors.Count > 0)
@@ -547,47 +459,49 @@
                             }
                         </div>
                     }
-
-                    <!-- Action button -->
-                    <div class="export-actions">
-                        @if (_status is ExportGenerationStatus.Generating or
-                                        ExportGenerationStatus.Downloading or
-                                        ExportGenerationStatus.Saving or
-                                        ExportGenerationStatus.Validating)
-                        {
-                            <button type="button"
-                                    class="export-btn export-btn--primary is-loading"
-                                    disabled
-                                    aria-busy="true">
-                                <span class="export-spinner" aria-hidden="true"></span>
-                                <span aria-live="polite">@GetStatusLabel()</span>
-                            </button>
-                            <button type="button"
-                                    class="export-btn export-btn--secondary"
-                                    @onclick="Cancel">
-                                Annuler
-                            </button>
-                        }
-                        else
-                        {
-                            <button type="button"
-                                    class="export-btn export-btn--primary @(HasValidationErrors ? "is-disabled" : "")"
-                                    disabled="@HasValidationErrors"
-                                    @onclick="GenerateAndDownloadAsync">
-                                Exporter la sélection
-                            </button>
-                        }
-                    </div>
-
-                    <button type="button" class="export-reset" @onclick="ResetExportAsync">
-                        Réinitialiser l'export
-                    </button>
                 </section>
 
-            </aside>
+                <!-- Progress / Cancel si génération en cours -->
+                @if (IsBusy)
+                {
+                    <div class="export-actions">
+                        <button type="button"
+                                class="export-btn export-btn--primary is-loading"
+                                disabled
+                                aria-busy="true">
+                            <span class="export-spinner" aria-hidden="true"></span>
+                            <span aria-live="polite">@GetStatusLabel()</span>
+                        </button>
+                        <button type="button"
+                                class="export-btn export-btn--secondary"
+                                @onclick="Cancel">
+                            Annuler
+                        </button>
+                    </div>
+                }
 
-        </div><!-- end .export-layout -->
-        </details>
+                <div class="wizard__nav">
+                    <button class="btn btn-ghost" @onclick='() => _exportStep = 2' type="button">← Retour</button>
+                    @if (!IsBusy)
+                    {
+                        <button class="btn btn-primary" @onclick="GenerateAndDownloadAsync" type="button">
+                            Générer l'export
+                        </button>
+                    }
+                </div>
+
+            </div>
+        }
+
+        @if (_showExportSuccessToast)
+        {
+            <div class="toast toast--success" role="status" aria-live="polite">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                @_exportSuccessMessage
+            </div>
+        }
     }
 </div>
 
@@ -617,6 +531,7 @@
 
     private ExportScopeState _scope = new();
     private AnalyticsReferenceData _refData = AnalyticsReferenceData.Empty;
+    private int _exportStep = 1; // 1 = Cible, 2 = Contenu, 3 = Options
 
     private ExportTargetType _target = ExportTargetType.FullScope;
     private ExportPreset _preset = ExportPreset.FullAnalysis;
@@ -647,6 +562,8 @@
     private string? _generatedAtUtc;
 
     private CancellationTokenSource? _cts;
+    private bool _showExportSuccessToast = false;
+    private string _exportSuccessMessage = "";
 
     // Stale-response protection: each generation attempt gets a unique token.
     private int _generationToken;
@@ -842,6 +759,7 @@
         _includeRawEvents = false;
         _includeShotCoordinates = false;
         _includeDataQuality = true;
+        _exportStep = 1;
         _playerSearch = "";
         _matchSearch = "";
         _outOfScopePlayersRemoved = 0;
@@ -1182,6 +1100,7 @@
             if (token != _generationToken) return;
 
             _status = ExportGenerationStatus.Completed;
+            await ShowExportToast("Export généré avec succès.");
         }
         catch (OperationCanceledException)
         {
@@ -1233,6 +1152,16 @@
             _status = ExportGenerationStatus.Ready;
     }
 
+    private async Task ShowExportToast(string message)
+    {
+        _exportSuccessMessage = message;
+        _showExportSuccessToast = true;
+        StateHasChanged();
+        await Task.Delay(4000);
+        _showExportSuccessToast = false;
+        StateHasChanged();
+    }
+
     private async Task SaveFileAsync(byte[] content, string fileName, string contentType)
     {
         var path = Path.Combine(FileSystem.AppDataDirectory, fileName);
@@ -1267,4 +1196,11 @@
         ExportGenerationStatus.Saving      => "Enregistrement…",
         _ => "En cours…",
     };
+
+    private string WizardStepCss(int step)
+    {
+        if (_exportStep == step) return "wizard__step wizard__step--active";
+        if (_exportStep > step)  return "wizard__step wizard__step--done";
+        return "wizard__step";
+    }
 }

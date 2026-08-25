@@ -32,6 +32,9 @@ public class HomeBase : ComponentBase, IDisposable
     [Inject]
     protected ILogger<HomeBase> Logger { get; set; } = default!;
 
+    [Inject]
+    protected CommandBarService CommandBarService { get; set; } = default!;
+
     private bool _publishingScope;
     private readonly SemaphoreSlim _dashboardLoadGate = new(1, 1);
     private readonly SemaphoreSlim _teamOfTheDayLoadGate = new(1, 1);
@@ -160,8 +163,17 @@ public class HomeBase : ComponentBase, IDisposable
         }
 
         ApplyGlobalScope();
+        if (string.IsNullOrWhiteSpace(Filters.Season))
+            Filters.Season = DeriveCurrentSeason();
         ScopeService.Changed += HandleGlobalScopeChanged;
         await LoadSnapshotAsync(forceRefresh: true);
+    }
+
+    private static string DeriveCurrentSeason()
+    {
+        var now = DateTime.UtcNow;
+        var startYear = now.Month <= 8 ? now.Year - 1 : now.Year;
+        return $"{startYear}-{startYear + 1}";
     }
 
     protected async Task RefreshAsync()
@@ -207,10 +219,32 @@ public class HomeBase : ComponentBase, IDisposable
         CancelAndDispose(ref _dashboardLoadCts);
         CancelAndDispose(ref _rankingLoadCts);
         CancelAndDispose(ref _teamOfTheDayLoadCts);
+        CommandBarService.Clear();
     }
 
     /// <summary>Called at the beginning of each dashboard reload, before clearing TeamOfTheDay state.</summary>
     protected virtual void OnDashboardRefreshing() { }
+
+    /// <summary>Called once after each successful dashboard load.</summary>
+    protected virtual void OnDashboardLoaded() { }
+
+    protected string DashboardScopeLabel
+    {
+        get
+        {
+            var summary = DashboardScopeSummary;
+            var parts = new System.Collections.Generic.List<string>();
+            if (!string.Equals(summary.Competition, "Toutes les competitions", StringComparison.OrdinalIgnoreCase))
+                parts.Add(summary.Competition);
+            if (!string.Equals(summary.Team, "Toutes les equipes", StringComparison.OrdinalIgnoreCase))
+                parts.Add(summary.Team);
+            if (!string.Equals(summary.Season, "Toutes", StringComparison.OrdinalIgnoreCase))
+                parts.Add(summary.Season);
+            if (!string.Equals(summary.Day, "Toutes", StringComparison.OrdinalIgnoreCase))
+                parts.Add($"J{summary.Day}");
+            return parts.Count > 0 ? string.Join(" · ", parts) : "Toutes les données";
+        }
+    }
 
     protected CancellationToken BeginRankingLoad()
     {
@@ -537,6 +571,7 @@ public class HomeBase : ComponentBase, IDisposable
             DashboardGeneratedAt = DateTimeOffset.UtcNow;
             Filters.SpotlightPlayerId = Snapshot.Spotlight.PlayerId > 0 ? Snapshot.Spotlight.PlayerId : null;
             SelectedZoneKey = ResolveActiveZoneKey();
+            OnDashboardLoaded();
 
 #if DEBUG
             Logger.LogInformation(

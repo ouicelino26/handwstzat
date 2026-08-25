@@ -2,6 +2,7 @@ using HandWStat.Models.Analytics;
 using HandWStat.Models.Contracts;
 using HandWStat.Services.Analytics;
 using HandWStat.Services.Api;
+using Microsoft.Extensions.Logging;
 
 namespace HandWStat.Services;
 
@@ -13,6 +14,7 @@ public sealed class StatsDashboardService
     private readonly TeamOfTheDayService _teamOfTheDayService;
     private readonly DashboardSnapshotBuilder _snapshotBuilder;
     private readonly IApiAuthService _authService;
+    private readonly ILogger<StatsDashboardService> _logger;
 
     public StatsDashboardService(
         IAnalyticsGateway analyticsGateway,
@@ -20,7 +22,8 @@ public sealed class StatsDashboardService
         MatchesApiClient matchesApiClient,
         TeamOfTheDayService teamOfTheDayService,
         DashboardSnapshotBuilder snapshotBuilder,
-        IApiAuthService authService)
+        IApiAuthService authService,
+        ILogger<StatsDashboardService> logger)
     {
         _analyticsGateway = analyticsGateway;
         _playersApiClient = playersApiClient;
@@ -28,6 +31,7 @@ public sealed class StatsDashboardService
         _teamOfTheDayService = teamOfTheDayService;
         _snapshotBuilder = snapshotBuilder;
         _authService = authService;
+        _logger = logger;
     }
 
     public async Task<DashboardSnapshot> LoadDashboardAsync(
@@ -53,7 +57,7 @@ public sealed class StatsDashboardService
             var topScorersTask = _analyticsGateway.GetRankingsAsync("goals", queryOptions, rankingTop, cancellationToken);
             var efficiencyTask = _analyticsGateway.GetRankingsAsync("shotsuccess", queryOptions, rankingTop, cancellationToken);
             var requestedTask = _analyticsGateway.GetRankingsAsync(rankingMetric, queryOptions, rankingTop, cancellationToken);
-            var interceptionsTask = _analyticsGateway.GetRankingsAsync("interceptions", queryOptions, 5, cancellationToken);
+            var interceptionsTask = _analyticsGateway.GetRankingsAsync("interceptions", queryOptions, rankingTop, cancellationToken);
             var recentMatchesTask = _matchesApiClient.GetMatchesAsync(
                 competitionId: filters.CompetitionId,
                 teamId: filters.TeamId,
@@ -218,8 +222,9 @@ public sealed class StatsDashboardService
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to load TeamOfTheDay for filters {Filters}.", filters);
             return TeamOfTheDaySnapshotDto.Empty("Equipe type indisponible. Reessayez dans quelques instants.");
         }
     }

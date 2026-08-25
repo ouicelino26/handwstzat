@@ -1,59 +1,437 @@
-.squad-workspace ::deep .entity-identity--squad {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+/* ── Studio subtoolbar (squads) ── */
+.studio-subtoolbar {
+    display: flex;
     align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
 }
 
-.squad-workspace ::deep .team-identity-logo {
-    width: clamp(4.6rem, 8vw, 6.5rem);
-    aspect-ratio: 1;
-    display: grid;
-    place-items: center;
+.studio-subtoolbar__label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.studio-subtoolbar__spacer {
+    flex: 1;
+}
+
+/* ── Audience Lens ── */
+.audience-lens {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.2rem;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    flex-shrink: 0;
+}
+
+.audience-lens__btn {
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius-xl);
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.audience-lens__btn:hover { color: var(--text-body); }
+
+.audience-lens__btn.active {
+    background: var(--surface-raised);
+    color: var(--text);
+    box-shadow: var(--shadow-soft);
+}
+
+/* ── Jersey number column ── */
+.col-jersey-num {
+    width: 2.5rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+}
+
+/* ── Team profile header ── */
+.team-profile {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.25rem;
+}
+
+.team-code-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 5rem;
+    height: 5rem;
+    border-radius: var(--radius-md);
+    background: var(--surface-soft);
+    border: 2px solid var(--line);
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    letter-spacing: 0.04em;
     overflow: hidden;
-    padding: 0.7rem;
-    border: 1px solid var(--line-strong);
-    border-radius: 1.45rem;
-    background:
-        radial-gradient(circle at 25% 15%, color-mix(in srgb, var(--paper-100), transparent 82%), transparent 46%),
-        linear-gradient(145deg, color-mix(in srgb, var(--surface-raised), white 4%), var(--surface));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper-100), transparent 88%);
 }
 
-.squad-workspace ::deep .team-identity-logo img {
+.team-code-badge img {
     width: 100%;
     height: 100%;
     object-fit: contain;
+    padding: 0.5rem;
 }
 
-.squad-workspace ::deep .team-identity-logo span {
-    color: var(--signal-500);
+.team-profile__info {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.team-profile__code {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.team-profile__name {
     font-family: var(--font-display);
-    font-size: clamp(1.2rem, 3vw, 2rem);
+    font-size: clamp(1.35rem, 2.5vw, 1.9rem);
     font-weight: 900;
-    letter-spacing: -0.05em;
+    color: var(--text);
+    line-height: 1.1;
 }
 
-.squad-workspace ::deep .team-identity-meta {
+.team-profile__record {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
 }
 
-.squad-workspace ::deep .team-code-pill {
+/* ── Charts row ── */
+.charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.chart-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    padding: 1.25rem;
+}
+
+/* chart text styling (mirrors page-panel chart rules) */
+.squad-workspace ::deep .chart-card .apexcharts-text,
+.squad-workspace ::deep .chart-card .apexcharts-legend-text,
+.squad-workspace ::deep .chart-card .apexcharts-xaxis-label,
+.squad-workspace ::deep .chart-card .apexcharts-yaxis-label {
+    fill: color-mix(in srgb, var(--text), transparent 24%) !important;
+    color: color-mix(in srgb, var(--text), transparent 24%) !important;
+    font-weight: 740 !important;
+}
+
+.squad-workspace ::deep .chart-card .apexcharts-gridline {
+    stroke: color-mix(in srgb, var(--text-muted), transparent 80%) !important;
+}
+
+.squad-workspace ::deep .chart-card .apexcharts-bar-area {
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.22));
+}
+
+/* ── Tabs wrapper ── */
+.tabs-wrapper {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--surface-raised);
+    margin-bottom: 2rem;
+}
+
+/* ── Team performer grid & cards ── */
+.team-performers-section {
+    --team-performer-accent: var(--signal-500);
+    position: relative;
+    padding: 1rem;
+    margin: 1rem;
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--team-performer-accent) 6%, transparent), transparent 34%),
+        var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.team-performers-section::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--team-performer-accent);
+}
+
+.team-performers-section__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.team-performers-section__eyebrow {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--team-performer-accent);
+    font-size: 0.62rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+}
+
+.team-performers-section__header h3 {
+    margin: 0;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.team-performers-section__header p {
+    margin: 0.3rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.team-performer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: 1rem;
+}
+
+/* team-performer-card → wwwroot/app.css (global) */
+
+/* ── Player cell (table) ── */
+.player-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.player-cell__avatar {
+    width: 1.875rem;
+    height: 1.875rem;
+    border-radius: 50%;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.player-cell__name {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 0.875rem;
+}
+
+/* ── Match results grid ── */
+.match-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+    gap: 1rem;
+}
+
+.result-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.result-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.875rem;
+    background: var(--surface-soft);
+    border-bottom: 1px solid var(--line);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.result-card__body {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+}
+
+.result-card__team {
     display: inline-flex;
     align-items: center;
-    min-height: 1.35rem;
-    padding: 0.15rem 0.48rem;
-    border: 1px solid color-mix(in srgb, var(--signal-500), transparent 42%);
-    border-radius: 999px;
-    color: var(--signal-500);
-    background: var(--signal-soft);
-    font-size: 0.58rem;
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    gap: 0.45rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-body);
+    line-height: 1.3;
 }
 
+.result-card__team--away {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.result-team-logo {
+    width: 1.375rem;
+    height: 1.375rem;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.result-card__score {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--font-display);
+    font-size: 1.375rem;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.result-card__score--win { color: var(--court-400); }
+.result-card__score--loss { color: var(--danger-400); }
+
+.result-card__score-sep {
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+.result-card__footer {
+    padding: 0.375rem 1rem 0.625rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ── Filter drawer (overlay) ── */
+.filter-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 400;
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+}
+
+.filter-drawer {
+    width: 22rem;
+    max-width: 100vw;
+    background: var(--surface);
+    border-left: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.filter-drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+}
+
+.filter-drawer__title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.filter-drawer__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--surface-raised);
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.filter-drawer__close:hover {
+    background: var(--surface-soft);
+    color: var(--text);
+}
+
+.filter-drawer__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+}
+
+.filter-section {
+    margin-bottom: 1.25rem;
+}
+
+.filter-section__label {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.filter-drawer__foot {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+}
+
+.filter-drawer__foot-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+/* ── Existing chart styling (for page-panel) ── */
 .squad-workspace ::deep .page-panel:has(.apexcharts-canvas) {
     overflow: hidden;
     display: grid;
@@ -81,12 +459,14 @@
     filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.22));
 }
 
-@media (max-width: 760px) {
-    .squad-workspace ::deep .entity-identity--squad {
-        grid-template-columns: auto minmax(0, 1fr);
-    }
+/* ── Responsive ── */
+@media (max-width: 1023px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .match-results-grid { grid-template-columns: 1fr; }
+    .team-performers-section__header { flex-direction: column; }
+}
 
-    .squad-workspace ::deep .entity-identity--squad .entity-identity__score {
-        grid-column: 1 / -1;
-    }
+@media (max-width: 640px) {
+    .team-performer-grid { grid-template-columns: 1fr; }
+    .team-performer-card__stats { grid-template-columns: repeat(2, 1fr); }
 }

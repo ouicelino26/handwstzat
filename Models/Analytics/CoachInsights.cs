@@ -47,7 +47,7 @@ public sealed record PositionProfileInsightBundle(
         AlertAxisKeys: []);
 }
 
-internal static class PositionProfileInsightEngine
+public static class PositionProfileInsightEngine
 {
     public static PositionProfileInsightBundle Build(
         PositionProfileResponseDto? profile,

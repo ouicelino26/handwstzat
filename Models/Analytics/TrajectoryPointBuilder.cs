@@ -84,7 +84,7 @@ public static class TrajectoryPointBuilder
             Interceptions: match.Interceptions,
             Turnovers: match.Turnovers,
             Saves: match.Saves,
-            ShotsFaced: match.Saves, // Only saves available per match; shots faced = proxy
+            ShotsFaced: null, // Per-match shots faced not available in PlayerMatchItemDto
             ResultLabel: resultLabel
         );
     }

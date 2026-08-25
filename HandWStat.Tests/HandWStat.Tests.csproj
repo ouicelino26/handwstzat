@@ -80,6 +80,8 @@
     <Compile Include="..\Services\Updates\IUpdatePreferenceStore.cs" Link="Services\Updates\IUpdatePreferenceStore.cs" />
     <Compile Include="..\Services\Updates\UpdateArtifactDownloader.cs" Link="Services\Updates\UpdateArtifactDownloader.cs" />
     <Compile Include="..\Services\Updates\UpdateCheckCoordinator.cs" Link="Services\Updates\UpdateCheckCoordinator.cs" />
+    <Compile Include="..\Models\Analytics\PositionProfilesViewModels.cs" Link="Models\Analytics\PositionProfilesViewModels.cs" />
+    <Compile Include="..\Models\Analytics\CoachInsights.cs" Link="Models\Analytics\CoachInsights.cs" />
   </ItemGroup>
   <ItemGroup>
     <RazorComponent Include="..\Components\Shared\AnalysisScopeSummary.razor" Link="Components\Shared\AnalysisScopeSummary.razor" />

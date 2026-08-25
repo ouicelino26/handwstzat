@@ -20,124 +20,13 @@ else if (!string.IsNullOrWhiteSpace(ErrorMessage))
 }
 else if (Snapshot is not null)
 {
-    <div class="today-workspace" data-workspace="today" aria-busy="@IsBusy">
+    <div class="dashboard-workspace" data-workspace="dashboard" aria-busy="@IsBusy">
         @if (IsBusy)
         {
             <PageLoader Kicker="Chargement"
                         Title="Actualisation du tableau de bord"
                         Message="Les filtres, classements et KPI se recalculent." />
         }
-
-        <section class="today-brief">
-            <div class="today-brief__copy">
-                <span>Brief du jour / @Snapshot.DataOrigin</span>
-                <h2 data-page-title>Le scope en un regard.</h2>
-                <p>Les signaux collectifs, le classement actif et les dernieres activites sont synchronises sur le meme contexte.</p>
-
-                <div class="today-brief__meta">
-                    <span>@Snapshot.RequestedRankingLabel</span>
-                    <span>@Snapshot.Overview.MatchCount matchs observes</span>
-                </div>
-            </div>
-
-            <div class="today-pulse">
-                    <article>
-                        <span>Equipes actives</span>
-                        <strong>@Snapshot.Overview.TeamCount</strong>
-                        <small>clubs dans le perimetre filtre</small>
-                    </article>
-
-                    @foreach (var metric in DashboardHeadlineMetrics)
-                    {
-                        <RateMetricCard Model="@metric"
-                                        DetailsHref="/matches"
-                                        DetailsLabel="Voir les matchs" />
-                    }
-            </div>
-        </section>
-
-        <AudienceLensSelector Kicker="Espace de lecture"
-                              Title="Adaptez le tableau de bord à votre mission"
-                              Subtitle="Le contenu se réorganise pour le pilotage du club, l'analyse détaillée ou le débrief joueuse."
-                              Value="@ActiveLens"
-                              ValueChanged="SetActiveLens" />
-
-        <section class="scope-sheet">
-
-            <div class="panel-head panel-head-wrap">
-                <div>
-                    <p class="section-kicker">Scope local</p>
-                    <h3>Ajuster le brief</h3>
-                </div>
-
-                <div class="toolbar">
-                    <button type="button" class="ghost-button filter-ghost" @onclick="ResetFiltersAsync" disabled="@IsBusy">Reinitialiser</button>
-                </div>
-            </div>
-
-            <details class="filter-drawer" open>
-                <summary>
-                    <div>
-                        <strong>Afficher les filtres dashboard</strong>
-                        <span>Compétition, équipe, saison, journée et lecture de classement.</span>
-                    </div>
-                </summary>
-
-                <div class="filter-drawer-body">
-                    <div class="page-filters">
-                        <label class="filter-field">
-                            <span>Competition</span>
-                            <select @bind="Filters.CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var competition in AvailableCompetitions)
-                                {
-                                    <option value="@competition.CompetitionId">@competition.CompetitionName</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Equipe</span>
-                            <select @bind="Filters.TeamId" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var team in AvailableTeams)
-                                {
-                                    <option value="@team.TeamId">@team.TeamName</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Saison</span>
-                            <select @bind="Filters.Season" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var season in SeasonOptions)
-                                {
-                                    <option value="@season">@season</option>
-                                }
-                            </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Journee</span>
-                            <select @bind="Filters.Day" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var day in DayOptions)
-                                {
-                                    <option value="@day">@day</option>
-                                }
-                            </select>
-                        </label>
-
-                    </div>
-                </div>
-            </details>
-
-            <DataQualitySummary Level="DataQualityLevel.Unknown"
-                                Title="Qualite non renseignee"
-                                Message="L'API v1 ne fournit pas encore de score de qualite consolide. Les volumes affiches restent visibles quand ils existent." />
-
-        </section>
 
         @if (!string.IsNullOrWhiteSpace(Snapshot.WarningMessage))
         {
@@ -156,583 +45,423 @@ else if (Snapshot is not null)
         }
         else
         {
-            <div class="scene-switcher" role="tablist" aria-label="Sections du tableau de bord">
-                <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "league")" class="section-chip @(ActiveDashboardSection == "league" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("league")' disabled="@IsBusy">
-                    Ligue
-                    <small>Signaux collectifs</small>
-                </button>
-                <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "team-of-day")" class="section-chip @(ActiveDashboardSection == "team-of-day" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("team-of-day")' disabled="@IsBusy">
-                    Equipe du jour
-                    <small>Equipe type</small>
-                </button>
-                <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "spotlight")" class="section-chip @(ActiveDashboardSection == "spotlight" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("spotlight")' disabled="@IsBusy">
-                    Joueuse
-                    <small>Profil et court</small>
-                </button>
-                <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "recent")" class="section-chip @(ActiveDashboardSection == "recent" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("recent")' disabled="@IsBusy">
-                    Matchs recents
-                    <small>Dernieres rencontres</small>
-                </button>
-                <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "global-rankings")" class="section-chip @(ActiveDashboardSection == "global-rankings" ? "is-active" : string.Empty)" @onclick='() => SetDashboardSection("global-rankings")' disabled="@IsBusy">
-                    Classements globaux
-                    <small>Tables completes</small>
+            <div class="studio-subtoolbar">
+                <nav class="tab-bar" role="tablist" aria-label="Sections du tableau de bord">
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "league")" class="tab @(ActiveDashboardSection == "league" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("league")' disabled="@IsBusy">Ligue</button>
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "team-of-day")" class="tab @(ActiveDashboardSection == "team-of-day" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("team-of-day")' disabled="@IsBusy">Equipe du jour</button>
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "spotlight")" class="tab @(ActiveDashboardSection == "spotlight" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("spotlight")' disabled="@IsBusy">Joueuse</button>
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "global-rankings")" class="tab @(ActiveDashboardSection == "global-rankings" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("global-rankings")' disabled="@IsBusy">Classements</button>
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "recent")" class="tab @(ActiveDashboardSection == "recent" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("recent")' disabled="@IsBusy">Matchs récents</button>
+                </nav>
+                <div class="studio-subtoolbar__spacer"></div>
+                <button type="button" class="btn btn-ghost btn-sm" @onclick="() => _filterOpen = true" aria-label="Ouvrir les filtres">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
+                    Filtrer
                 </button>
             </div>
 
             @if (ActiveDashboardSection == "league")
             {
-                <section class="signal-matrix">
-                    <div class="mini-card"><span>Joueuses</span><strong>@Snapshot.Overview.PlayerCount</strong></div>
-                    <div class="mini-card"><span>Matchs</span><strong>@Snapshot.Overview.MatchCount</strong></div>
-                    <div class="mini-card"><span>Buts</span><strong>@Snapshot.Overview.GoalCount</strong></div>
-                    <div class="mini-card"><span>Passes</span><strong>@Snapshot.Overview.AssistCount</strong></div>
-                    <div class="mini-card"><span>Interceptions</span><strong>@Snapshot.Overview.InterceptionCount</strong></div>
-                    <div class="mini-card"><span>Arrets</span><strong>@Snapshot.Overview.SaveCount</strong></div>
-                </section>
+                <div class="tab-panel active">
+                  <div class="dashboard-overview">
 
-                @if (ShowLeagueKpis)
-                {
-                    <section class="page-panel">
-                        <div class="panel-head">
-                            <div>
-                                <p class="section-kicker">Lecture staff</p>
-                                <h3>Les KPI qui structurent le contexte de la selection</h3>
-                            </div>
+                    <section class="dashboard-scope-bar">
+                      <div class="dashboard-scope-bar__main">
+                        <span class="dashboard-scope-dot"></span>
+                        <div class="dashboard-scope-bar__text">
+                          <div class="dashboard-scope-bar__label">Scope actif</div>
+                          <div class="dashboard-scope-bar__value">@DashboardScopeLabel</div>
                         </div>
-
-                        <KpiTileGrid Items="@LeagueKpis" />
+                      </div>
+                      <div class="dashboard-scope-bar__meta">
+                        <span class="dashboard-scope-count">@Snapshot.Overview.MatchCount matchs</span>
+                      </div>
                     </section>
-                }
 
-                @if (ShowRankingPanel)
-                {
-                    <section class="page-panel">
-                        <div class="panel-head">
-                            <div>
-                                <p class="section-kicker">Classement</p>
-                                <h3>@Snapshot.RequestedRankingLabel</h3>
-                            </div>
-                            <span class="panel-pill">Top @Filters.Top</span>
-                            @if (!string.IsNullOrWhiteSpace(ActiveRankingSampleRule))
+                    <div class="signal-matrix signal-matrix--six">
+                        <div class="signal-matrix__item">
+                            <span class="signal-matrix__count">@Snapshot.Players.Count.ToString("N0")</span>
+                            <span class="signal-matrix__label">Joueuses</span>
+                        </div>
+                        <div class="signal-matrix__item">
+                            <span class="signal-matrix__count">@Snapshot.Overview.MatchCount.ToString("N0")</span>
+                            <span class="signal-matrix__label">Matchs</span>
+                        </div>
+                        <div class="signal-matrix__item signal-matrix__item--highlight">
+                            <span class="signal-matrix__count">@Snapshot.Overview.GoalCount.ToString("N0")</span>
+                            <span class="signal-matrix__label">Buts</span>
+                        </div>
+                        <div class="signal-matrix__item">
+                            <span class="signal-matrix__count">@Snapshot.Overview.AssistCount.ToString("N0")</span>
+                            <span class="signal-matrix__label">Passes déc.</span>
+                        </div>
+                        <div class="signal-matrix__item">
+                            <span class="signal-matrix__count">@Snapshot.Overview.InterceptionCount.ToString("N0")</span>
+                            <span class="signal-matrix__label">Interceptions</span>
+                        </div>
+                        <div class="signal-matrix__item">
+                            <span class="signal-matrix__count">@Snapshot.Overview.SaveCount.ToString("N0")</span>
+                            <span class="signal-matrix__label">Arrêts</span>
+                        </div>
+                    </div>
+
+                    @if (LeagueKpis?.Any() == true)
+                    {
+                        <div class="kpi-tile-grid">
+                            @foreach (var kpi in LeagueKpis)
                             {
-                                <span class="panel-pill ranking-sample-rule">@ActiveRankingSampleRule</span>
+                                <div class="kpi-tile kpi-tile--@kpi.Tone">
+                                    <span class="kpi-tile__label">@kpi.Label</span>
+                                    <span class="kpi-tile__value">@kpi.Value</span>
+                                    @if (!string.IsNullOrEmpty(kpi.Context))
+                                    {
+                                        <span class="kpi-tile__context">@kpi.Context</span>
+                                    }
+                                </div>
                             }
                         </div>
+                    }
 
-                        <div class="ranking-toolbar">
-                            <div class="ranking-toolbar-group">
-                                <span class="section-kicker">Indicateur</span>
-                                <div class="page-section-switch ranking-chip-row">
-                                    @foreach (var metric in RankingMetrics)
-                                    {
-                                        <button type="button"
-                                                class="section-chip ranking-chip @(IsRankingMetricActive(metric.Value) ? "is-active" : string.Empty)"
-                                                disabled="@IsBusy"
-                                                @onclick="() => SelectRankingMetricAsync(metric.Value)">
-                                            @metric.Label
-                                        </button>
-                                    }
-                                </div>
+                    <section class="dashboard-main-grid">
+                      <article class="dashboard-ranking-panel">
+                        <div class="dashboard-ranking-head">
+                          <div class="dashboard-ranking-head__top">
+                            <div>
+                              <p class="dashboard-section-kicker">Ranking joueuses</p>
+                              <h3>@Snapshot.RequestedRankingLabel · Top @Filters.Top</h3>
                             </div>
-
-                            <div class="ranking-toolbar-group">
-                                <span class="section-kicker">Top</span>
-                                <div class="page-section-switch ranking-chip-row">
-                                    @foreach (var top in RankingTopOptions)
-                                    {
-                                        <button type="button"
-                                                class="section-chip ranking-chip @(IsRankingTopActive(top) ? "is-active" : string.Empty)"
-                                                disabled="@IsBusy"
-                                                @onclick="() => SelectRankingTopAsync(top)">
-                                            Top @top
-                                        </button>
-                                    }
-                                </div>
-                            </div>
+                            <select class="form-select form-select--sm"
+                                    value="@Filters.Top"
+                                    @onchange="e => SelectRankingTopAsync(int.TryParse(e.Value?.ToString(), out var t) ? t : Filters.Top)"
+                                    aria-label="Nombre de résultats"
+                                    style="width:auto;min-width:6.5rem;flex-shrink:0">
+                              @foreach (var top in RankingTopOptions)
+                              {
+                                <option value="@top">Top @top</option>
+                              }
+                            </select>
+                          </div>
+                          <div class="dashboard-chip-row">
+                            @foreach (var metric in RankingMetrics)
+                            {
+                              <button type="button"
+                                      class="section-chip @(IsRankingMetricActive(metric.Value) ? "is-active" : "")"
+                                      disabled="@IsBusy"
+                                      @onclick="() => SelectRankingMetricAsync(metric.Value)">
+                                @metric.Label
+                              </button>
+                            }
+                          </div>
                         </div>
-
-                        @if (Snapshot.RequestedRanking.Count == 0)
+                        @if (Snapshot.RequestedRanking.Count > 0)
                         {
-                            <StateCard Kicker="Volume insuffisant"
-                                       Title="Aucune joueuse ne valide le seuil de fiabilite"
-                                       Message="@GetRankingEmptyMessage()"
-                                       Tone="empty"
-                                       CssClass="empty-card-inline" />
+                          <div class="chart-container chart-container--ranking">
+                            <ApexChart @key="RankingChartKey" TItem="PlayerRankingItem" Height="300" Options="@GetRankingChartOptions()">
+                              <ApexPointSeries TItem="PlayerRankingItem"
+                                               Items="@Snapshot.RequestedRanking"
+                                               Name="@Snapshot.RequestedRankingLabel"
+                                               SeriesType="SeriesType.Bar"
+                                               XValue="item => item.PlayerName"
+                                               YValue="item => (decimal?)item.Value" />
+                            </ApexChart>
+                          </div>
                         }
                         else
                         {
-                            <ApexChart @key="RankingChartKey" TItem="PlayerRankingItem" Height="300" Options="@GetRankingChartOptions()">
-                                <ApexPointSeries TItem="PlayerRankingItem"
-                                                 Items="@Snapshot.RequestedRanking"
-                                                 Name="@Snapshot.RequestedRankingLabel"
-                                                 SeriesType="SeriesType.Bar"
-                                                 XValue="item => item.PlayerName"
-                                                 YValue="item => (decimal?)item.Value" />
-                            </ApexChart>
-
-                            @if (HasRankingSampleDetails)
-                            {
-                                <div class="ranking-quality-strip" aria-label="Volumes retenus dans le classement">
-                                    @foreach (var item in Snapshot.RequestedRanking)
-                                    {
-                                        <article>
-                                            <strong>@item.PlayerName</strong>
-                                            <span>@item.ValueLabel</span>
-                                            @if (!string.IsNullOrWhiteSpace(item.SampleLabel))
-                                            {
-                                                <small>@item.SampleLabel</small>
-                                            }
-                                        </article>
-                                    }
-                                </div>
-                            }
+                          <StateCard Kicker="Volume insuffisant"
+                                     Title="Aucune joueuse ne valide le seuil de fiabilité"
+                                     Message="@GetRankingEmptyMessage()"
+                                     Tone="empty"
+                                     CssClass="empty-card-inline" />
                         }
+                      </article>
+
+                      <aside class="dashboard-signal-panel">
+                        <div class="dashboard-section-head">
+                          <div>
+                            <p class="dashboard-section-kicker">Signals</p>
+                            <h3>Ce qui mérite attention</h3>
+                          </div>
+                        </div>
+                        <div class="dashboard-signal-list">
+                          @if (Snapshot.TopScorers.FirstOrDefault() is { } sig1)
+                          {
+                            <article class="dashboard-signal-item dashboard-signal-item--up">
+                              <span class="dashboard-signal-icon">↑</span>
+                              <div>
+                                <small>Top buteuse</small>
+                                <strong>@sig1.PlayerName</strong>
+                                <p>@sig1.ValueLabel@(!string.IsNullOrWhiteSpace(sig1.SampleLabel) ? $" · {sig1.SampleLabel}" : "")</p>
+                              </div>
+                            </article>
+                          }
+                          @if (Snapshot.EfficiencyRanking.FirstOrDefault() is { } sig2)
+                          {
+                            <article class="dashboard-signal-item dashboard-signal-item--info">
+                              <span class="dashboard-signal-icon">→</span>
+                              <div>
+                                <small>Meilleure efficacité</small>
+                                <strong>@sig2.PlayerName</strong>
+                                <p>@sig2.ValueLabel taux de réussite</p>
+                              </div>
+                            </article>
+                          }
+                          @if (Snapshot.InterceptionRanking.FirstOrDefault() is { } sig3)
+                          {
+                            <article class="dashboard-signal-item dashboard-signal-item--info">
+                              <span class="dashboard-signal-icon">→</span>
+                              <div>
+                                <small>Impact défensif</small>
+                                <strong>@sig3.PlayerName</strong>
+                                <p>@sig3.ValueLabel interceptions</p>
+                              </div>
+                            </article>
+                          }
+                          @{
+                            var pertesTxt = HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(Snapshot.Overview.TurnoverCount, Snapshot.Overview.MatchCount));
+                          }
+                          <article class="dashboard-signal-item dashboard-signal-item--warn">
+                            <span class="dashboard-signal-icon">!</span>
+                            <div>
+                              <small>Pertes de balle</small>
+                              <strong>@pertesTxt pertes / match</strong>
+                              <p>@Snapshot.Overview.TurnoverCount pertes sur @Snapshot.Overview.MatchCount matchs.</p>
+                            </div>
+                          </article>
+                        </div>
+                      </aside>
                     </section>
-                }
+
+                    @if (Snapshot.TopScorers.Count > 0 || Snapshot.EfficiencyRanking.Count > 0 || Snapshot.InterceptionRanking.Count > 0)
+                    {
+                      <section class="dashboard-insight-strip" aria-label="Insights complémentaires">
+                        @if (Snapshot.TopScorers.FirstOrDefault() is { } ins1)
+                        {
+                          <article class="dashboard-insight">
+                            <span>Meilleure buteuse</span>
+                            <strong>@ins1.PlayerName · @ins1.ValueLabel</strong>
+                            <small>@ins1.SampleLabel</small>
+                          </article>
+                        }
+                        @if (Snapshot.EfficiencyRanking.FirstOrDefault() is { } ins2)
+                        {
+                          <article class="dashboard-insight">
+                            <span>Meilleure efficacité</span>
+                            <strong>@ins2.PlayerName · @ins2.ValueLabel</strong>
+                            <small>@ins2.SampleLabel</small>
+                          </article>
+                        }
+                        @if (Snapshot.InterceptionRanking.FirstOrDefault() is { } ins3)
+                        {
+                          <article class="dashboard-insight">
+                            <span>Plus grand impact défensif</span>
+                            <strong>@ins3.PlayerName · @ins3.ValueLabel</strong>
+                            <small>@ins3.SampleLabel</small>
+                          </article>
+                        }
+                      </section>
+                    }
+
+                    @{
+                      var sec1 = Snapshot.TopScorers.Take(3).ToList();
+                      var sec2 = Snapshot.EfficiencyRanking.Take(3).ToList();
+                    }
+                    @if (sec1.Count > 0 || sec2.Count > 0)
+                    {
+                      <section class="dashboard-secondary-grid">
+                        @if (sec1.Count > 0)
+                        {
+                          <article class="dashboard-secondary-panel">
+                            <div class="dashboard-section-head">
+                              <div><p class="dashboard-section-kicker">Classement offensif</p><h3>Top buteuses</h3></div>
+                            </div>
+                            <table class="dashboard-mini-table">
+                              <thead><tr><th>Joueuse</th><th>Buts</th><th>Contexte</th></tr></thead>
+                              <tbody>
+                                @foreach (var r in sec1)
+                                {
+                                  <tr><td>@r.PlayerName</td><td>@r.ValueLabel</td><td>@r.SampleLabel</td></tr>
+                                }
+                              </tbody>
+                            </table>
+                          </article>
+                        }
+                        @if (sec2.Count > 0)
+                        {
+                          <article class="dashboard-secondary-panel">
+                            <div class="dashboard-section-head">
+                              <div><p class="dashboard-section-kicker">Efficacité au tir</p><h3>Top efficiency</h3></div>
+                            </div>
+                            <table class="dashboard-mini-table">
+                              <thead><tr><th>Joueuse</th><th>Taux</th><th>Contexte</th></tr></thead>
+                              <tbody>
+                                @foreach (var r in sec2)
+                                {
+                                  <tr><td>@r.PlayerName</td><td>@r.ValueLabel</td><td>@r.SampleLabel</td></tr>
+                                }
+                              </tbody>
+                            </table>
+                          </article>
+                        }
+                      </section>
+                    }
+
+                  </div>
+                </div>
             }
-            else if (ActiveDashboardSection == "team-of-day")
+            @if (ActiveDashboardSection == "team-of-day")
             {
                 var teamOfTheDay = Snapshot.TeamOfTheDay;
                 var lineup = TeamOfTheDayLineup.ToArray();
-                var candidateRows = TeamOfTheDayCandidateRows.ToArray();
-
-                @if (IsTeamOfTheDayLoading)
-                {
-                    <PageLoader Kicker="Chargement a la demande"
-                                Title="Construction de l'equipe de la journee"
-                                Message="Cette section secondaire est chargee uniquement lorsque vous l'ouvrez." />
-                }
-
-                <section class="team-day-shell">
-                    <div class="page-panel team-day-hero">
-                        <div class="panel-head panel-head-wrap">
-                            <div>
-                                <p class="section-kicker">Selection statistique exploratoire</p>
-                                <h3>@teamOfTheDay.ScopeLabel</h3>
-                                <p class="page-subtitle">
-                                    Meilleure joueuse par poste selon @TeamOfTheDayMetricLabel(TeamOfTheDayMetric). Scores locaux exploratoires, non contractuels.
-                                </p>
-                            </div>
-
-                            <div class="team-day-mode-switch" role="tablist" aria-label="Critere equipe type">
-                                <span class="team-day-filter-title">Critere principal</span>
-                                <div class="team-day-chip-row">
-                                    @foreach (var metric in TeamOfTheDayMetrics)
-                                    {
-                                        <button type="button"
-                                                class="section-chip ranking-chip @(TeamOfTheDayMetric == metric ? "is-active" : string.Empty)"
-                                                @onclick="() => SetTeamOfTheDayMetric(metric)"
-                                                disabled="@IsBusy">
-                                            @TeamOfTheDayMetricLabel(metric)
-                                        </button>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="team-day-filter-strip">
-                            <div class="team-day-filter-group">
-                                <span class="team-day-filter-title">Score local minimum</span>
-                                <div class="team-day-chip-row">
-                                    @foreach (var threshold in TeamOfTheDayPieThresholds)
-                                    {
-                                        <button type="button"
-                                                class="section-chip ranking-chip @(IsTeamOfTheDayPieThresholdActive(threshold) ? "is-active" : string.Empty)"
-                                                @onclick="() => SetTeamOfTheDayMinimumPie(threshold)"
-                                                disabled="@IsBusy">
-                                            @TeamOfTheDayPieThresholdLabel(threshold)
-                                        </button>
-                                    }
-                                </div>
-                            </div>
-
-                            <div class="team-day-filter-group">
-                                <span class="team-day-filter-title">Total actions minimum</span>
-                                <div class="team-day-chip-row">
-                                    @foreach (var threshold in TeamOfTheDayActionThresholds)
-                                    {
-                                        <button type="button"
-                                                class="section-chip ranking-chip @(IsTeamOfTheDayActionThresholdActive(threshold) ? "is-active" : string.Empty)"
-                                                @onclick="() => SetTeamOfTheDayMinimumActions(threshold)"
-                                                disabled="@IsBusy">
-                                            @TeamOfTheDayActionThresholdLabel(threshold)
-                                        </button>
-                                    }
-                                </div>
-                            </div>
-
-                            <button type="button" class="ghost-button filter-ghost" @onclick="ResetTeamOfTheDayFilters" disabled="@IsBusy">
-                                Nettoyer filtres
-                            </button>
-                        </div>
-
-                        @if (!string.IsNullOrWhiteSpace(teamOfTheDay.WarningMessage))
-                        {
-                            <section class="warning-banner team-day-warning">
-                                <strong>Information</strong>
-                                <span>@teamOfTheDay.WarningMessage</span>
-                            </section>
-                        }
-
-                        <div class="signal-matrix team-day-metrics">
-                            <div class="mini-card"><span>Postes couverts</span><strong>@lineup.Length/7</strong></div>
-                            <div class="mini-card"><span>Candidates</span><strong>@teamOfTheDay.CandidateCount</strong></div>
-                            <div class="mini-card"><span>Matchs journee</span><strong>@teamOfTheDay.MatchCount</strong></div>
-                            <div class="mini-card"><span>Lecture</span><strong>@TeamOfTheDayMetricShortLabel(TeamOfTheDayMetric)</strong></div>
-                            <div class="mini-card"><span>Filtrees</span><strong>@candidateRows.Length</strong></div>
-                        </div>
-
-                        @if (lineup.Length == 0)
-                        {
-                            <StateCard Kicker="Equipe type"
-                                       Title="Aucune equipe type calculable"
-                                       Message="Selectionnez une saison et une journee contenant des statistiques joueuses valides."
-                                       Tone="empty"
-                                       CssClass="empty-card-inline" />
-                        }
-                        else
-                        {
-                            <div class="team-day-stage">
-                                <div class="team-day-field" aria-label="Formation equipe type">
-                                    @foreach (var player in lineup)
-                                    {
-                                        var group = teamOfTheDay.Groups.FirstOrDefault(item => item.SlotKey == player.SlotKey);
-                                        var tieCount = group?.TieCount(TeamOfTheDayMetric, TeamOfTheDayMinimumPie, TeamOfTheDayMinimumActions) ?? 0;
-                                        var playerPhotoUrl = PlayerPhotoAssetResolver.Resolve(player.PlayerPhoto, player.PlayerId, player.FullName, player.TeamName);
-
-                                        <article @key="player.PlayerId" class="team-day-player-card @player.FormationArea">
-                                            <div class="team-day-player-card__halo @(playerPhotoUrl is null ? "is-placeholder" : "has-photo")">
-                                                @if (!string.IsNullOrWhiteSpace(playerPhotoUrl))
-                                                {
-                                                    <img src="@playerPhotoUrl" alt="@($"Portrait de {player.FullName}")" loading="lazy" />
-                                                }
-                                                else
-                                                {
-                                                    <span>@player.Initials</span>
-                                                }
-                                            </div>
-                                            <div>
-                                                <span class="team-day-position">@player.PositionLabel</span>
-                                                <h4>@player.FullName</h4>
-                                                <p>@player.TeamName</p>
-                                            </div>
-
-                                            <div class="team-day-score">
-                                                <span>@TeamOfTheDayMetricShortLabel(TeamOfTheDayMetric)</span>
-                                                <strong>@FormatTeamOfTheDayScore(player.ScoreFor(TeamOfTheDayMetric))</strong>
-                                            </div>
-
-                                            <div class="team-day-card-meta">
-                                                <span>@(string.IsNullOrWhiteSpace(player.OpponentName) ? "Adversaire non renseigne" : $"vs {player.OpponentName}")</span>
-                                                <span>@(string.IsNullOrWhiteSpace(player.MatchScore) ? "Score N/A" : player.MatchScore)</span>
-                                            </div>
-
-                                            <div class="team-day-card-stats">
-                                                @if (player.IsGoalkeeper)
-                                                {
-                                                    <span>@player.StatLine.GoalkeeperStops arr.</span>
-                                                    <span>@FormatRate(player.StatLine.GoalkeeperSaveRate)%</span>
-                                                    <span>@player.StatLine.GoalsConceded buts pris</span>
-                                                }
-                                                else
-                                                {
-                                                    <span>@player.StatLine.Goals buts</span>
-                                                    <span>@player.StatLine.Assists passes</span>
-                                                    <span>@player.StatLine.DefensiveImpact def.</span>
-                                                }
-                                                <span>@player.StatLine.TotalActions actions</span>
-                                            </div>
-
-                                            @if (tieCount > 1)
-                                            {
-                                                <span class="team-day-tie">Egalite x@tieCount</span>
-                                            }
-
-                                            @if (player.MatchId.HasValue)
-                                            {
-                                                <a class="team-day-match-link" href="@($"/matches?matchId={player.MatchId.Value}")">Voir match</a>
-                                            }
-                                        </article>
-                                    }
-                                </div>
-
-                                <aside class="team-day-side">
-                                    <p class="section-kicker">Lecture du score</p>
-                                    <h4>@TeamOfTheDayMetricLabel(TeamOfTheDayMetric)</h4>
-                                    <p>@TeamOfTheDayMetricDescription</p>
-                                    <div class="compact-list">
-                                        @foreach (var player in lineup.OrderByDescending(item => item.ScoreFor(TeamOfTheDayMetric)).Take(4))
-                                        {
-                                            <div class="outcome-row">
-                                                <span>@player.FullName</span>
-                                                <strong>@FormatTeamOfTheDayScore(player.ScoreFor(TeamOfTheDayMetric))</strong>
-                                            </div>
-                                        }
-                                    </div>
-                                </aside>
-                            </div>
-                        }
-                    </div>
-
-                    @if (candidateRows.Length > 0)
-                    {
-                        <section class="page-panel team-day-board">
-                            <div class="panel-head">
-                                <div>
-                                    <p class="section-kicker">Candidates par poste</p>
-                                    <h3>Classement detaille et departage</h3>
-                                </div>
-                                <span class="panel-pill">@candidateRows.Length lignes</span>
-                            </div>
-
-                            <div class="list-stack">
-                                @foreach (var group in teamOfTheDay.Groups)
-                                {
-                                    var best = group.GetBestCandidate(TeamOfTheDayMetric, TeamOfTheDayMinimumPie, TeamOfTheDayMinimumActions);
-                                    var rows = group.Candidates
-                                        .Where(candidate => candidate.MatchesFilters(TeamOfTheDayMetric, TeamOfTheDayMinimumPie, TeamOfTheDayMinimumActions))
-                                        .OrderByDescending(candidate => candidate.ScoreFor(TeamOfTheDayMetric))
-                                        .ThenByDescending(candidate => candidate.PieForFilter(TeamOfTheDayMetric))
-                                        .ThenByDescending(candidate => candidate.PlayingTimeMinutes)
-                                        .ThenByDescending(candidate => candidate.StatLine.TotalActions)
-                                        .ThenBy(candidate => candidate.FullName)
-                                        .ToArray();
-
-                                    <details class="dashboard-board-drawer team-day-position-drawer" open>
-                                        <summary>
-                                            <div>
-                                                <p class="section-kicker">@group.PositionLabel</p>
-                                                <strong>@(best?.FullName ?? "Aucune candidate")</strong>
-                                            </div>
-                                            <span class="panel-pill">@rows.Length candidates</span>
-                                        </summary>
-
-                                        <section class="page-panel dashboard-nested-panel">
-                                            <div class="table-wrap">
-                                                <table class="stat-table">
-                                                    <caption class="visually-hidden">Classement de l'equipe de la journee et preuves statistiques</caption>
-                                                    <thead>
-                                                        <tr>
-                                                            <th scope="col">Rang</th>
-                                                            <th scope="col">Joueuse</th>
-                                                            <th scope="col">Equipe</th>
-                                                            <th scope="col">Adversaire</th>
-                                                            <th scope="col">@TeamOfTheDayMetricShortLabel(TeamOfTheDayMetric)</th>
-                                                            <th scope="col">Actions</th>
-                                                            <th scope="col">Score local</th>
-                                                            <th scope="col">Score attaque</th>
-                                                            <th scope="col">Score defense</th>
-                                                            <th scope="col">Buts</th>
-                                                            <th scope="col">Passes</th>
-                                                            <th scope="col">Impact def.</th>
-                                                            <th scope="col">Arrets</th>
-                                                            <th scope="col">Pertes</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach (var row in rows.Select((candidate, index) => (candidate, index)))
-                                                        {
-                                                            <tr class="@(row.index == 0 ? "is-selected-row" : string.Empty)">
-                                                                <td>@(row.index + 1)</td>
-                                                                <td>@row.candidate.FullName</td>
-                                                                <td>@row.candidate.TeamName</td>
-                                                                <td>@(row.candidate.OpponentName ?? "-")</td>
-                                                                <td><strong>@FormatTeamOfTheDayScore(row.candidate.ScoreFor(TeamOfTheDayMetric))</strong></td>
-                                                                <td>@row.candidate.StatLine.TotalActions</td>
-                                                                <td>@FormatPie(row.candidate.PieGlobal)</td>
-                                                                <td>@FormatPie(row.candidate.PieOffense)</td>
-                                                                <td>@FormatPie(row.candidate.PieDefense)</td>
-                                                                <td>@row.candidate.StatLine.Goals</td>
-                                                                <td>@row.candidate.StatLine.Assists</td>
-                                                                <td>@row.candidate.StatLine.DefensiveImpact</td>
-                                                                <td>@row.candidate.StatLine.GoalkeeperStops</td>
-                                                                <td>@row.candidate.StatLine.Turnovers</td>
-                                                            </tr>
-                                                        }
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </section>
-                                    </details>
-                                }
-                            </div>
-                        </section>
-                    }
-                </section>
-            }
-            else if (ActiveDashboardSection == "spotlight")
-            {
-                <section class="page-panel">
-                    <div class="panel-head panel-head-wrap">
+                <div class="tab-panel active">
+                    <section class="dashboard-panel">
+                      <div class="dashboard-panel-head">
                         <div>
-                            <p class="section-kicker">Joueuse suivie</p>
-                            <h3>@Snapshot.Spotlight.FullName</h3>
-                            <p class="page-subtitle">
-                                @Snapshot.Spotlight.TeamName - @Snapshot.Spotlight.PositionName
-                                @if (Snapshot.Spotlight.Age.HasValue)
-                                {
-                                    <span>- @Snapshot.Spotlight.Age.Value ans</span>
-                                }
-                            </p>
+                          <p class="dashboard-section-kicker">Equipe type de la journée</p>
+                          <h3>@teamOfTheDay.ScopeLabel</h3>
                         </div>
-
-                        <label class="filter-field compact-select">
-                            <span>Changer de joueuse</span>
-                            <select value="@Filters.SpotlightPlayerId" @onchange="OnPlayerChangedAsync">
-                                @foreach (var player in Snapshot.Players)
-                                {
-                                    <option value="@player.Id">@player.FullName</option>
-                                }
-                            </select>
-                        </label>
-                    </div>
-
-                    <div class="badge-row">
-                        <div class="mini-card"><span>Matchs</span><strong>@Snapshot.Spotlight.MatchesPlayed</strong></div>
-                        <div class="mini-card"><span>Buts</span><strong>@Snapshot.Spotlight.TotalGoals</strong></div>
-                        <div class="mini-card"><span>Passes</span><strong>@Snapshot.Spotlight.Assists</strong></div>
-                        <div class="mini-card"><span>@(Snapshot.Spotlight.IsGoalkeeper ? "Arrets" : "Impact def.")</span><strong>@(Snapshot.Spotlight.IsGoalkeeper ? Snapshot.Spotlight.Saves : Snapshot.Spotlight.DefensiveStops)</strong></div>
-                    </div>
-
-                    <KpiTileGrid Items="@SpotlightKpis" />
-
-                    @if (ShowSpotlightDeepDive)
+                        @if (lineup.Length > 0)
+                        {
+                          <span class="dashboard-pill">Score @FormatTeamOfTheDayScore(lineup.Average(p => p.ScoreFor(TeamOfTheDayMetric)))</span>
+                        }
+                      </div>
+                      @if (IsTeamOfTheDayLoading)
+                      {
+                        <PageLoader Kicker="Chargement à la demande"
+                                    Title="Construction de l'équipe de la journée"
+                                    Message="Cette section est chargée à la demande." />
+                      }
+                      @if (lineup.Length == 0 && !IsTeamOfTheDayLoading)
+                      {
+                        <StateCard Kicker="Equipe type"
+                                   Title="Aucune équipe type calculable"
+                                   Message="Sélectionnez une saison et une journée contenant des statistiques joueuses valides."
+                                   Tone="empty"
+                                   CssClass="empty-card-inline" />
+                      }
+                      else if (lineup.Length > 0)
+                      {
+                        <div class="team-day-stage">
+                          <div class="team-day-field" aria-label="Formation équipe type">
+                            @foreach (var player in lineup)
+                            {
+                              var playerPhotoUrl = PlayerPhotoAssetResolver.Resolve(player.PlayerPhoto, player.PlayerId, player.FullName, player.TeamName);
+                              <article @key="player.PlayerId" class="team-day-player-card @player.FormationArea">
+                                <div class="team-day-player-card__halo @(playerPhotoUrl is null ? "is-placeholder" : "has-photo")">
+                                  @if (!string.IsNullOrWhiteSpace(playerPhotoUrl))
+                                  {
+                                    <img src="@playerPhotoUrl" alt="@($"Portrait de {player.FullName}")" loading="lazy" />
+                                  }
+                                  else
+                                  {
+                                    <span>@player.Initials</span>
+                                  }
+                                </div>
+                                <div>
+                                  <span class="team-day-position">@player.PositionLabel</span>
+                                  <h4>@player.FullName</h4>
+                                  <p>@player.TeamName</p>
+                                </div>
+                                <div class="team-day-score">
+                                  <span>Score</span>
+                                  <strong>@FormatTeamOfTheDayScore(player.ScoreFor(TeamOfTheDayMetric))</strong>
+                                </div>
+                              </article>
+                            }
+                          </div>
+                          <aside class="dashboard-side-score">
+                            <span class="dashboard-section-kicker">Sélection</span>
+                            <strong>@FormatTeamOfTheDayScore(lineup.Average(p => p.ScoreFor(TeamOfTheDayMetric)))</strong>
+                            <p>Impact combiné sur volume, efficacité, création et protection.</p>
+                          </aside>
+                        </div>
+                      }
+                    </section>
+                </div>
+            }
+            @if (ActiveDashboardSection == "spotlight")
+            {
+                <div class="tab-panel active">
+                    @if (Snapshot.Spotlight.PlayerId <= 0)
                     {
-                        <div class="dual-grid">
-                            <section class="page-panel dashboard-nested-panel">
-                                <p class="section-kicker">Profil d'activite</p>
-                                <h4>Repartition des actions</h4>
-                                <ApexChart TItem="SliceValue" Height="280" Options="@GetDistributionChartOptions()">
-                                    <ApexPointSeries TItem="SliceValue"
-                                                     Items="@Snapshot.Spotlight.Distribution"
-                                                     Name="Actions"
-                                                     SeriesType="SeriesType.Donut"
-                                                     XValue="slice => slice.Label"
-                                                     YValue="slice => (decimal?)slice.Value" />
-                                </ApexChart>
-                            </section>
-
-                            <section class="page-panel dashboard-nested-panel">
-                                <p class="section-kicker">Lecture rapide</p>
-                                <h4>Impact dans la selection</h4>
-                                <div class="compact-list">
-                                    <div class="outcome-row">
-                                        <span>Taux de tir ouvert</span>
-                                        <strong>@FormatRate(Snapshot.Spotlight.ShootingRate)%</strong>
+                        <StateCard Kicker="Aucune joueuse"
+                                   Title="Aucune joueuse suivie"
+                                   Message="Sélectionnez une joueuse dans les filtres pour afficher son profil."
+                                   Tone="empty" />
+                    }
+                    else
+                    {
+                        var spPhotoUrl = PlayerPhotoAssetResolver.Resolve(null, Snapshot.Spotlight.PlayerId, Snapshot.Spotlight.FullName, Snapshot.Spotlight.TeamName);
+                        <div class="dashboard-spotlight-layout">
+                            <section class="dashboard-spotlight-card">
+                                <div class="dashboard-spotlight-id">
+                                    <div class="dashboard-spotlight-photo">
+                                        @if (spPhotoUrl != null)
+                                        {
+                                            <img src="@spPhotoUrl" alt="@Snapshot.Spotlight.FullName" />
+                                        }
                                     </div>
-                                    <div class="outcome-row">
-                                        <span>Tirs engages</span>
-                                        <strong>@Snapshot.Spotlight.ShotAttempts</strong>
-                                    </div>
-                                    <div class="outcome-row">
-                                        <span>Conversion globale</span>
-                                        <strong>@FormatRate(Snapshot.Spotlight.OverallShotSuccessRate)%</strong>
-                                    </div>
-                                    <div class="outcome-row">
-                                        <span>Dechet tir</span>
-                                        <strong>@Snapshot.Spotlight.ShotWaste</strong>
-                                    </div>
-                                    <div class="outcome-row">
-                                        <span>Passes / pertes</span>
-                                        <strong>@Snapshot.Spotlight.Assists / @Snapshot.Spotlight.Turnovers</strong>
-                                    </div>
-                                    <div class="outcome-row">
-                                        <span>Pertes techniques</span>
-                                        <strong>@Snapshot.Spotlight.TechnicalLosses</strong>
-                                    </div>
-                                    <div class="outcome-row">
-                                        <span>Defense</span>
-                                        <strong>@Snapshot.Spotlight.Defense.Interceptions int. / @Snapshot.Spotlight.Defense.Contres contres</strong>
-                                    </div>
-                                    @if (Snapshot.Spotlight.IsGoalkeeper)
-                                    {
-                                        <div class="outcome-row">
-                                            <span>Stop 7m</span>
-                                            <strong>@FormatRate(Snapshot.Spotlight.PenaltyStopRate)%</strong>
-                                        </div>
-                                    }
-                                    <div class="outcome-row">
-                                        <span>Sanctions</span>
-                                        <strong>@Snapshot.Spotlight.Sanctions.DeuxMinutes deux min.</strong>
+                                    <div>
+                                        <p class="dashboard-section-kicker">Joueuse du jour</p>
+                                        <h3>@Snapshot.Spotlight.FullName</h3>
+                                        <span class="text-muted">@Snapshot.Spotlight.PositionName · @Snapshot.Spotlight.TeamName · @Snapshot.Spotlight.MatchesPlayed matchs</span>
                                     </div>
                                 </div>
+                                <div class="dashboard-spotlight-kpis">
+                                    <article><span>Buts</span><strong>@Snapshot.Spotlight.TotalGoals</strong></article>
+                                    <article>
+                                        <span>@(Snapshot.Spotlight.IsGoalkeeper ? "Taux d'arrêt" : "Efficacité")</span>
+                                        <strong>@HandballKpiHelper.FormatPercent(Snapshot.Spotlight.IsGoalkeeper ? (double)Snapshot.Spotlight.Goalkeeper.TauxArret : Snapshot.Spotlight.ShootingRate)</strong>
+                                    </article>
+                                    <article><span>Passes</span><strong>@Snapshot.Spotlight.Assists</strong></article>
+                                    <article>
+                                        <span>@(Snapshot.Spotlight.IsGoalkeeper ? "Arrêts" : "Impact déf.")</span>
+                                        <strong>@(Snapshot.Spotlight.IsGoalkeeper ? Snapshot.Spotlight.Saves : Snapshot.Spotlight.DefensiveStops)</strong>
+                                    </article>
+                                </div>
+                                <article class="dashboard-signal-item dashboard-signal-item--up">
+                                    <span class="dashboard-signal-icon">↑</span>
+                                    <div>
+                                        <small>Tendance saison</small>
+                                        <strong>@Snapshot.Spotlight.TotalGoals buts · @Snapshot.Spotlight.Assists passes</strong>
+                                        <p>@Snapshot.Spotlight.MatchesPlayed matchs joués dans le scope actif.</p>
+                                    </div>
+                                </article>
+                                <a href="/players" class="btn btn-primary btn-sm">Voir la fiche complète</a>
                             </section>
+                            @if (Snapshot.Spotlight.Distribution.Count > 0)
+                            {
+                                <section class="dashboard-ranking-panel">
+                                    <div class="dashboard-section-head">
+                                        <div><p class="dashboard-section-kicker">Distribution</p><h3>Répartition des actions</h3></div>
+                                    </div>
+                                    <ApexChart TItem="SliceValue" Height="280" Options="@GetDistributionChartOptions()">
+                                        <ApexPointSeries TItem="SliceValue"
+                                                         Items="@Snapshot.Spotlight.Distribution"
+                                                         Name="Actions"
+                                                         SeriesType="SeriesType.Donut"
+                                                         XValue="slice => slice.Label"
+                                                         YValue="slice => (decimal?)slice.Value" />
+                                    </ApexChart>
+                                </section>
+                            }
                         </div>
                     }
-                </section>
-
-                @if (ShowSpatialSection)
-                {
-                    <section class="dashboard-grid">
-                        <article class="page-panel">
-                            <div class="panel-head">
-                                <div>
-                                    <p class="section-kicker">Lecture spatiale</p>
-                                    <h3>But et declenchements</h3>
-                                </div>
-                            </div>
-
-                            <GoalKpi GoalZones="@CourtZoneMapper.FromZoneStats(Snapshot.Spotlight.GoalZones)"
-                                     TriggerZones="@CourtZoneMapper.FromZoneStats(Snapshot.Spotlight.TriggerZones)"
-                                     IsGoalkeeper="@Snapshot.Spotlight.IsGoalkeeper"
-                                     ActiveZoneKey="@SelectedZoneKey"
-                                     OnZoneSelected="HandleZoneSelectionAsync" />
-                        </article>
-
-                        <article class="page-panel">
-                            <div class="panel-head">
-                                <div>
-                                    <p class="section-kicker">Zone active</p>
-                                    <h3>@(CurrentZone?.Label ?? "Selectionnez une zone")</h3>
-                                </div>
-                                @if (CurrentZone is not null)
-                                {
-                                    <span class="panel-pill">@FormatRate(CurrentZone.Rate)%</span>
-                                }
-                            </div>
-
-                            @if (CurrentZone is not null)
-                            {
-                                <div class="badge-row">
-                                    <div class="mini-card"><span>Volume</span><strong>@CurrentZone.Attempts</strong></div>
-                                    <div class="mini-card"><span>Succes</span><strong>@CurrentZone.Successes</strong></div>
-                                    <div class="mini-card"><span>Echecs</span><strong>@CurrentZone.Failures</strong></div>
-                                </div>
-
-                                <div class="compact-list">
-                                    @if (CurrentZone.Outcomes.Count == 0)
-                                    {
-                                        <p class="empty-hint">Aucun evenement sur cette zone pour la selection courante.</p>
-                                    }
-                                    else
-                                    {
-                                        @foreach (var outcome in CurrentZone.Outcomes)
-                                        {
-                                            <div class="outcome-row">
-                                                <span>@outcome.Label</span>
-                                                <strong>@outcome.Count</strong>
-                                            </div>
-                                        }
-                                    }
-                                </div>
-                            }
-                        </article>
-                    </section>
-                }
+                </div>
             }
-            else if (ActiveDashboardSection == "global-rankings")
+            @if (ActiveDashboardSection == "global-rankings")
             {
                 @if (IsPlayerTableLoading)
                 {
-                    <PageLoader Kicker="Chargement a la demande"
+                    <PageLoader Kicker="Chargement à la demande"
                                 Title="Chargement du tableau analytique"
-                                Message="Cette section est chargee uniquement lorsque vous l'ouvrez." />
+                                Message="Cette section est chargée uniquement lorsque vous l'ouvrez." />
                 }
 
-                <section class="page-panel pt-panel">
-                    <div class="panel-head panel-head-wrap">
+                <div class="dashboard-panel pt-panel">
+                    <div class="dashboard-panel-head">
                         <div>
-                            <p class="section-kicker">Classements globaux</p>
+                            <p class="dashboard-section-kicker">Classements globaux</p>
                             <h3>Tableau analytique joueuses</h3>
                         </div>
                     </div>
@@ -1175,61 +904,109 @@ else if (Snapshot is not null)
                             </div>
                         }
                     }
-                </section>
+                </div>
             }
-            else
+            @if (ActiveDashboardSection == "recent")
             {
-                <section class="page-panel">
-                    <div class="panel-head">
-                        <div>
-                            <p class="section-kicker">Derniers reperes</p>
-                            <h3>Gardez le fil de la selection sans tout lire en meme temps</h3>
+                    <section class="dashboard-panel">
+                        <div class="dashboard-panel-head">
+                            <div>
+                                <p class="dashboard-section-kicker">Matchs</p>
+                                <h3>Dernières rencontres du scope</h3>
+                            </div>
+                            <a href="/matches" class="btn btn-ghost btn-sm">Analyse complète</a>
                         </div>
-                    </div>
-
-                    <div class="dual-grid">
-                        <section class="page-panel dashboard-nested-panel">
-                            <p class="section-kicker">Matchs recents</p>
-                            <div class="list-stack">
+                        @if (Snapshot.RecentMatches.Count == 0)
+                        {
+                            <StateCard Kicker="Aucun match"
+                                       Title="Aucun match dans ce scope"
+                                       Message="Élargissez les filtres pour afficher des rencontres récentes."
+                                       Tone="empty"
+                                       CssClass="empty-card-inline" />
+                        }
+                        else
+                        {
+                            <div class="dashboard-match-list">
                                 @foreach (var match in Snapshot.RecentMatches)
                                 {
-                                    <MatchCard @key="match.MatchId"
-                                               Title="@match.Poster"
-                                               Score="@match.Score"
-                                               Teams="@ReferenceData.Teams"
-                                               Season="@Filters.Season"
-                                               Meta="@match.SeasonDayLabel"
-                                               Badge="@match.DayLabel"
-                                               DetailsHref="@($"/matches?matchId={match.MatchId}")"
-                                               DetailsLabel="Voir plus" />
+                                    var posterParts = match.Poster?.Split(new[] { " – ", " - " }, 2, StringSplitOptions.None) ?? Array.Empty<string>();
+                                    var matchTeam1 = posterParts.Length > 0 ? posterParts[0] : match.Poster ?? "—";
+                                    var matchTeam2 = posterParts.Length > 1 ? posterParts[1] : "—";
+                                    <article class="dashboard-match-row" @key="match.MatchId">
+                                        <div class="dashboard-match-team">@matchTeam1</div>
+                                        <div class="dashboard-match-score">@match.Score</div>
+                                        <div class="dashboard-match-team dashboard-match-team--away">@matchTeam2</div>
+                                        <div class="dashboard-match-meta">
+                                            <strong>@match.DayLabel</strong>
+                                            <span>@match.SeasonDayLabel</span>
+                                        </div>
+                                    </article>
                                 }
                             </div>
-                        </section>
-
-                        <section class="page-panel dashboard-nested-panel">
-                            <p class="section-kicker">Dernieres feuilles</p>
-                            <div class="list-stack">
-                                @foreach (var match in Snapshot.Spotlight.Matches.Take(4))
-                                {
-                                    <MatchCard @key="match.MatchId"
-                                               Title="@($"{match.Team1Name ?? "Equipe A"} vs {match.Team2Name ?? "Equipe B"}")"
-                                               Score="@($"{match.Team1Score ?? 0} - {match.Team2Score ?? 0}")"
-                                               Teams="@ReferenceData.Teams"
-                                               Season="@Filters.Season"
-                                               Meta="@(match.CompetitionName ?? "Competition")"
-                                               SecondaryMeta="@MatchFilterCatalog.FormatSeasonDay(match)"
-                                               DetailsHref="@($"/matches?matchId={match.MatchId}")"
-                                               DetailsLabel="Voir plus">
-                                        <span class="match-card-chip is-positive">Buts @match.Goals</span>
-                                        <span class="match-card-chip is-good">Passes @match.Assists</span>
-                                    </MatchCard>
-                                }
-                            </div>
-                        </section>
-                    </div>
-                </section>
+                        }
+                    </section>
             }
         }
+    </div>
+}
+
+@if (_filterOpen && Snapshot is not null)
+{
+    <div class="filter-drawer-overlay" @onclick="CloseFilterDrawer" role="dialog" aria-modal="true" aria-label="Filtres dashboard">
+        <div class="filter-drawer" @onclick:stopPropagation="true">
+            <header class="filter-drawer__head">
+                <h3 class="filter-drawer__title">Filtres</h3>
+                <button type="button" class="filter-drawer__close" @onclick="CloseFilterDrawer">×</button>
+            </header>
+            <div class="filter-drawer__body page-filters">
+                <div class="filter-section">
+                    <span class="filter-section__label">Compétition</span>
+                    <select class="form-select" @bind="Filters.CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var competition in AvailableCompetitions)
+                        {
+                            <option value="@competition.CompetitionId">@competition.CompetitionName</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-section">
+                    <span class="filter-section__label">Équipe</span>
+                    <select class="form-select" @bind="Filters.TeamId" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var team in AvailableTeams)
+                        {
+                            <option value="@team.TeamId">@team.TeamName</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-section">
+                    <span class="filter-section__label">Saison</span>
+                    <select class="form-select" @bind="Filters.Season" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var season in SeasonOptions)
+                        {
+                            <option value="@season">@season</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-section">
+                    <span class="filter-section__label">Journée</span>
+                    <select class="form-select" @bind="Filters.Day" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var day in DayOptions)
+                        {
+                            <option value="@day">@day</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <footer class="filter-drawer__foot">
+                <div class="filter-drawer__foot-actions">
+                    <button type="button" class="ghost-button" @onclick="async () => { await ResetFiltersAsync(); CloseFilterDrawer(); }">Réinitialiser</button>
+                    <button type="button" class="primary-button" @onclick="CloseFilterDrawer">Appliquer</button>
+                </div>
+            </footer>
+        </div>
     </div>
 }
 
@@ -1244,8 +1021,18 @@ else if (Snapshot is not null)
         builder.CloseElement();
     };
 
-    private string ActiveLens { get; set; } = AudienceLens.Club;
+    private bool _filterOpen;
+    private string ActiveLens { get; set; } = AudienceLens.Analyst;
     private string ActiveDashboardSection { get; set; } = "league";
+
+    protected override async Task OnInitializedAsync()
+    {
+        CommandBarService.Register(() => { _filterOpen = !_filterOpen; StateHasChanged(); return Task.CompletedTask; });
+        await base.OnInitializedAsync();
+        await LoadPlayerTableAsync();
+    }
+
+    private void CloseFilterDrawer() { _filterOpen = false; StateHasChanged(); }
     private static readonly int[] RankingTopOptions = [5, 8, 10, 12];
     private static readonly TeamOfTheDayRankingMetric[] TeamOfTheDayMetrics =
     [
@@ -1675,13 +1462,13 @@ else if (Snapshot is not null)
         ActiveDashboardSection = section;
         await InvokeAsync(StateHasChanged);
 
-        if (section == "team-of-day")
-        {
-            await EnsureTeamOfTheDayLoadedAsync();
-        }
-        else if (section == "global-rankings")
+        if (section == "league" || section == "global-rankings")
         {
             await LoadPlayerTableAsync();
+        }
+        else if (section == "team-of-day")
+        {
+            await EnsureTeamOfTheDayLoadedAsync();
         }
     }
 

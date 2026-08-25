@@ -5,6 +5,7 @@
 @inject MatchEventsApiClient MatchEventsApiClient
 @inject IApiAuthService AuthService
 @inject AnalysisScopeService ScopeService
+@inject CommandBarService CommandBarService
 @implements IDisposable
 
 <PageTitle>Squads</PageTitle>
@@ -16,112 +17,98 @@
     }
     else
     {
-        @if (TeamStats is not null)
+        <div class="studio-subtoolbar">
+            <div class="studio-subtoolbar__spacer"></div>
+            <button type="button" class="btn btn-ghost btn-sm" @onclick="() => _filterOpen = true">
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;flex-shrink:0"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
+                Filtrer
+            </button>
+        </div>
+
+        @if (_filterOpen)
         {
-            <AudienceLensSelector Kicker="Lecture de l'équipe"
-                              Title="Adaptez le bilan à votre usage"
-                              Subtitle="Le mode Club privilégie le pilotage, le mode Analyste approfondit les données et le mode Joueuse simplifie la restitution."
-                              Value="@ActiveLens"
-                              ValueChanged="SetActiveLens" />
-        }
-
-        <section class="directory-command @(IsBusy ? "is-loading" : string.Empty)">
-            <div class="panel-head panel-head-wrap">
-                <div>
-                    <p class="section-kicker">Squad index</p>
-                    <h3>Choisir un collectif</h3>
-                </div>
-
-                <div class="toolbar">
-                    <button type="button" class="ghost-button filter-ghost" @onclick="ResetAsync" disabled="@IsBusy">Reinitialiser</button>
-                </div>
-            </div>
-
-            <details class="filter-drawer" open>
-                <summary>
-                    <div>
-                        <strong>Afficher les filtres équipe</strong>
-                        <span>Équipe, compétition, saison, journée et poste effectif si besoin.</span>
-                    </div>
-                </summary>
-
-                <div class="filter-drawer-body">
-                    <div class="page-filters">
-                        <label class="filter-field">
-                            <span>Equipe</span>
-                            <select @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Selectionner</option>
+            <div class="filter-drawer-overlay" @onclick="CloseFilterDrawer" role="dialog" aria-modal="true" aria-label="Filtres équipes">
+                <div class="filter-drawer" @onclick:stopPropagation="true">
+                    <header class="filter-drawer__head">
+                        <h3 class="filter-drawer__title">Filtres</h3>
+                        <button type="button" class="filter-drawer__close" @onclick="CloseFilterDrawer">×</button>
+                    </header>
+                    <div class="filter-drawer__body">
+                        <div class="filter-section">
+                            <span class="filter-section__label">Équipe</span>
+                            <select class="form-select" @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
+                                <option value="">Sélectionner une équipe…</option>
                                 @foreach (var team in AvailableTeams)
                                 {
                                     <option value="@team.TeamId">@team.TeamName</option>
                                 }
                             </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Competition</span>
-                            <select @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
+                        </div>
+                        <div class="filter-section">
+                            <span class="filter-section__label">Compétition</span>
+                            <select class="form-select" @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
                                 <option value="">Toutes</option>
                                 @foreach (var competition in AvailableCompetitions)
                                 {
                                     <option value="@competition.CompetitionId">@competition.CompetitionName</option>
                                 }
                             </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Saison</span>
-                            <select @bind="Season" @bind:after="OnScopeSelectionChangedAsync">
+                        </div>
+                        <div class="filter-section">
+                            <span class="filter-section__label">Saison</span>
+                            <select class="form-select" @bind="Season" @bind:after="OnScopeSelectionChangedAsync">
                                 <option value="">Toutes</option>
                                 @foreach (var season in SeasonOptions)
                                 {
                                     <option value="@season">@season</option>
                                 }
                             </select>
-                        </label>
-
-                        <label class="filter-field">
-                            <span>Journee</span>
-                            <select @bind="Day" @bind:after="OnScopeSelectionChangedAsync">
+                        </div>
+                        <div class="filter-section">
+                            <span class="filter-section__label">Journée</span>
+                            <select class="form-select" @bind="Day" @bind:after="OnScopeSelectionChangedAsync">
                                 <option value="">Toutes</option>
                                 @foreach (var day in DayOptions)
                                 {
                                     <option value="@day">@day</option>
                                 }
                             </select>
-                        </label>
-
+                        </div>
                         @if (ActiveSection == "roster")
                         {
-                            <label class="filter-field">
-                                <span>Poste effectif</span>
-                                <select @bind="PositionId" @bind:after="OnRosterScopeChangedAsync">
+                            <div class="filter-section">
+                                <span class="filter-section__label">Poste effectif</span>
+                                <select class="form-select" @bind="PositionId" @bind:after="OnRosterScopeChangedAsync">
                                     <option value="">Tous</option>
                                     @foreach (var position in AvailablePositions)
                                     {
                                         <option value="@position.Id">@position.Name</option>
                                     }
                                 </select>
-                            </label>
+                            </div>
                         }
                     </div>
+                    <footer class="filter-drawer__foot">
+                        <div class="filter-drawer__foot-actions">
+                            <button type="button" class="ghost-button" @onclick="async () => { await ResetAsync(); CloseFilterDrawer(); }">Réinitialiser</button>
+                            <button type="button" class="primary-button" @onclick="CloseFilterDrawer">Appliquer</button>
+                        </div>
+                    </footer>
                 </div>
-            </details>
-
-        
-        </section>
+            </div>
+        }
 
         @if (!string.IsNullOrWhiteSpace(ErrorMessage))
         {
             <StateCard Kicker="Erreur"
-                       Title="Impossible de charger l’équipe"
+                       Title="Impossible de charger l'équipe"
                        Message="@ErrorMessage"
                        Tone="error" />
         }
         else if (IsBusy && TeamStats is null)
         {
             <StateCard Kicker="Chargement"
-                       Title="Mise a jour du bilan d'equipe"
+                       Title="Mise à jour du bilan d'équipe"
                        Message="Les KPI, joueuses et matchs se recalculent pour le contexte choisi."
                        Tone="loading" />
         }
@@ -129,7 +116,7 @@
         {
             <StateCard Kicker="Aucune équipe"
                        Title="Choisissez une équipe pour charger son bilan"
-                       Message="Les joueuses et les matchs se chargeront dans le même contexte."
+                       Message="Utilisez le bouton Filtrer pour sélectionner une équipe, une compétition ou une saison."
                        Tone="empty" />
         }
         else
@@ -137,262 +124,319 @@
             @if (IsBusy)
             {
                 <PageLoader Kicker="Chargement"
-                            Title="Actualisation de l'equipe"
+                            Title="Actualisation de l'équipe"
                             Message="Les statistiques collectives et les graphes se recalculent." />
             }
 
-            <section class="entity-stage">
-                @{
-                    var teamLogoUrl = SelectedTeamLogoUrl;
-                }
+            <div class="team-profile" style="margin-bottom:1.75rem;">
+                <div class="team-code-badge">
+                    @if (!string.IsNullOrWhiteSpace(SelectedTeamLogoUrl))
+                    {
+                        <img src="@SelectedTeamLogoUrl"
+                             alt="@($"Logo {TeamStats.TeamName}")"
+                             loading="lazy"
+                             onerror="this.onerror=null;this.src=this.src.includes('/2025-2026/')?this.src.replace('/2025-2026/','/2024-2025/'):this.src.replace('/2024-2025/','/2025-2026/');" />
+                    }
+                    else
+                    {
+                        <span>@(TeamStats.TeamCode ?? "HWS")</span>
+                    }
+                </div>
+                <div class="team-profile__info">
+                    <div class="team-profile__code">@(CompetitionId.HasValue ? AvailableCompetitions.FirstOrDefault(c => c.CompetitionId == CompetitionId.Value)?.CompetitionName ?? "Toutes compétitions" : "Toutes compétitions") · @(Season ?? "Toutes saisons")</div>
+                    <div class="team-profile__name">@TeamStats.TeamName</div>
+                    <div class="team-profile__record">
+                        <span class="badge badge--fort">@TeamStats.Wins V</span>
+                        <span class="badge badge--neutral">@TeamStats.Draws N</span>
+                        <span class="badge badge--faible">@TeamStats.Losses D</span>
+                        <span class="text-muted" style="font-size:0.8125rem;">· @TeamStats.MatchesPlayed matchs joués</span>
+                    </div>
+                </div>
+            </div>
 
-                <header class="entity-identity entity-identity--squad">
-                    <div class="team-identity-logo @(teamLogoUrl is null ? "is-placeholder" : string.Empty)">
-                        @if (!string.IsNullOrWhiteSpace(teamLogoUrl))
-                        {
-                            <img src="@teamLogoUrl"
-                                 alt="@($"Logo {TeamStats.TeamName}")"
-                                 loading="lazy"
-                                 onerror="this.onerror=null;this.src=this.src.includes('/2025-2026/')?this.src.replace('/2025-2026/','/2024-2025/'):this.src.replace('/2024-2025/','/2025-2026/');" />
-                        }
-                        else
-                        {
-                            <span>@(TeamStats.TeamCode ?? "HWS")</span>
-                        }
-                    </div>
-                    <div class="entity-identity__copy">
-                        <span>Squad workspace</span>
-                        <h2 data-page-title>@TeamStats.TeamName</h2>
-                        <p class="team-identity-meta">
-                            @if (!string.IsNullOrWhiteSpace(TeamStats.TeamCode))
-                            {
-                                <span class="team-code-pill">@TeamStats.TeamCode</span>
-                            }
-                            <span>@TeamStats.MatchesPlayed matchs · @TeamPlayers.Count joueuses dans le scope</span>
-                        </p>
-                    </div>
-                    <div class="entity-identity__score">
-                        <span>Bilan</span>
-                        <strong>@TeamStats.Wins / @TeamStats.Draws / @TeamStats.Losses</strong>
-                    </div>
-                </header>
+            <div class="section-header">
+                <div class="section-header__badge"></div>
+                <h3 class="section-header__title">Bilan saison</h3>
+            </div>
+            <div class="stats-grid stats-grid--compact" style="margin-bottom:2rem;">
+                <div class="stats-grid__item">
+                    <span class="stats-grid__value">@TeamStats.MatchesPlayed</span>
+                    <span class="stats-grid__label">Matchs</span>
+                </div>
+                <div class="stats-grid__item">
+                    <span class="stats-grid__value">@TeamStats.Wins</span>
+                    <span class="stats-grid__label">Victoires</span>
+                </div>
+                <div class="stats-grid__item">
+                    <span class="stats-grid__value">@TeamStats.Draws</span>
+                    <span class="stats-grid__label">Nuls</span>
+                </div>
+                <div class="stats-grid__item">
+                    <span class="stats-grid__value">@TeamStats.Losses</span>
+                    <span class="stats-grid__label">Défaites</span>
+                </div>
+                <div class="stats-grid__item stats-grid__item--positive">
+                    <span class="stats-grid__value">@TeamStats.GoalsFor</span>
+                    <span class="stats-grid__label">Buts marqués</span>
+                </div>
+                <div class="stats-grid__item stats-grid__item--negative">
+                    <span class="stats-grid__value">@TeamStats.GoalsAgainst</span>
+                    <span class="stats-grid__label">Buts encaissés</span>
+                </div>
+                <div class="stats-grid__item">
+                    <span class="stats-grid__value">@TeamStats.Overview.AssistCount</span>
+                    <span class="stats-grid__label">Passes déc.</span>
+                </div>
+                <div class="stats-grid__item">
+                    <span class="stats-grid__value">@TeamStats.Overview.InterceptionCount</span>
+                    <span class="stats-grid__label">Interceptions</span>
+                </div>
+            </div>
 
-                <div class="scene-switcher" role="tablist" aria-label="Scenes de l'equipe">
-                    <button type="button" class="tab-button @(ActiveSection == "summary" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("summary")'>Pulse</button>
-                    <button type="button" class="tab-button @(ActiveSection == "roster" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("roster")'>Effectif</button>
-                    <button type="button" class="tab-button @(ActiveSection == "matches" ? "is-active" : string.Empty)" @onclick='() => SetActiveSection("matches")'>Games</button>
+            @if (ShowTeamSummaryKpis)
+            {
+                <div class="section-header">
+                    <div class="section-header__badge"></div>
+                    <h3 class="section-header__title">Indicateurs clés</h3>
+                </div>
+                <div style="margin-bottom:2rem;">
+                    <KpiTileGrid Items="@TeamKpis" />
+                </div>
+            }
+
+            @if (ShowTeamSummaryCharts)
+            {
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="section-header" style="margin-bottom:0.875rem;">
+                            <h3 class="section-header__title">Contribution aux buts</h3>
+                        </div>
+                        <ApexChart @key="TeamId" TItem="SliceValue" Height="310" Options="@GetTeamContributionChartOptions()">
+                            <ApexPointSeries TItem="SliceValue"
+                                             Items="@TeamContributionDistribution"
+                                             Name="Contribution"
+                                             SeriesType="SeriesType.Donut"
+                                             XValue="slice => slice.Label"
+                                             YValue="slice => (decimal?)slice.Value" />
+                        </ApexChart>
+                    </div>
+                    <div class="chart-card">
+                        <div class="section-header" style="margin-bottom:0.875rem;">
+                            <h3 class="section-header__title">Profil collectif</h3>
+                        </div>
+                        <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetTeamProfileChartOptions()">
+                            <ApexPointSeries TItem="MetricPlotPoint"
+                                             Items="@TeamProfileSeries"
+                                             Name="@TeamStats.TeamName"
+                                             SeriesType="SeriesType.Bar"
+                                             XValue="point => point.Label"
+                                             YValue="point => (decimal?)point.Value" />
+                        </ApexChart>
+                    </div>
+                </div>
+            }
+
+            @if (ShowTeamAnalystPanels)
+            {
+                <div class="chart-card" style="margin-bottom:2rem;">
+                    <div class="section-header" style="margin-bottom:0.875rem;">
+                        <h3 class="section-header__title">Joueuses décisives</h3>
+                        <span class="badge badge--neutral" style="margin-left:auto;">Actions directes / match</span>
+                    </div>
+                    <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetTeamImpactChartOptions()">
+                        <ApexPointSeries TItem="MetricPlotPoint"
+                                         Items="@TeamPlayerImpactSeries"
+                                         Name="Actions directes"
+                                         SeriesType="SeriesType.Bar"
+                                         XValue="point => point.Label"
+                                         YValue="point => (decimal?)point.Value" />
+                    </ApexChart>
+                </div>
+            }
+
+            <div class="section-header">
+                <div class="section-header__badge"></div>
+                <h3 class="section-header__title">Effectif &amp; résultats</h3>
+            </div>
+            <div class="tabs-wrapper">
+                <div class="tab-bar tab-bar--raised">
+                    <button type="button"
+                            class="tab @(ActiveSection == "roster" ? "active" : string.Empty)"
+                            @onclick='() => SetActiveSection("roster")'
+                            disabled="@IsBusy">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Effectif
+                    </button>
+                    <button type="button"
+                            class="tab @(ActiveSection == "matches" ? "active" : string.Empty)"
+                            @onclick='() => SetActiveSection("matches")'
+                            disabled="@IsBusy">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                        Games
+                        @if (TeamMatches.Count > 0)
+                        {
+                            <span class="tab__count">@TeamMatches.Count</span>
+                        }
+                    </button>
                 </div>
 
-                @if (ActiveSection == "summary")
+                @if (ActiveSection == "roster")
                 {
-                    <div class="stats-grid">
-                        <div class="mini-card"><span>Matchs</span><strong>@TeamStats.MatchesPlayed</strong></div>
-                        <div class="mini-card"><span>Victoires</span><strong>@TeamStats.Wins</strong></div>
-                        <div class="mini-card"><span>Nuls</span><strong>@TeamStats.Draws</strong></div>
-                        <div class="mini-card"><span>Defaites</span><strong>@TeamStats.Losses</strong></div>
-                        <div class="mini-card"><span>Buts pour</span><strong>@TeamStats.GoalsFor</strong></div>
-                        <div class="mini-card"><span>Buts contre</span><strong>@TeamStats.GoalsAgainst</strong></div>
-                        <div class="mini-card"><span>Passes</span><strong>@TeamStats.Overview.AssistCount</strong></div>
-                        <div class="mini-card"><span>Interceptions</span><strong>@TeamStats.Overview.InterceptionCount</strong></div>
-                    </div>
-
-                    @if (ShowTeamSummaryKpis)
-                    {
-                        <KpiTileGrid Items="@TeamKpis" />
-                    }
-
-                    @if (ShowTeamSummaryCharts)
-                    {
-                        <div class="dual-grid">
-                            <article class="page-panel">
-                                <p class="section-kicker">Repartition collective</p>
-                                <h4>Contribution directe par joueuse</h4>
-                                <ApexChart @key="TeamId" TItem="SliceValue" Height="310" Options="@GetTeamContributionChartOptions()">
-                                    <ApexPointSeries TItem="SliceValue"
-                                                     Items="@TeamContributionDistribution"
-                                                     Name="Contribution"
-                                                     SeriesType="SeriesType.Donut"
-                                                     XValue="slice => slice.Label"
-                                                     YValue="slice => (decimal?)slice.Value" />
-                                </ApexChart>
-                            </article>
-
-                            <article class="page-panel">
-                                <p class="section-kicker">Lecture rapide</p>
-                                <h4>Joueuses qui concentrent l'impact</h4>
-                                <div class="compact-list">
-                                    @foreach (var player in TeamPlayers.OrderByDescending(item => HandballKpiHelper.DirectContributions(item)).Take(5))
+                    <div class="tab-panel active">
+                        @{
+                            var topPerformers = TeamPlayers
+                                .OrderByDescending(p => HandballKpiHelper.DirectContributions(p))
+                                .Take(4).ToList();
+                            var extraPerformers = TeamPlayers
+                                .OrderByDescending(p => HandballKpiHelper.DirectContributions(p))
+                                .Skip(4).ToList();
+                        }
+                        @if (topPerformers.Count > 0)
+                        {
+                            <section class="team-performers-section" aria-labelledby="team-performers-title">
+                                <div class="team-performers-section__header">
+                                    <div>
+                                        <span class="team-performers-section__eyebrow">Joueuses clés</span>
+                                        <h3 id="team-performers-title">Lecture rapide de l'effectif</h3>
+                                        <p>Les joueuses les plus impactantes avant le tableau complet.</p>
+                                    </div>
+                                    @if (extraPerformers.Count > 0)
                                     {
-                                        <div class="outcome-row">
-                                            <span>@player.FullName</span>
-                                            <strong>@HandballKpiHelper.DirectContributions(player)</strong>
-                                        </div>
+                                        <button type="button" class="btn btn-ghost btn-sm" @onclick="ToggleAllPerformers">
+                                            @(_showAllPerformers ? "Réduire" : "Voir toutes les joueuses")
+                                        </button>
                                     }
                                 </div>
-                            </article>
-                        </div>
-                    }
-
-                    <div class="dual-grid">
-                        <article class="page-panel">
-                            <p class="section-kicker">Bilan</p>
-                            <h4>Production collective</h4>
-                            <div class="badge-row">
-                                <div class="mini-card"><span>Buts</span><strong>@(TeamStats.Overview.GoalCount + TeamStats.Overview.PenaltyGoalCount)</strong></div>
-                                <div class="mini-card"><span>Arrets</span><strong>@TeamStats.Overview.SaveCount</strong></div>
-                                <div class="mini-card"><span>Pertes</span><strong>@TeamStats.Overview.TurnoverCount</strong></div>
-                                <div class="mini-card"><span>Sanctions</span><strong>@TeamStats.Overview.SanctionCount</strong></div>
-                            </div>
-                        </article>
-
-                        <article class="page-panel">
-                            <p class="section-kicker">Top internes</p>
-                            <h4>Production des joueuses</h4>
-                            <div class="list-stack">
-                                @foreach (var player in TeamPlayers.OrderByDescending(item => item.TotalGoals).Take(5))
-                                {
-                                    <div class="list-item">
-                                        <div class="key-metric">
-                                            <strong>@player.FullName</strong>
-                                            <span>@player.TotalGoals buts</span>
-                                        </div>
-                                        <p class="tiny-note">@player.TeamName - @FormatRate(player.ShotSuccessRate)% au tir</p>
-                                    </div>
-                                }
-                            </div>
-                        </article>
-                    </div>
-
-                    @if (ShowTeamAnalystPanels)
-                    {
-                        <div class="triple-grid">
-                            <article class="page-panel">
-                                <p class="section-kicker">Profil collectif</p>
-                                <h4>Volumes moyens par match</h4>
-                                <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetTeamProfileChartOptions()">
-                                    <ApexPointSeries TItem="MetricPlotPoint"
-                                                     Items="@TeamProfileSeries"
-                                                     Name="@TeamStats.TeamName"
-                                                     SeriesType="SeriesType.Bar"
-                                                     XValue="point => point.Label"
-                                                     YValue="point => (decimal?)point.Value" />
-                                </ApexChart>
-                            </article>
-
-                            <article class="page-panel">
-                                <p class="section-kicker">Joueuses decisives</p>
-                                <h4>Actions directes dans la selection</h4>
-                                <ApexChart TItem="MetricPlotPoint" Height="310" Options="@GetTeamImpactChartOptions()">
-                                    <ApexPointSeries TItem="MetricPlotPoint"
-                                                     Items="@TeamPlayerImpactSeries"
-                                                     Name="Actions directes"
-                                                     SeriesType="SeriesType.Bar"
-                                                     XValue="point => point.Label"
-                                                     YValue="point => (decimal?)point.Value" />
-                                </ApexChart>
-                            </article>
-                        </div>
-                    }
-                }
-                else if (ActiveSection == "roster")
-                {
-                    <section class="page-panel">
-                        <div class="panel-head">
-                            <div>
-                                <p class="section-kicker">Effectif productif</p>
-                                <h4>@RosterPlayers.Count joueuses dans le filtre</h4>
-                            </div>
-                        </div>
-
-                        <div class="table-toolbar">
-                            <label class="filter-field table-search">
-                                <span>Filtrer le tableau</span>
-                                <input value="@RosterSearch" @oninput="OnRosterSearchChanged" placeholder="Joueuse, poste ou equipe" />
-                            </label>
-                        </div>
+                                <div class="team-performer-grid">
+                                    @foreach (var player in topPerformers)
+                                    {
+                                        @PerformerCard(player)
+                                    }
+                                    @if (_showAllPerformers)
+                                    {
+                                        @foreach (var player in extraPerformers)
+                                        {
+                                            @PerformerCard(player)
+                                        }
+                                    }
+                                </div>
+                            </section>
+                        }
 
                         @{
                             var rosterRows = FilteredRosterPlayers.ToArray();
                         }
-
-                        <div class="table-wrap">
-                            <table class="stat-table">
+                        <div class="table-wrapper" style="border:none;border-radius:0;">
+                            <div style="padding:0.75rem 1rem 0;">
+                                <label class="filter-field table-search">
+                                    <span>Filtrer le tableau</span>
+                                    <input value="@RosterSearch" @oninput="OnRosterSearchChanged" placeholder="Joueuse, poste ou équipe" />
+                                </label>
+                            </div>
+                            <table class="data-table">
                                 <thead>
                                     <tr>
+                                        <th class="col-jersey-num">#</th>
                                         <th>@TableHeader("name", "Joueuse", SetRosterSort)</th>
                                         <th>@TableHeader("position", "Poste", SetRosterSort)</th>
-                                        <th>@TableHeader("matches", "Matchs", SetRosterSort)</th>
-                                        <th>@TableHeader("goals", "Buts", SetRosterSort)</th>
-                                        <th>@TableHeader("assists", "Passes", SetRosterSort)</th>
-                                        <th>@TableHeader("interceptions", "Interceptions", SetRosterSort)</th>
-                                        <th>@TableHeader("saves", "Arrets", SetRosterSort)</th>
-                                        <th>@TableHeader("turnovers", "Pertes", SetRosterSort)</th>
-                                        <th>@TableHeader("shot", "Taux tir", SetRosterSort)</th>
+                                        <th class="numeric">@TableHeader("matches", "Matchs", SetRosterSort)</th>
+                                        <th class="numeric">@TableHeader("goals", "Buts", SetRosterSort)</th>
+                                        <th class="numeric">@TableHeader("assists", "Passes", SetRosterSort)</th>
+                                        <th class="numeric">@TableHeader("interceptions", "Intercept.", SetRosterSort)</th>
+                                        <th class="numeric">@TableHeader("saves", "Arrêts", SetRosterSort)</th>
+                                        <th class="numeric">@TableHeader("turnovers", "Pertes", SetRosterSort)</th>
+                                        <th class="numeric">@TableHeader("shot", "Eff. %", SetRosterSort)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var player in rosterRows)
                                     {
                                         <tr>
-                                            <td>@player.FullName</td>
-                                            <td>@(player.PositionCode ?? player.PositionName ?? "-")</td>
-                                            <td>@player.MatchesPlayed</td>
-                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.TotalGoals, player)">@player.TotalGoals</td>
-                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.AssistCount, player)">@player.AssistCount</td>
-                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.InterceptionCount, player)">@player.InterceptionCount</td>
-                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.SaveCount, player)">@player.SaveCount</td>
-                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.TurnoverCount, player, higherIsBetter: false)">@player.TurnoverCount</td>
-                                            <td class="@TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.ShotSuccessRate, player)">@FormatRate(player.ShotSuccessRate)%</td>
+                                            <td class="col-jersey-num">@(player.Number?.ToString() ?? "—")</td>
+                                            <td>
+                                                <div class="player-cell">
+                                                    <div class="player-cell__avatar">
+                                                        <span>@GetInitials(player.FullName)</span>
+                                                    </div>
+                                                    <span class="player-cell__name">@player.FullName</span>
+                                                </div>
+                                            </td>
+                                            <td><span class="badge badge--neutral">@(player.PositionCode ?? player.PositionName ?? "-")</span></td>
+                                            <td class="numeric">@player.MatchesPlayed</td>
+                                            <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.TotalGoals, player)" style="font-family:var(--font-display);font-weight:700;">@player.TotalGoals</td>
+                                            <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.AssistCount, player)">@player.AssistCount</td>
+                                            <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.InterceptionCount, player)">@player.InterceptionCount</td>
+                                            <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.SaveCount, player)">@player.SaveCount</td>
+                                            <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.TurnoverCount, player, higherIsBetter: false)">@player.TurnoverCount</td>
+                                            <td class="numeric" title="@(player.IsGoalkeeper ? "% arrêts" : "% tir")">@(player.IsGoalkeeper ? (player.GoalkeeperSaveRate > 0 ? $"{FormatRate(player.GoalkeeperSaveRate)}%" : "—") : (player.ShotSuccessRate > 0 ? $"{FormatRate(player.ShotSuccessRate)}%" : "—"))</td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
-                    </section>
+                    </div>
                 }
                 else
                 {
-                    <section class="workspace-grid workspace-grid-single">
-                        <article class="page-panel selection-column">
-                            <div class="panel-head">
-                                <div>
-                                    <p class="section-kicker">Matchs</p>
-                                    <h4>@TeamMatches.Count rencontres</h4>
-                                    <p class="page-subtitle">Chaque carte ouvre la fiche complete du match via Voir plus.</p>
-                                </div>
+                    <div class="tab-panel active" style="padding:1.5rem;">
+                        @if (TeamMatches.Count == 0)
+                        {
+                            <StateCard Kicker="Aucun match"
+                                       Title="La sélection courante ne retourne aucune rencontre"
+                                       Message="Essayez une autre équipe, une autre saison ou un autre jour."
+                                       Tone="empty"
+                                       CssClass="empty-card-inline" />
+                        }
+                        else
+                        {
+                            <div class="match-results-grid">
+                                @foreach (var match in TeamMatches)
+                                {
+                                    var _isOurHome = string.Equals(match.Team1Name, TeamStats.TeamName, StringComparison.OrdinalIgnoreCase);
+                                    var _scoreKnown = match.Team1Score.HasValue && match.Team2Score.HasValue;
+                                    var _ourScore = _isOurHome ? (match.Team1Score ?? 0) : (match.Team2Score ?? 0);
+                                    var _theirScore = _isOurHome ? (match.Team2Score ?? 0) : (match.Team1Score ?? 0);
+                                    var _isWin = _scoreKnown && _ourScore > _theirScore;
+                                    var _isLoss = _scoreKnown && _ourScore < _theirScore;
+                                    var _homeLogoUrl = TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team1Name, Season);
+                                    var _awayLogoUrl = TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team2Name, Season);
+                                    <div class="result-card" @key="match.MatchId">
+                                        <div class="result-card__header">
+                                            <span>@(string.IsNullOrWhiteSpace(match.Day) ? "" : $"{match.Day} · ")@(match.CompetitionName ?? "Compétition")</span>
+                                            <span>@(match.Date?.ToString("d MMM yyyy") ?? "")</span>
+                                        </div>
+                                        <div class="result-card__body">
+                                            <span class="result-card__team" style="@(_isOurHome && _isWin ? "font-weight:700;color:var(--court-400);" : _isOurHome && _isLoss ? "font-weight:700;color:var(--danger-400);" : "")">
+                                                @if (!string.IsNullOrWhiteSpace(_homeLogoUrl))
+                                                {
+                                                    <img class="result-team-logo" src="@_homeLogoUrl" alt="" loading="lazy" />
+                                                }
+                                                @match.Team1Name
+                                            </span>
+                                            <div class="result-card__score">
+                                                <span class="@(_isOurHome && _isWin ? "result-card__score--win" : _isOurHome && _isLoss ? "result-card__score--loss" : "")">@(match.Team1Score.HasValue ? match.Team1Score.Value.ToString() : "—")</span>
+                                                <span class="result-card__score-sep">–</span>
+                                                <span class="@(!_isOurHome && _isWin ? "result-card__score--win" : !_isOurHome && _isLoss ? "result-card__score--loss" : "")">@(match.Team2Score.HasValue ? match.Team2Score.Value.ToString() : "—")</span>
+                                            </div>
+                                            <span class="result-card__team result-card__team--away" style="@(!_isOurHome && _isWin ? "font-weight:700;color:var(--court-400);" : !_isOurHome && _isLoss ? "font-weight:700;color:var(--danger-400);" : "")">
+                                                @match.Team2Name
+                                                @if (!string.IsNullOrWhiteSpace(_awayLogoUrl))
+                                                {
+                                                    <img class="result-team-logo" src="@_awayLogoUrl" alt="" loading="lazy" />
+                                                }
+                                            </span>
+                                        </div>
+                                        <div class="result-card__footer">
+                                            <span class="badge @(_isWin ? "badge--fort" : _isLoss ? "badge--faible" : "badge--neutral")">@(_scoreKnown ? (_isWin ? "Victoire" : _isLoss ? "Défaite" : "Nul") : "Score N/D")</span>
+                                            <a href="/matches?matchId=@match.MatchId" style="margin-left:auto;font-size:0.75rem;color:var(--text-muted);text-decoration:none;">Voir →</a>
+                                        </div>
+                                    </div>
+                                }
                             </div>
-
-                            @if (TeamMatches.Count == 0)
-                            {
-                                <StateCard Kicker="Aucun match"
-                                           Title="La sélection courante ne retourne aucune rencontre"
-                                           Message="Essayez une autre équipe, une autre saison ou un autre jour."
-                                           Tone="empty"
-                                           CssClass="empty-card-inline" />
-                            }
-                            else
-                            {
-                                <div class="match-mosaic">
-                                    @foreach (var match in TeamMatches)
-                                    {
-                                        <MatchCard @key="match.MatchId"
-                                                   Title="@($"{match.Team1Name ?? "Equipe A"} vs {match.Team2Name ?? "Equipe B"}")"
-                                                   Score="@($"{match.Team1Score ?? 0} - {match.Team2Score ?? 0}")"
-                                                   Teams="@ReferenceData.Teams"
-                                                   Season="@Season"
-                                                   HomeTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team1Name, Season)"
-                                                   AwayTeamLogoUrl="@TeamLogoAssetResolver.ResolveByName(ReferenceData.Teams, match.Team2Name, Season)"
-                                                   Meta="@(match.CompetitionName ?? "Competition")"
-                                                   SecondaryMeta="@MatchFilterCatalog.FormatSeasonDay(match)"
-                                                   DetailsHref="@($"/matches?matchId={match.MatchId}")"
-                                                   DetailsLabel="Voir plus" />
-                                    }
-                                </div>
-                            }
-                        </article>
-                    </section>
+                        }
+                    </div>
                 }
-            </section>
+            </div>
         }
     }
 </div>
@@ -419,11 +463,13 @@
     private string? Day { get; set; }
     private int? SelectedMatchId { get; set; }
     private long SelectedMatchLoadToken { get; set; }
-    private string ActiveSection { get; set; } = "summary";
+    private string ActiveSection { get; set; } = "roster";
     private string ActiveLens { get; set; } = AudienceLens.Club;
     private string RosterSearch { get; set; } = string.Empty;
     private TableSortState RosterSort { get; set; } = new("goals", SortDirection.Desc);
     private bool _publishingScope;
+    private bool _filterOpen;
+    private bool _showAllPerformers;
 
     [Parameter, SupplyParameterFromQuery(Name = "teamId")]
     public int? TeamIdFromQuery { get; set; }
@@ -459,7 +505,7 @@
                 : "Toutes"),
         new("Saison", string.IsNullOrWhiteSpace(Season) ? "Toutes" : Season),
         new("Journee", string.IsNullOrWhiteSpace(Day) ? "Toutes" : Day),
-        new("Onglet", ActiveSection == "summary" ? "Synthese" : ActiveSection == "roster" ? "Effectif" : "Matchs")
+        new("Onglet", ActiveSection == "roster" ? "Effectif" : "Matchs")
     ];
     private IReadOnlyList<ScopeSummaryItem> SelectedTeamScopeItems => TeamStats is null
         ? []
@@ -470,11 +516,11 @@
             new("Buts pour", TeamStats.GoalsFor.ToString()),
             new("Buts contre", TeamStats.GoalsAgainst.ToString()),
             new("Effectif", TeamPlayers.Count.ToString()),
-            new("Sections", ActiveSection == "summary" ? "Vue staff" : ActiveSection == "roster" ? "Vue effectif" : "Vue match")
+            new("Sections", ActiveSection == "roster" ? "Vue effectif" : "Vue match")
         ];
     private bool ShowTeamSummaryKpis => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
     private bool ShowTeamSummaryCharts => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
-    private bool ShowTeamAnalystPanels => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
+    private bool ShowTeamAnalystPanels => ActiveLens == AudienceLens.Analyst;
     private bool ShowTeamMatchKpis => ActiveLens is AudienceLens.Club or AudienceLens.Analyst;
     private bool ShowTeamMatchInsights => ActiveLens == AudienceLens.Analyst;
     private IReadOnlyList<KpiTile> TeamKpis => BuildTeamKpis();
@@ -488,10 +534,19 @@
 
     private string FinalScoreLabel => SelectedMatch is null
         ? "-"
-        : $"{SelectedMatch.Team1Score ?? SelectedMatchTimeline.LastOrDefault()?.Team1Score ?? 0} - {SelectedMatch.Team2Score ?? SelectedMatchTimeline.LastOrDefault()?.Team2Score ?? 0}";
+        : BuildFinalScoreLabel(SelectedMatch, SelectedMatchTimeline);
+
+    private static string BuildFinalScoreLabel(MatchListItemDto match, IReadOnlyList<ScoreTimelinePoint> timeline)
+    {
+        var s1 = match.Team1Score ?? timeline.LastOrDefault()?.Team1Score;
+        var s2 = match.Team2Score ?? timeline.LastOrDefault()?.Team2Score;
+        return s1.HasValue && s2.HasValue ? $"{s1.Value} - {s2.Value}" : "— - —";
+    }
 
     protected override async Task OnInitializedAsync()
     {
+        CommandBarService.Register(() => { _filterOpen = !_filterOpen; StateHasChanged(); return Task.CompletedTask; });
+
         if (!AuthService.Session.IsAuthenticated)
         {
             return;
@@ -510,6 +565,79 @@
         }
     }
 
+    private void CloseFilterDrawer() { _filterOpen = false; StateHasChanged(); }
+    private void ToggleAllPerformers() { _showAllPerformers = !_showAllPerformers; StateHasChanged(); }
+
+    private static string GetInitials(string? name) =>
+        string.Concat((name ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
+
+    private static string GetPerformerSignal(PlayerGlobalStatsDto player)
+    {
+        var isGk = player.IsGoalkeeper;
+        if (isGk) return "Impact gardienne";
+        if (player.AssistCount > player.TotalGoals && player.AssistCount > player.InterceptionCount) return "Création centrale";
+        if (player.InterceptionCount > player.TotalGoals) return "Défense solide";
+        if (player.TotalGoals > 20) return "Leader offensive";
+        return "Joueuse clé";
+    }
+
+    private static string FormatRating(PlayerGlobalStatsDto player)
+    {
+        var contributions = HandballKpiHelper.DirectContributions(player);
+        var perMatch = player.MatchesPlayed > 0 ? contributions / player.MatchesPlayed : 0;
+        return (Math.Min(perMatch, 9.9)).ToString("0.0");
+    }
+
+    private RenderFragment PerformerCard(PlayerGlobalStatsDto player) => builder =>
+    {
+        var isGk = player.IsGoalkeeper;
+        var isDefense = !isGk && player.InterceptionCount > player.TotalGoals;
+        var cardClass = isGk ? "team-performer-card team-performer-card--goalkeeper"
+            : isDefense ? "team-performer-card team-performer-card--defense"
+            : "team-performer-card";
+        var signal = GetPerformerSignal(player);
+        var rating = FormatRating(player);
+        var heroLabel = isGk ? "Arrêts" : "Buts";
+        var heroValue = isGk ? player.SaveCount : player.TotalGoals;
+        var effRate = isGk ? player.GoalkeeperSaveRate : player.ShotSuccessRate;
+        var effLabel = isGk ? "arrêt" : "tir";
+
+        builder.OpenElement(0, "article");
+        builder.AddAttribute(1, "class", cardClass);
+        builder.AddMarkupContent(2, $"""
+            <div class="team-performer-card__header">
+                <div class="team-performer-card__avatar"><span>{System.Net.WebUtility.HtmlEncode(GetInitials(player.FullName))}</span></div>
+                <div class="team-performer-card__identity">
+                    <span class="team-performer-card__position">{System.Net.WebUtility.HtmlEncode(player.PositionCode ?? player.PositionName ?? "?")}</span>
+                    <h4>{System.Net.WebUtility.HtmlEncode(player.FullName)}</h4>
+                    <span class="team-performer-card__team">{System.Net.WebUtility.HtmlEncode(player.TeamName ?? "")}</span>
+                </div>
+                <span class="team-performer-card__rating">{System.Net.WebUtility.HtmlEncode(rating)}</span>
+            </div>
+            <div class="team-performer-card__hero">
+                <div>
+                    <span class="team-performer-card__hero-label">{heroLabel}</span>
+                    <strong>{heroValue}</strong>
+                </div>
+                <div class="team-performer-card__efficiency">
+                    <strong>{FormatRate(effRate)}%</strong>
+                    <span>{effLabel}</span>
+                </div>
+            </div>
+            <div class="team-performer-card__stats">
+                <div><strong>{player.AssistCount}</strong><span>Passes</span></div>
+                <div><strong>{player.InterceptionCount}</strong><span>Inter.</span></div>
+                <div><strong>{player.TurnoverCount}</strong><span>Pertes</span></div>
+                <div><strong>{player.MatchesPlayed}</strong><span>Matchs</span></div>
+            </div>
+            <div class="team-performer-card__footer">
+                <span class="team-performer-card__signal"><i></i>{System.Net.WebUtility.HtmlEncode(signal)}</span>
+                <a href="/players" class="team-performer-card__link">Voir la fiche →</a>
+            </div>
+            """);
+        builder.CloseElement();
+    };
+
     private async Task ResetAsync()
     {
         CompetitionId = null;
@@ -520,7 +648,7 @@
         RosterSearch = string.Empty;
         RosterSort = new TableSortState("goals", SortDirection.Desc);
         TeamId = ReferenceData.Teams.FirstOrDefault()?.TeamId;
-        ActiveSection = "summary";
+        ActiveSection = "roster";
         PublishGlobalScope();
         await LoadTeamAsync();
     }
@@ -545,6 +673,7 @@
     public void Dispose()
     {
         ScopeService.Changed -= HandleGlobalScopeChanged;
+        CommandBarService.Clear();
     }
 
     private void HandleGlobalScopeChanged()
@@ -701,6 +830,7 @@
             SelectedMatchSummary = null;
             SelectedMatchTimeline = [];
             IsSelectedMatchLoading = false;
+            CommandBarService.UpdateCount(TeamPlayers.Count > 0 ? (int?)TeamPlayers.Count : null, "joueuses");
         }
         catch (Exception ex)
         {
@@ -998,7 +1128,7 @@
             "interceptions" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.InterceptionCount) : filtered.OrderBy(item => item.InterceptionCount),
             "saves" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.SaveCount) : filtered.OrderBy(item => item.SaveCount),
             "turnovers" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.TurnoverCount) : filtered.OrderBy(item => item.TurnoverCount),
-            "shot" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.ShotSuccessRate) : filtered.OrderBy(item => item.ShotSuccessRate),
+            "shot" => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.IsGoalkeeper ? item.GoalkeeperSaveRate : item.ShotSuccessRate) : filtered.OrderBy(item => item.IsGoalkeeper ? item.GoalkeeperSaveRate : item.ShotSuccessRate),
             _ => RosterSort.IsDescending ? filtered.OrderByDescending(item => item.TotalGoals) : filtered.OrderBy(item => item.TotalGoals)
         };
 
@@ -1032,16 +1162,6 @@
 
         builder.CloseElement();
     };
-
-    private static string GetToneClass(string tone)
-    {
-        return tone?.ToLowerInvariant() switch
-        {
-            "positive" => "is-positive",
-            "warning" => "is-warning",
-            _ => string.Empty
-        };
-    }
 
     private static string FormatRate(double value) => value.ToString("0.#");
 }

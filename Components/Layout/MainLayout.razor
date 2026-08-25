@@ -8,7 +8,7 @@
 @inject NavigationManager Navigation
 @inject CommandBarService CommandBarService
 
-<div class="studio-shell @(IsScenePage ? "studio-shell--scene" : "") @(IsDomainDrawerOpen ? "domain-drawer-open" : "") @(IsContextLensOpen ? "context-lens-open" : "")">
+<div class="studio-shell @(IsDashboardPage ? "studio-shell--scene page-dashboard" : "") @(IsTeamsPage ? "studio-shell--scene page-teams" : "") @(IsMatchesPage ? "studio-shell--scene page-matches" : "") @(IsDomainDrawerOpen ? "domain-drawer-open" : "") @(IsContextLensOpen ? "context-lens-open" : "")">
 
     @* ── CommandBar ─────────────────────────────────────────────── *@
     <header class="studio-commandbar">
@@ -21,6 +21,7 @@
             </button>
             <NavLink href="dashboard" class="studio-commandbar__brand-mark" aria-label="HandWStat Studio, accueil">HW</NavLink>
         </div>
+
 
         <div class="studio-scene-heading">
             <div class="studio-scene-heading__copy">
@@ -101,10 +102,6 @@
         </main>
     </section>
 
-    @* ── Scope Tray ──────────────────────────────────────────────── *@
-    <div class="studio-tray" aria-label="Scope d'analyse global">
-        <GlobalScopeBar />
-    </div>
 
     @* ── Context Lens ────────────────────────────────────────────── *@
     <aside class="studio-context-lens" aria-label="Contexte de travail">
@@ -132,10 +129,6 @@
             <div class="studio-context-actions">
                 <NavLink href="compare">
                     <span>Comparer des joueuses</span>
-                    <span aria-hidden="true">↗</span>
-                </NavLink>
-                <NavLink href="position-profiles">
-                    <span>Ouvrir le benchmark</span>
                     <span aria-hidden="true">↗</span>
                 </NavLink>
                 <button type="button" @onclick="OpenCommandPalette">
@@ -234,7 +227,10 @@
         }
     }
 
-    private bool IsScenePage => CurrentNavigationItem?.Href == "dashboard";
+    private bool IsDashboardPage => CurrentNavigationItem?.Href == "dashboard";
+    private bool IsTeamsPage => CurrentNavigationItem?.Href == "teams";
+    private bool IsMatchesPage => CurrentNavigationItem?.Href == "matches";
+    private bool IsScenePage => IsDashboardPage || IsTeamsPage || IsMatchesPage;
 
     private string CurrentPageTitle => CurrentNavigationItem?.Label ?? "Studio";
     private string CurrentPageDescription => CurrentNavigationItem?.Description ?? "Intelligence de performance handball.";

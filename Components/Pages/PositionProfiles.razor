@@ -10,14 +10,14 @@
     }
     else
     {
-        <header class="role-manifesto">
-            <div>
-                <span>Experiment 02 / Cohort lab</span>
-                <h2 data-page-title>Le role comme reference, pas comme etiquette.</h2>
-                <p>Valeurs brutes, mediane de cohorte et percentile favorable restent separes dans chaque lecture.</p>
+        <div class="studio-scene-heading">
+            <p class="studio-scene-heading__eyebrow">Cohort lab</p>
+            <h1>Role benchmark</h1>
+            <p class="studio-scene-heading__sub">Benchmark par poste — joueuse versus cohorte.</p>
+            <div class="studio-scene-heading__actions">
+                <a href="/compare" class="btn btn-ghost btn-sm">← Compare lab</a>
             </div>
-            <a href="/compare">Retour au Compare lab <span aria-hidden="true">↗</span></a>
-        </header>
+        </div>
 
         <PositionFilters Search="@Search"
                          SearchChanged="OnSearchChangedAsync"
@@ -98,7 +98,6 @@
                         var insights = PositionProfileInsights;
 
                         <header class="entity-identity entity-identity--role">
-                            <div class="entity-identity__number">@profile.CohortPlayerCount</div>
                             <div class="entity-identity__copy">
                                 <span>Role benchmark / cohorte</span>
                                 <h2 data-page-title>@selected.FullName</h2>
@@ -199,12 +198,6 @@
                                 }
                             </div>
 
-                            <div class="toolbar position-profile-toolbar">
-                                <button type="button" class="ghost-button filter-ghost" @onclick="ExportPositionProfileCsvAsync" disabled="@IsPositionProfileBusy">Exporter CSV</button>
-                                <button type="button" class="ghost-button filter-ghost" @onclick="ExportPositionProfileRadarImageAsync" disabled="@IsPositionProfileBusy">Exporter radar</button>
-                                <button type="button" class="ghost-button filter-ghost" @onclick="ExportPositionProfileImageAsync" disabled="@IsPositionProfileBusy">Exporter image</button>
-                                <button type="button" class="ghost-button filter-ghost" @onclick="CopyPositionProfileSummaryAsync" disabled="@IsPositionProfileBusy">Copier resume analyste</button>
-                            </div>
                         </section>
 
                         <MultiRadar @key="PositionProfileComparisonKey"
@@ -241,9 +234,25 @@
                                        Rows="@PositionProfileDetailRows"
                                        HighlightedAxisKeys="@insights.HighlightAxisKeys"
                                        AlertAxisKeys="@insights.AlertAxisKeys" />
+
+                        <div class="anlz-export-toolbar">
+                            <button type="button" class="ghost-button filter-ghost" @onclick="ExportPositionProfileCsvAsync" disabled="@IsPositionProfileBusy">Exporter CSV</button>
+                            <button type="button" class="ghost-button filter-ghost" @onclick="ExportRadarSvgAsync" disabled="@IsPositionProfileBusy">Exporter radar SVG</button>
+                            <button type="button" class="ghost-button filter-ghost" @onclick="ExportPositionProfileRadarImageAsync" disabled="@IsPositionProfileBusy">Exporter radar</button>
+                            <button type="button" class="ghost-button filter-ghost" @onclick="ExportPositionProfileImageAsync" disabled="@IsPositionProfileBusy">Exporter image</button>
+                            <button type="button" class="ghost-button filter-ghost" @onclick="CopyPositionProfileSummaryAsync" disabled="@IsPositionProfileBusy">Copier resume analyste</button>
+                        </div>
                     }
                 </article>
             </section>
         }
     }
 </div>
+
+@code {
+    private Task ExportRadarSvgAsync()
+    {
+        // TODO: implémenter export SVG
+        return Task.CompletedTask;
+    }
+}

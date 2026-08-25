@@ -67,7 +67,7 @@ public sealed record PlayerTrajectoryPoint(
     int Interceptions,
     int Turnovers,
     int Saves,
-    int ShotsFaced,
+    int? ShotsFaced,
     string? ResultLabel
 );
 
