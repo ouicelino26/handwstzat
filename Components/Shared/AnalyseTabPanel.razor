@@ -102,6 +102,70 @@ else
             <button type="button" class="ghost-button" @onclick="ExportCsvAsync" disabled="@IsBusy">Exporter CSV</button>
         </div>
 
+        @* ── Analyse contextuelle (CAT-19) ── *@
+        <section class="page-panel ctx-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="section-kicker">Analyse contextuelle</p>
+                    <h4>Selon le contexte de jeu</h4>
+                </div>
+            </div>
+
+            @if (IsContextBusy)
+            {
+                <div class="ctx-loading"><span>Chargement des données contextuelles…</span></div>
+            }
+            else if (!string.IsNullOrWhiteSpace(ContextErrorMessage))
+            {
+                <StateCard Kicker="Erreur"
+                           Title="Données contextuelles indisponibles"
+                           Message="@ContextErrorMessage"
+                           Tone="error" />
+            }
+            else if (EventContexts is null)
+            {
+                <StateCard Kicker="Aucune donnée"
+                           Title="Analyse contextuelle non disponible"
+                           Message="Aucune donnée contextuelle disponible pour ce scope."
+                           Tone="empty"
+                           CssClass="empty-card-inline" />
+            }
+            else
+            {
+                var _availDims = ContextAnalyticsHelper.GetAvailableDimensions(EventContexts);
+
+                @if (_availDims.Count == 0)
+                {
+                    <StateCard Kicker="Aucune donnée"
+                               Title="Pas de données contextuelles"
+                               Message="Aucune donnée contextuelle disponible pour ce scope."
+                               Tone="empty"
+                               CssClass="empty-card-inline" />
+                }
+                else
+                {
+                    <div class="ctx-selector">
+                        <span class="ctx-selector__label">Vue par</span>
+                        @foreach (var _dim in Enum.GetValues<ContextDimension>())
+                        {
+                            @if (ContextAnalyticsHelper.GetRows(EventContexts, _dim).Any(r => r.Events > 0))
+                            {
+                                <button type="button"
+                                        class="filter-chip @(ActiveContextDimension == _dim ? "filter-chip--active" : "")"
+                                        @onclick="() => ActiveContextDimension = _dim">
+                                    @ContextAnalyticsHelper.GetDimensionLabel(_dim)
+                                </button>
+                            }
+                        }
+                    </div>
+                    var _ctxRows = ContextAnalyticsHelper.GetRows(EventContexts, ActiveContextDimension);
+                    <ContextSplitTable Title="@ContextAnalyticsHelper.GetDimensionLabel(ActiveContextDimension)"
+                                       Rows="@_ctxRows"
+                                       IsGoalkeeper="@IsGoalkeeper" />
+                }
+            }
+        </section>
+
         @if (IsBusy)
         {
             <div class="anlz-refresh-indicator"><span>Actualisation…</span></div>

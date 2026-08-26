@@ -50,7 +50,15 @@ public abstract class ApiClientBase
 
     protected async Task<IReadOnlyList<T>> GetListAsync<T>(string relativePath, ApiQueryBuilder? query = null, CancellationToken cancellationToken = default)
     {
-        return await GetAsync<List<T>>(relativePath, query, cancellationToken) ?? [];
+        var result = await GetAsync<List<T>>(relativePath, query, cancellationToken);
+        if (result is null)
+            throw new ApiRequestException(
+                "Le serveur a retourné une réponse inattendue.",
+                "API_NULL_RESPONSE",
+                correlationId: null,
+                retryable: false,
+                statusCode: null);
+        return result;
     }
 
     protected async Task<T?> PostAsync<TRequest, T>(string relativePath, TRequest requestBody, CancellationToken cancellationToken = default)

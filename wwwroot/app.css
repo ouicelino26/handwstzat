@@ -4974,14 +4974,17 @@ select {
 .player-list {
     display: flex;
     flex-direction: column;
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
 .player-row {
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 0.875rem;
-    padding: 0.875rem 1.25rem;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--line);
     cursor: pointer;
     transition: background var(--transition-fast);
@@ -5000,6 +5003,7 @@ select {
 .player-row.active,
 .player-row[aria-pressed="true"] {
     background: var(--court-soft);
+    box-shadow: inset 3px 0 0 var(--court-400);
 }
 
 .player-row__avatar {
@@ -8582,45 +8586,44 @@ html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
     border-bottom: 1px solid var(--line);
 }
 .team-performer-card__avatar {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    background: var(--card-accent);
-    color: #fff;
-    font-size: 0.75rem;
-    font-weight: 800;
+    position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.05rem;
+    width: 2.8rem;
+    height: 2.8rem;
     flex-shrink: 0;
-    position: relative;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 12%, var(--surface)), var(--surface-soft));
+    border: 1px solid var(--line);
+    border-radius: 0.7rem;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 850;
     overflow: hidden;
 }
-.team-performer-card__avatar span {
-    font-size: 0.75rem;
-    font-weight: 800;
-    color: rgba(255,255,255,0.95);
-    opacity: 1;
-    line-height: 1;
-    position: relative;
-    z-index: 1;
-    letter-spacing: 0.02em;
-}
-/* quand une photo est présente, rétablir le style petit numéro de maillot */
-.team-performer-card__avatar:has(img) span {
-    font-size: 0.45rem;
-    font-weight: 700;
-    opacity: 0.85;
-}
 .team-performer-card__avatar img {
-    position: absolute;
-    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: top center;
+}
+.team-performer-card__avatar span {
+    position: absolute;
+    right: -0.3rem;
+    bottom: -0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.3rem;
+    height: 1.3rem;
+    padding: 0 0.2rem;
+    background: var(--text);
+    color: var(--surface);
+    border: 2px solid var(--surface-raised);
+    border-radius: 999px;
+    font-family: var(--font-body);
+    font-size: 0.48rem;
+    font-weight: 850;
 }
 .team-performer-card__identity { flex: 1; min-width: 0; }
 .team-performer-card__position {
@@ -8653,12 +8656,23 @@ html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
     margin-top: 0.1rem;
 }
 .team-performer-card__hero {
+    position: relative;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     padding: 0.875rem 1rem;
     border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--card-accent), transparent 94%);
+    background: color-mix(in srgb, var(--card-accent) 9%, transparent);
+}
+.team-performer-card__hero::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    background: var(--card-accent);
+    opacity: 0.65;
 }
 .team-performer-card__hero > div {
     display: flex;
@@ -8667,15 +8681,16 @@ html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
 }
 .team-performer-card__hero-label {
     font-size: 0.625rem;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    color: color-mix(in srgb, var(--card-accent) 65%, var(--text-muted));
 }
 .team-performer-card__hero strong {
     font-size: 2rem;
     font-weight: 900;
-    color: var(--text);
+    font-family: var(--font-display);
+    color: var(--card-accent);
     line-height: 1;
 }
 .team-performer-card__efficiency { align-items: flex-end; text-align: right; }

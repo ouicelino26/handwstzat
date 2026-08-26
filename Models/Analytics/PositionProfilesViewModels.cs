@@ -57,30 +57,15 @@ public sealed record PositionProfileAxisViewModel(
 
     public string DirectionalPercentileDisplay => $"{DirectionalPercentile:0.#}%";
 
-    public double RadarPlayerValue => NormalizeRadarValue(PlayerValue);
+    // API percentile is already direction-aware (higher = always favorable).
+    // Median reference on a percentile radar = 50.
+    public double RadarPlayerValue => Math.Clamp(DirectionalPercentile, 0d, 100d);
 
-    public double RadarMedianValue => NormalizeRadarValue(MedianValue);
+    public double RadarMedianValue => 50.0;
 
     private double GetTolerance()
     {
         return string.Equals(Format, "percent", StringComparison.OrdinalIgnoreCase) ? 0.35d : 0.08d;
-    }
-
-    private double NormalizeRadarValue(double value)
-    {
-        if (!double.IsFinite(MinValue) || !double.IsFinite(MaxValue) || MaxValue <= MinValue)
-        {
-            return Math.Clamp(DirectionalPercentile, 0d, 100d);
-        }
-
-        var normalized = (value - MinValue) * 100d / (MaxValue - MinValue);
-
-        if (!HigherIsBetter)
-        {
-            normalized = 100d - normalized;
-        }
-
-        return Math.Clamp(Math.Round(normalized, 1, MidpointRounding.AwayFromZero), 0d, 100d);
     }
 }
 

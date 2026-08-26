@@ -40,4 +40,17 @@ public sealed class DashboardSnapshotBuilderTests
         Assert.Equal("Equipe non renseignee", player.TeamName);
         Assert.Equal("Poste non renseigne", player.PositionName);
     }
+
+    [Fact]
+    public void BuildOverview_EmptyDto_AllCountersAreZero()
+    {
+        // R2 regression: when the overview API returns null, StatsDashboardService falls back to
+        // new StatsOverviewDto() and logs a warning. This test pins the zero-counter contract
+        // so the fallback remains visible and intentional rather than silently hiding the null.
+        var builder = new DashboardSnapshotBuilder();
+        var overview = builder.BuildOverview(new StatsOverviewDto());
+        Assert.Equal(0, overview.PlayerCount);
+        Assert.Equal(0, overview.GoalCount);
+        Assert.Equal(0, overview.EventCount);
+    }
 }

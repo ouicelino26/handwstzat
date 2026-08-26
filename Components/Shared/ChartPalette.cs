@@ -24,6 +24,17 @@ internal static class ChartPalette
 
     public static readonly List<string> ScatterStatusColors = [Reference, Positive, Warning, Danger];
 
+    // 6 maximally-distinct colors for the Compare player slots.
+    public static readonly string[] ComparisonColors =
+    [
+        "#73a7ff",  // blue
+        "#48bb7b",  // green
+        "#efc468",  // yellow
+        "#ff8b3d",  // orange
+        "#c07aff",  // purple
+        "#38d9b4",  // teal
+    ];
+
     public static readonly List<string> SemanticSeriesColors =
     [
         Player,

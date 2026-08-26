@@ -1,0 +1,88 @@
+@using HandWStat.Models.Analytics
+@using HandWStat.Models.Contracts
+@using HandWStat.Services.Analytics
+
+@{
+    var _minSample = AnalyticsV3Catalog.Get("CAT-19")?.MinimumSampleCount ?? 10;
+}
+
+@if (Rows is null || Rows.Count == 0)
+{
+    <StateCard Kicker="Aucune donnée"
+               Title="Pas de données contextuelles"
+               Message="Aucune donnée contextuelle disponible pour ce scope."
+               Tone="empty"
+               CssClass="empty-card-inline" />
+}
+else
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>@Title</th>
+                    @if (IsGoalkeeper)
+                    {
+                        <th class="data-table__num">Arrêts</th>
+                        <th class="data-table__num">Tirs subis</th>
+                        <th class="data-table__num">Taux arrêt</th>
+                        <th class="data-table__num">n</th>
+                    }
+                    else
+                    {
+                        <th class="data-table__num">Buts</th>
+                        <th class="data-table__num">Tirs</th>
+                        <th class="data-table__num">Réussite</th>
+                        <th class="data-table__num">n</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var _row in Rows)
+                {
+                    var _n       = ContextAnalyticsHelper.GetSampleCount(_row, IsGoalkeeper);
+                    var _quality = AnalyticsQualityPolicy.EvaluateTier(null, _n, _minSample);
+
+                    @if (_quality.Tier != QualityTier.NotApplicable)
+                    {
+                        var _rowCss = _quality.Tier == QualityTier.Low ? "table-sub-row table-sub-row--warn" : "table-sub-row";
+                        var _label  = ContextAnalyticsHelper.GetContextFrLabel(_row.ContextCode, _row.ContextLabel);
+
+                        <tr class="@_rowCss">
+                            <td>
+                                @_label
+                                @if (_quality.Tier == QualityTier.Low)
+                                {
+                                    <MetricQualityIndicator Result="@_quality" />
+                                }
+                            </td>
+                            @if (IsGoalkeeper)
+                            {
+                                var _gkSaves = _row.GoalkeeperSaves + _row.GoalkeeperPenaltySaves;
+                                var _gkFaced = ContextAnalyticsHelper.GetGkShotsFaced(_row);
+                                <td class="data-table__num">@_gkSaves</td>
+                                <td class="data-table__num">@(_gkFaced > 0 ? _gkFaced.ToString() : "—")</td>
+                                <td class="data-table__num">@(_row.GoalkeeperSaveRate > 0 ? $"{_row.GoalkeeperSaveRate:0.#}%" : "—")</td>
+                                <td class="data-table__num">@_n</td>
+                            }
+                            else
+                            {
+                                var _totalGoals = _row.Goals + _row.PenaltyGoals;
+                                <td class="data-table__num">@_totalGoals</td>
+                                <td class="data-table__num">@_row.ShotAttempts</td>
+                                <td class="data-table__num">@(_row.ShotAttempts > 0 ? $"{_row.ShotSuccessRate:0.#}%" : "—")</td>
+                                <td class="data-table__num">@_n</td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public IReadOnlyList<EventContextSplitDto>? Rows { get; set; }
+    [Parameter] public bool IsGoalkeeper { get; set; }
+}

@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>HandWStat</RootNamespace>
+    <AssemblyName>HandWStat.Web.TestHost</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCssItems>false</EnableDefaultCssItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Web variant of ApexCharts — same API surface as Blazor-ApexCharts-MAUI 6.0.2 -->
+    <PackageReference Include="Blazor-ApexCharts" Version="6.0.2" />
+  </ItemGroup>
+
+  <!-- ── Shared portable C# source from HandWStat ──────────────────────────── -->
+  <ItemGroup>
+    <Compile Include="..\**\*.cs"
+             Exclude="..\MauiProgram.cs;
+                      ..\**\*.xaml.cs;
+                      ..\Configuration\AppSettingsLoader.cs;
+                      ..\Services\MauiAppAssetReader.cs;
+                      ..\Services\Updates\MauiAppVersionProvider.cs;
+                      ..\Services\Updates\MauiUpdatePreferenceStore.cs;
+                      ..\Services\Updates\DeviceIdentifierProvider.cs;
+                      ..\Services\Updates\MauiExternalLauncher.cs;
+                      ..\Platforms\**;
+                      ..\HandWStat.Tests\**;
+                      ..\HandWStat.E2E.Tests\**;
+                      ..\HandWStat.Web.TestHost\**;
+                      ..\obj\**;
+                      ..\bin\**;
+                      ..\publish\**;
+                      ..\scripts\**;
+                      ..\.claude\**;
+                      ..\docs\**" />
+  </ItemGroup>
+
+  <!-- ── Shared Razor components from HandWStat ────────────────────────────── -->
+  <ItemGroup>
+    <RazorComponent Include="..\Components\**\*.razor"
+                    Link="Components\%(RecursiveDir)%(Filename)%(Extension)"
+                    Exclude="..\HandWStat.Tests\**;..\HandWStat.Web.TestHost\**;..\.claude\**" />
+  </ItemGroup>
+
+  <!-- ── Static assets from HandWStat wwwroot (shared verbatim) ────────────── -->
+  <ItemGroup>
+    <Content Include="..\wwwroot\**"
+             Exclude="..\wwwroot\index.html"
+             Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

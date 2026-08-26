@@ -6,7 +6,8 @@
                  class="studio-nav-item"
                  @onclick="NotifyNavigationAsync"
                  title="@item.Label"
-                 aria-label="@item.Label">
+                 aria-label="@item.Label"
+                 data-testid="@($"nav-{item.Href}")">
             <span class="studio-nav-item__index" aria-hidden="true">@item.Index</span>
             <span class="studio-nav-item__icon" aria-hidden="true">@((MarkupString)item.IconMarkup)</span>
             <span class="studio-nav-item__label">@item.Label</span>

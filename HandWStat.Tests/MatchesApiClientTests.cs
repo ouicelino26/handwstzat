@@ -46,16 +46,15 @@ public sealed class MatchesApiClientTests
     }
 
     [Fact]
-    public async Task GetMatches_NullResponse_ReturnsEmpty()
+    public async Task GetMatches_NullResponse_ThrowsApiRequestException()
     {
+        // 200 + JSON null is an invalid API response — callers must not receive false empty list.
         var (client, _) = Create(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new System.Net.Http.StringContent("null", System.Text.Encoding.UTF8, "application/json")
         });
 
-        var result = await client.GetMatchesAsync();
-
-        Assert.Empty(result);
+        await Assert.ThrowsAsync<ApiRequestException>(() => client.GetMatchesAsync());
     }
 
     [Fact]

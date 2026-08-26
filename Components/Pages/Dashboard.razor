@@ -47,11 +47,11 @@ else if (Snapshot is not null)
         {
             <div class="studio-subtoolbar">
                 <nav class="tab-bar" role="tablist" aria-label="Sections du tableau de bord">
-                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "league")" class="tab @(ActiveDashboardSection == "league" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("league")' disabled="@IsBusy">Ligue</button>
-                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "team-of-day")" class="tab @(ActiveDashboardSection == "team-of-day" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("team-of-day")' disabled="@IsBusy">Equipe du jour</button>
-                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "spotlight")" class="tab @(ActiveDashboardSection == "spotlight" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("spotlight")' disabled="@IsBusy">Joueuse</button>
-                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "global-rankings")" class="tab @(ActiveDashboardSection == "global-rankings" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("global-rankings")' disabled="@IsBusy">Classements</button>
-                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "recent")" class="tab @(ActiveDashboardSection == "recent" ? "active" : string.Empty)" @onclick='() => SetDashboardSection("recent")' disabled="@IsBusy">Matchs récents</button>
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "league")" class="tab @(ActiveDashboardSection == "league" ? "active" : string.Empty)" data-testid="tab-league" @onclick='() => SetDashboardSection("league")' disabled="@IsBusy">Ligue</button>
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "team-of-day")" class="tab @(ActiveDashboardSection == "team-of-day" ? "active" : string.Empty)" data-testid="tab-team-of-day" @onclick='() => SetDashboardSection("team-of-day")' disabled="@IsBusy">Equipe du jour</button>
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "spotlight")" class="tab @(ActiveDashboardSection == "spotlight" ? "active" : string.Empty)" data-testid="tab-spotlight" @onclick='() => SetDashboardSection("spotlight")' disabled="@IsBusy">Joueuse</button>
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "global-rankings")" class="tab @(ActiveDashboardSection == "global-rankings" ? "active" : string.Empty)" data-testid="tab-global-rankings" @onclick='() => SetDashboardSection("global-rankings")' disabled="@IsBusy">Classements</button>
+                    <button type="button" role="tab" aria-selected="@(ActiveDashboardSection == "recent")" class="tab @(ActiveDashboardSection == "recent" ? "active" : string.Empty)" data-testid="tab-recent" @onclick='() => SetDashboardSection("recent")' disabled="@IsBusy">Matchs récents</button>
                 </nav>
                 <div class="studio-subtoolbar__spacer"></div>
                 <button type="button" class="btn btn-ghost btn-sm" @onclick="() => _filterOpen = true" aria-label="Ouvrir les filtres">
@@ -1149,8 +1149,37 @@ else if (Snapshot is not null)
             .OrderBy(pos => pos.Code)
             .ToList();
 
-    private IReadOnlyList<DashboardFieldPlayerRow> FilteredFieldRows => GetFilteredFieldRows();
-    private IReadOnlyList<DashboardGoalkeeperRow> FilteredGoalkeeperRows => GetFilteredGoalkeeperRows();
+    private (string, int?, string, bool, DashboardPlayerTable) _fieldRowsCacheKey;
+    private IReadOnlyList<DashboardFieldPlayerRow>? _filteredFieldRowsCache;
+    private IReadOnlyList<DashboardFieldPlayerRow> FilteredFieldRows
+    {
+        get
+        {
+            var key = (PlayerTableSearch, PlayerTablePositionId, PlayerTableSortKey, PlayerTableSortAsc, PlayerTable);
+            if (_filteredFieldRowsCache is null || key != _fieldRowsCacheKey)
+            {
+                _filteredFieldRowsCache = GetFilteredFieldRows();
+                _fieldRowsCacheKey = key;
+            }
+            return _filteredFieldRowsCache;
+        }
+    }
+
+    private (string, int?, string, bool, DashboardPlayerTable) _goalkeeperRowsCacheKey;
+    private IReadOnlyList<DashboardGoalkeeperRow>? _filteredGoalkeeperRowsCache;
+    private IReadOnlyList<DashboardGoalkeeperRow> FilteredGoalkeeperRows
+    {
+        get
+        {
+            var key = (PlayerTableSearch, PlayerTablePositionId, PlayerTableSortKey, PlayerTableSortAsc, PlayerTable);
+            if (_filteredGoalkeeperRowsCache is null || key != _goalkeeperRowsCacheKey)
+            {
+                _filteredGoalkeeperRowsCache = GetFilteredGoalkeeperRows();
+                _goalkeeperRowsCacheKey = key;
+            }
+            return _filteredGoalkeeperRowsCache;
+        }
+    }
 
     private IReadOnlyList<DashboardFieldPlayerRow> GetFilteredFieldRows()
     {
@@ -1442,6 +1471,14 @@ else if (Snapshot is not null)
         catch (OperationCanceledException) when (next.IsCancellationRequested)
         {
             // Une selection plus recente a supersede ce chargement.
+        }
+        catch (ApiRequestException ex)
+        {
+            Logger.LogWarning(ex, "Player table API error for scope {ScopeKey}.", scopeKey);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Unexpected player table loading failure.");
         }
         finally
         {

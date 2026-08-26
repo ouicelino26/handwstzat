@@ -79,11 +79,20 @@ public sealed class StatsDashboardService
                 interceptionsTask,
                 recentMatchesTask);
 
-            var overview = overviewTask.Result ?? new StatsOverviewDto();
-            var playerStats = playersTask.Result;
+            var overviewDto = await overviewTask;
+            if (overviewDto is null)
+                _logger.LogWarning("Overview API returned null for query {Query}; counters will show zero.", queryOptions);
+            var overview = overviewDto ?? new StatsOverviewDto();
+            var playerStats = await playersTask;
+            var topScorers = await topScorersTask;
+            var efficiency = await efficiencyTask;
+            var requested = await requestedTask;
+            var interceptions = await interceptionsTask;
+            var recentMatches = await recentMatchesTask;
+
             var players = _snapshotBuilder.BuildPlayerDirectory(playerStats);
 
-            var selectedPlayerId = ResolveSelectedPlayerId(filters.SpotlightPlayerId, playerStats, topScorersTask.Result, requestedTask.Result);
+            var selectedPlayerId = ResolveSelectedPlayerId(filters.SpotlightPlayerId, playerStats, topScorers, requested);
             var globalBoardsTask = LoadGlobalBoardsAsync(queryOptions, playerStats, cancellationToken);
 
             if (!selectedPlayerId.HasValue)
@@ -94,12 +103,12 @@ public sealed class StatsDashboardService
                     Players = players,
                     GlobalBoards = await globalBoardsTask,
                     TeamOfTheDay = TeamOfTheDaySnapshotDto.Empty("Ouvrez la section Equipe de la journee pour charger cette analyse."),
-                    TopScorers = MapRanking(topScorersTask.Result),
-                    EfficiencyRanking = MapRanking(efficiencyTask.Result),
-                    RequestedRanking = MapRanking(requestedTask.Result),
-                    InterceptionRanking = MapRanking(interceptionsTask.Result),
+                    TopScorers = MapRanking(topScorers),
+                    EfficiencyRanking = MapRanking(efficiency),
+                    RequestedRanking = MapRanking(requested),
+                    InterceptionRanking = MapRanking(interceptions),
                     RequestedRankingLabel = GetRankingLabel(rankingMetric),
-                    RecentMatches = MapMatches(recentMatchesTask.Result),
+                    RecentMatches = MapMatches(recentMatches),
                     Spotlight = CreateEmptySpotlight(),
                     DataOrigin = "Donnees synchronisees",
                     WarningMessage = "Aucune donnee statistique ne correspond aux filtres actuels.",
@@ -134,29 +143,30 @@ public sealed class StatsDashboardService
                 globalBoardsTask);
 
             var selectedDirectory = playerStats.FirstOrDefault(player => player.PlayerId == selectedPlayerId.Value);
-            var profile = profileTask.Result ?? CreateProfileFallback(selectedDirectory, selectedPlayerId.Value);
-            var global = globalTask.Result ?? CreateGlobalFallback(profile);
-            var offense = offenseTask.Result ?? CreateOffenseFallback(profile, global);
-            var defense = defenseTask.Result ?? CreateDefenseFallback(profile);
-            var passing = passingTask.Result ?? CreatePassingFallback(profile);
-            var sanctions = sanctionsTask.Result ?? CreateSanctionsFallback(profile);
-            var goalkeeper = goalkeeperTask.Result ?? CreateGoalkeeperFallback(profile);
-            var technical = technicalTask.Result ?? CreateTechnicalFallback(profile, global, offense, defense, passing, sanctions, goalkeeper);
-            var spatial = spatialTask.Result;
-            var playerMatches = playerMatchesTask.Result;
+            var profile = await profileTask ?? CreateProfileFallback(selectedDirectory, selectedPlayerId.Value);
+            var global = await globalTask ?? CreateGlobalFallback(profile);
+            var offense = await offenseTask ?? CreateOffenseFallback(profile, global);
+            var defense = await defenseTask ?? CreateDefenseFallback(profile);
+            var passing = await passingTask ?? CreatePassingFallback(profile);
+            var sanctions = await sanctionsTask ?? CreateSanctionsFallback(profile);
+            var goalkeeper = await goalkeeperTask ?? CreateGoalkeeperFallback(profile);
+            var technical = await technicalTask ?? CreateTechnicalFallback(profile, global, offense, defense, passing, sanctions, goalkeeper);
+            var spatial = await spatialTask;
+            var playerMatches = await playerMatchesTask;
+            var globalBoards = await globalBoardsTask;
 
             return new DashboardSnapshot
             {
                 Overview = _snapshotBuilder.BuildOverview(overview),
                 Players = players,
-                GlobalBoards = globalBoardsTask.Result,
+                GlobalBoards = globalBoards,
                 TeamOfTheDay = TeamOfTheDaySnapshotDto.Empty("Ouvrez la section Equipe de la journee pour charger cette analyse."),
-                TopScorers = MapRanking(topScorersTask.Result),
-                EfficiencyRanking = MapRanking(efficiencyTask.Result),
-                RequestedRanking = MapRanking(requestedTask.Result),
-                InterceptionRanking = MapRanking(interceptionsTask.Result),
+                TopScorers = MapRanking(topScorers),
+                EfficiencyRanking = MapRanking(efficiency),
+                RequestedRanking = MapRanking(requested),
+                InterceptionRanking = MapRanking(interceptions),
                 RequestedRankingLabel = GetRankingLabel(rankingMetric),
-                RecentMatches = MapMatches(recentMatchesTask.Result),
+                RecentMatches = MapMatches(recentMatches),
                 Spotlight = new PlayerSpotlight
                 {
                     Profile = profile,

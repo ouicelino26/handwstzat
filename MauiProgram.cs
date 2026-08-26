@@ -32,6 +32,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IDeviceIdentifierProvider, DeviceIdentifierProvider>();
         builder.Services.AddSingleton<IExternalLauncher, MauiExternalLauncher>();
         builder.Services.AddSingleton<IUpdatePreferenceStore, MauiUpdatePreferenceStore>();
+        builder.Services.AddSingleton<IAppAssetReader, MauiAppAssetReader>();
         builder.Services.AddSingleton<HandWStatVersionHandler>();
         builder.Services.AddSingleton(serviceProvider => new HttpClient(
             serviceProvider.GetRequiredService<HandWStatVersionHandler>(),

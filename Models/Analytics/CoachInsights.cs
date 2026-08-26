@@ -766,35 +766,19 @@ public static class PositionProfileInsightEngine
 
     private static RoleExpectation DetermineRoleExpectation(PositionProfileResponseDto profile)
     {
-        if (profile.IsGoalkeeperProfile)
+        var pos = AnalyticsPositionResolver.Resolve(
+            profile.PositionCode,
+            profile.PositionName ?? profile.SelectedPlayer?.PositionName,
+            profile.IsGoalkeeperProfile);
+
+        return pos switch
         {
-            return RoleExpectation.Goalkeeper;
-        }
-
-        var positionName = profile.PositionName ?? profile.SelectedPlayer?.PositionName ?? string.Empty;
-        var normalized = positionName.Trim().ToLowerInvariant();
-
-        if (normalized.Contains("gardien") || normalized.Contains("goal"))
-        {
-            return RoleExpectation.Goalkeeper;
-        }
-
-        if (normalized.Contains("ailier"))
-        {
-            return RoleExpectation.Finisher;
-        }
-
-        if (normalized.Contains("pivot"))
-        {
-            return RoleExpectation.Defender;
-        }
-
-        if (normalized.Contains("demi") || normalized.Contains("centre") || normalized.Contains("arriere"))
-        {
-            return RoleExpectation.Creator;
-        }
-
-        return RoleExpectation.Balanced;
+            AnalyticsPosition.GK                              => RoleExpectation.Goalkeeper,
+            AnalyticsPosition.AIL                             => RoleExpectation.Finisher,
+            AnalyticsPosition.PIV                             => RoleExpectation.Defender,
+            AnalyticsPosition.AR or AnalyticsPosition.DC     => RoleExpectation.Creator,
+            _                                                 => RoleExpectation.Balanced,
+        };
     }
 
     private static Theme DetermineDominantTheme(IReadOnlyList<PositionProfileAxisViewModel> axes)

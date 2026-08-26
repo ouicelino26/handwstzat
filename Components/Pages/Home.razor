@@ -5,104 +5,171 @@
 
 <PageTitle>HandWStat Studio</PageTitle>
 
-<div class="auth-portal">
-    <section class="auth-manifesto">
-        <div class="auth-manifesto__index" aria-hidden="true">HWS / 26</div>
+<div class="auth-gate">
+    <div class="auth-stage">
 
-        <div class="auth-manifesto__copy">
-            <span class="auth-overline">Performance operating system</span>
-            <h1 data-page-title>Voir le jeu avant qu'il ne devienne evident.</h1>
-            <p>
-                HandWStat transforme les rencontres, les trajectoires et les espaces en
-                decisions partageables pour les staffs, analystes et joueuses.
-            </p>
+        <!-- Charts left -->
+        <aside class="auth-charts" aria-hidden="true">
+
+            <!-- Sparkline: tirs par match -->
+            <div class="auth-chart-card">
+                <p class="auth-chart-card__label">Tirs / match</p>
+                <svg viewBox="0 0 150 52" xmlns="http://www.w3.org/2000/svg" class="auth-sparkline">
+                    <defs>
+                        <linearGradient id="grad-l1" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="var(--court-400)" stop-opacity="0.25" />
+                            <stop offset="100%" stop-color="var(--court-400)" stop-opacity="0" />
+                        </linearGradient>
+                    </defs>
+                    <!-- data: 12,15,9,18,14,22,16,19,11,17 | min=9 max=22 range=13 -->
+                    <path d="M0,44 L17,32 L33,52 L50,20 L67,36 L83,5 L100,28 L117,17 L133,47 L150,24 L150,52 L0,52 Z"
+                          fill="url(#grad-l1)" />
+                    <polyline points="0,44 17,32 33,52 50,20 67,36 83,5 100,28 117,17 133,47 150,24"
+                              fill="none" stroke="var(--court-400)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+                    <circle cx="83" cy="5" r="2.5" fill="var(--court-400)" />
+                </svg>
+                <p class="auth-chart-card__value">22 <span>max</span></p>
+            </div>
+
+            <!-- Barres horizontales: efficacité par poste -->
+            <div class="auth-chart-card">
+                <p class="auth-chart-card__label">Efficacité par poste</p>
+                <svg viewBox="0 0 150 78" xmlns="http://www.w3.org/2000/svg" class="auth-bars-h">
+                    <!-- AR 72% -->
+                    <text x="0" y="11" class="auth-bar-lbl">AR</text>
+                    <rect x="22" y="3" width="86" height="9" rx="2" fill="var(--court-400)" opacity="0.75" />
+                    <text x="112" y="11" class="auth-bar-val">72%</text>
+                    <!-- AG 65% -->
+                    <text x="0" y="27" class="auth-bar-lbl">AG</text>
+                    <rect x="22" y="19" width="78" height="9" rx="2" fill="var(--court-400)" opacity="0.75" />
+                    <text x="104" y="27" class="auth-bar-val">65%</text>
+                    <!-- PV 58% -->
+                    <text x="0" y="43" class="auth-bar-lbl">PV</text>
+                    <rect x="22" y="35" width="70" height="9" rx="2" fill="var(--court-400)" opacity="0.75" />
+                    <text x="96" y="43" class="auth-bar-val">58%</text>
+                    <!-- AI 81% -->
+                    <text x="0" y="59" class="auth-bar-lbl">AI</text>
+                    <rect x="22" y="51" width="97" height="9" rx="2" fill="var(--electric-400)" opacity="0.8" />
+                    <text x="123" y="59" class="auth-bar-val">81%</text>
+                    <!-- AL 69% -->
+                    <text x="0" y="75" class="auth-bar-lbl">AL</text>
+                    <rect x="22" y="67" width="83" height="9" rx="2" fill="var(--court-400)" opacity="0.75" />
+                    <text x="109" y="75" class="auth-bar-val">69%</text>
+                </svg>
+            </div>
+
+        </aside>
+
+        <!-- Auth card -->
+        <div class="auth-card">
+            <header class="auth-card__head">
+                <h1 class="auth-card__title">Ouvrir le studio</h1>
+                <p class="auth-card__sub">Retrouvez votre scope et vos analyses.</p>
+            </header>
+
+            <div class="auth-card__form">
+                <label class="auth-field">
+                    <span>Identifiant</span>
+                    <input @bind="UsernameInput"
+                           autocomplete="username"
+                           placeholder="nom.utilisateur"
+                           aria-describedby="login-status"
+                           data-testid="login-username" />
+                </label>
+
+                <label class="auth-field">
+                    <span>Mot de passe</span>
+                    <input @bind="PasswordInput"
+                           type="password"
+                           autocomplete="current-password"
+                           placeholder="Votre mot de passe"
+                           @onkeydown="HandlePasswordKeyDownAsync"
+                           data-testid="login-password" />
+                </label>
+
+                <button type="button"
+                        class="auth-submit"
+                        @onclick="LoginAsync"
+                        disabled="@IsBusy"
+                        data-testid="login-submit">
+                    <span>@(IsBusy ? "Connexion en cours" : "Entrer dans le studio")</span>
+                    <span aria-hidden="true">→</span>
+                </button>
+            </div>
+
+            <div id="login-status" class="auth-card__feedback" aria-live="polite">
+                @if (IsBusy)
+                {
+                    <span class="auth-spinner" aria-hidden="true"></span>
+                    <span>Verification de la session...</span>
+                }
+                else if (!string.IsNullOrWhiteSpace(StatusMessage))
+                {
+                    <span class="auth-dot auth-dot--error" aria-hidden="true"></span>
+                    <span>@StatusMessage</span>
+                }
+                else
+                {
+                    <span class="auth-dot" aria-hidden="true"></span>
+                    <span>Session chiffree, donnees synchronisees a la demande.</span>
+                }
+            </div>
         </div>
 
-        <div class="auth-signal-board" aria-label="Apercu des capacites">
-            <article>
-                <span>01</span>
-                <strong>Read</strong>
-                <small>Signaux et tendances</small>
-            </article>
-            <article>
-                <span>02</span>
-                <strong>Compare</strong>
-                <small>Roles et profils</small>
-            </article>
-            <article>
-                <span>03</span>
-                <strong>Decide</strong>
-                <small>Preuves et contexte</small>
-            </article>
-        </div>
+        <!-- Charts right -->
+        <aside class="auth-charts" aria-hidden="true">
 
-        <button type="button" class="auth-demo-link" @onclick="OpenDemo">
-            <span class="auth-demo-link__play" aria-hidden="true">▶</span>
-            <span>
-                <strong>Visite guidee</strong>
-                <small>Explorer le produit sans session live</small>
-            </span>
-            <span aria-hidden="true">↗</span>
-        </button>
-    </section>
+            <!-- Donut: répartition résultats tirs -->
+            <div class="auth-chart-card auth-chart-card--center">
+                <p class="auth-chart-card__label">Résultats tirs</p>
+                <!-- circ r=38 → 238.8  | Buts=42% 100.3 | Arrêtés=35% 83.6 | Ratés=23% 54.9 -->
+                <svg viewBox="0 0 120 96" xmlns="http://www.w3.org/2000/svg" class="auth-donut">
+                    <circle cx="60" cy="52" r="38" fill="none" stroke="var(--surface)"  stroke-width="13" />
+                    <circle cx="60" cy="52" r="38" fill="none" stroke="var(--court-400)" stroke-width="12"
+                            stroke-dasharray="100.3 238.8" stroke-dashoffset="0"
+                            transform="rotate(-90 60 52)" />
+                    <circle cx="60" cy="52" r="38" fill="none" stroke="var(--electric-400)" stroke-width="12"
+                            stroke-dasharray="83.6 238.8" stroke-dashoffset="-100.3"
+                            transform="rotate(-90 60 52)" />
+                    <circle cx="60" cy="52" r="38" fill="none" stroke="var(--signal-500)" stroke-width="12"
+                            stroke-dasharray="54.9 238.8" stroke-dashoffset="-183.9"
+                            transform="rotate(-90 60 52)" />
+                    <text x="60" y="56" text-anchor="middle" class="auth-donut-pct">42%</text>
+                    <text x="60" y="66" text-anchor="middle" class="auth-donut-sub">buts</text>
+                    <!-- legend -->
+                    <circle cx="10" cy="84" r="3.5" fill="var(--court-400)" />
+                    <text x="16" y="87" class="auth-legend-lbl">Buts</text>
+                    <circle cx="55" cy="84" r="3.5" fill="var(--electric-400)" />
+                    <text x="61" y="87" class="auth-legend-lbl">Arrêtés</text>
+                </svg>
+            </div>
 
-    <section class="auth-console" aria-labelledby="login-title">
-        <div class="auth-console__status">
-            <span aria-hidden="true"></span>
-            API live
-        </div>
+            <!-- Sparkline: progression save% GK -->
+            <div class="auth-chart-card">
+                <p class="auth-chart-card__label">Save % GK — tendance</p>
+                <svg viewBox="0 0 150 52" xmlns="http://www.w3.org/2000/svg" class="auth-sparkline">
+                    <defs>
+                        <linearGradient id="grad-r1" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="var(--electric-400)" stop-opacity="0.25" />
+                            <stop offset="100%" stop-color="var(--electric-400)" stop-opacity="0" />
+                        </linearGradient>
+                    </defs>
+                    <!-- data: 58,62,61,65,68,64,70,67,72,74 | min=58 max=74 range=16 -->
+                    <path d="M0,52 L17,43 L33,46 L50,33 L67,24 L83,36 L100,18 L117,27 L133,11 L150,5 L150,52 L0,52 Z"
+                          fill="url(#grad-r1)" />
+                    <polyline points="0,52 17,43 33,46 50,33 67,24 83,36 100,18 117,27 133,11 150,5"
+                              fill="none" stroke="var(--electric-400)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+                    <circle cx="150" cy="5" r="2.5" fill="var(--electric-400)" />
+                </svg>
+                <p class="auth-chart-card__value" style="color: var(--electric-400)">74% <span>dernier match</span></p>
+            </div>
 
-        <div class="auth-console__heading">
-            <span>Secure access</span>
-            <h2 id="login-title">Ouvrir le studio.</h2>
-            <p>Retrouvez votre scope, vos analyses et les donnees de competition.</p>
-        </div>
+        </aside>
+    </div>
 
-        <div class="auth-console__form">
-            <label>
-                <span>Identifiant</span>
-                <input @bind="UsernameInput"
-                       autocomplete="username"
-                       placeholder="nom.utilisateur"
-                       aria-describedby="login-status" />
-            </label>
-
-            <label>
-                <span>Mot de passe</span>
-                <input @bind="PasswordInput"
-                       type="password"
-                       autocomplete="current-password"
-                       placeholder="Votre mot de passe"
-                       @onkeydown="HandlePasswordKeyDownAsync" />
-            </label>
-
-            <button type="button"
-                    class="auth-submit"
-                    @onclick="LoginAsync"
-                    disabled="@IsBusy">
-                <span>@(IsBusy ? "Connexion en cours" : "Entrer dans le studio")</span>
-                <span aria-hidden="true">→</span>
-            </button>
-        </div>
-
-        <div id="login-status" class="auth-console__feedback" aria-live="polite">
-            @if (IsBusy)
-            {
-                <span class="auth-console__loader" aria-hidden="true"></span>
-                <span>Verification de la session...</span>
-            }
-            else if (!string.IsNullOrWhiteSpace(StatusMessage))
-            {
-                <span class="auth-console__feedback-dot" aria-hidden="true"></span>
-                <span>@StatusMessage</span>
-            }
-            else
-            {
-                <span class="auth-console__feedback-dot" aria-hidden="true"></span>
-                <span>Session chiffree, donnees synchronisees a la demande.</span>
-            }
-        </div>
-    </section>
+    <button type="button" class="auth-demo" @onclick="OpenDemo">
+        Explorer sans session &nbsp;↗
+    </button>
 </div>
 
 @code {

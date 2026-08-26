@@ -20,6 +20,9 @@
                     <button type="button"
                             class="player-row @(SelectedPlayerId == player.PlayerId ? "active" : string.Empty)"
                             aria-pressed="@(SelectedPlayerId == player.PlayerId)"
+                            data-testid="player-row"
+                            data-player-id="@player.PlayerId"
+                            data-player-name="@player.FullName"
                             @onclick="() => SelectPlayerAsync(player.PlayerId)">
                         <div class="player-row__avatar @(photoUrl is null ? "is-placeholder" : string.Empty)">
                             @if (!string.IsNullOrWhiteSpace(photoUrl))
@@ -99,6 +102,9 @@ else
                     <button type="button"
                             class="player-row @(SelectedPlayerId == player.PlayerId ? "active" : string.Empty)"
                             aria-pressed="@(SelectedPlayerId == player.PlayerId)"
+                            data-testid="player-row"
+                            data-player-id="@player.PlayerId"
+                            data-player-name="@player.FullName"
                             @onclick="() => SelectPlayerAsync(player.PlayerId)">
                         <div class="player-row__avatar @(photoUrl is null ? "is-placeholder" : string.Empty)">
                             @if (!string.IsNullOrWhiteSpace(photoUrl))

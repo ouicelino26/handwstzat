@@ -5,6 +5,8 @@
 @inject ReferenceDataService RefData
 @inject PlayersApiClient PlayersClient
 @inject MatchesApiClient MatchesClient
+@inject ILogger<Export> Logger
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Export</PageTitle>
@@ -267,7 +269,7 @@
 
                 <div class="wizard__nav">
                     <span></span>
-                    <button class="btn btn-primary" @onclick='() => _exportStep = 2' type="button">Suivant →</button>
+                    <button class="btn btn-primary" @onclick='() => _exportStep = 2' type="button" data-testid="export-next-1">Suivant →</button>
                 </div>
 
             </div>
@@ -333,7 +335,7 @@
 
                 <div class="wizard__nav">
                     <button class="btn btn-ghost" @onclick='() => _exportStep = 1' type="button">← Retour</button>
-                    <button class="btn btn-primary" @onclick='() => _exportStep = 3' type="button">Suivant →</button>
+                    <button class="btn btn-primary" @onclick='() => _exportStep = 3' type="button" data-testid="export-next-2">Suivant →</button>
                 </div>
 
             </div>
@@ -484,7 +486,7 @@
                     <button class="btn btn-ghost" @onclick='() => _exportStep = 2' type="button">← Retour</button>
                     @if (!IsBusy)
                     {
-                        <button class="btn btn-primary" @onclick="GenerateAndDownloadAsync" type="button">
+                        <button class="btn btn-primary" @onclick="GenerateAndDownloadAsync" type="button" data-testid="export-generate">
                             Générer l'export
                         </button>
                     }
@@ -567,6 +569,7 @@
 
     // Stale-response protection: each generation attempt gets a unique token.
     private int _generationToken;
+    private bool _disposed;
 
     // Scope change tracking
     private int _outOfScopePlayersRemoved;
@@ -715,6 +718,7 @@
 
     public void Dispose()
     {
+        _disposed = true;
         ScopeService.Changed -= OnGlobalScopeChanged;
         _cts?.Cancel();
         _cts?.Dispose();
@@ -722,10 +726,10 @@
 
     private void OnGlobalScopeChanged()
     {
-        InvokeAsync(async () =>
+        _ = InvokeAsync(async () =>
         {
             await ApplyGlobalScopeAsync();
-            StateHasChanged();
+            if (!_disposed) StateHasChanged();
         });
     }
 
@@ -984,7 +988,12 @@
                 cancellationToken: CancellationToken.None);
             _scope.AvailablePlayers = players.OrderBy(p => p.FullName).ToList();
         }
-        catch { _scope.AvailablePlayers = []; }
+        catch (OperationCanceledException) { _scope.AvailablePlayers = []; }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load players for export scope.");
+            _scope.AvailablePlayers = [];
+        }
         finally { _scope.PlayersLoading = false; }
     }
 
@@ -1002,7 +1011,12 @@
                 cancellationToken: CancellationToken.None);
             _scope.AvailableMatches = matches.OrderByDescending(m => m.Date).ToList();
         }
-        catch { _scope.AvailableMatches = []; }
+        catch (OperationCanceledException) { _scope.AvailableMatches = []; }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load matches for export scope.");
+            _scope.AvailableMatches = [];
+        }
         finally { _scope.MatchesLoading = false; }
     }
 
@@ -1060,6 +1074,8 @@
         _generatedSha256 = null;
 
         var token = ++_generationToken;
+        _cts?.Cancel();
+        _cts?.Dispose();
         _cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         _status = ExportGenerationStatus.Validating;
 
@@ -1085,7 +1101,7 @@
             }
 
             _status = ExportGenerationStatus.Saving;
-            StateHasChanged();
+            if (!_disposed) StateHasChanged();
 
             fileName ??= $"HandWStat_Export_{DateTime.Now:yyyyMMdd}.xlsx";
             contentType ??= "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -1140,6 +1156,7 @@
     private void Cancel()
     {
         _cts?.Cancel();
+        _cts?.Dispose();
         _cts = null;
         _status = ExportGenerationStatus.Ready;
         _errorMessage = "Export annulé.";
@@ -1156,21 +1173,18 @@
     {
         _exportSuccessMessage = message;
         _showExportSuccessToast = true;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
         await Task.Delay(4000);
-        _showExportSuccessToast = false;
-        StateHasChanged();
+        if (!_disposed)
+        {
+            _showExportSuccessToast = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task SaveFileAsync(byte[] content, string fileName, string contentType)
     {
-        var path = Path.Combine(FileSystem.AppDataDirectory, fileName);
-        await File.WriteAllBytesAsync(path, content);
-        await Share.RequestAsync(new ShareFileRequest
-        {
-            Title = "Partager le classeur analytique",
-            File = new ShareFile(path, contentType),
-        });
+        await JS.InvokeVoidAsync("handwstatExports.downloadBinaryFile", fileName, contentType, content);
     }
 
     // ── Formatting helpers ─────────────────────────────────────────────────────

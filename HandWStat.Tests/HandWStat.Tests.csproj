@@ -82,6 +82,22 @@
     <Compile Include="..\Services\Updates\UpdateCheckCoordinator.cs" Link="Services\Updates\UpdateCheckCoordinator.cs" />
     <Compile Include="..\Models\Analytics\PositionProfilesViewModels.cs" Link="Models\Analytics\PositionProfilesViewModels.cs" />
     <Compile Include="..\Models\Analytics\CoachInsights.cs" Link="Models\Analytics\CoachInsights.cs" />
+    <Compile Include="..\Models\Analytics\AnalyticsV3Catalog.cs" Link="Models\Analytics\AnalyticsV3Catalog.cs" />
+    <Compile Include="..\Models\Analytics\AnalyticsPositionModel.cs" Link="Models\Analytics\AnalyticsPositionModel.cs" />
+    <Compile Include="..\Services\Analytics\AnalyticsQualityPolicy.cs" Link="Services\Analytics\AnalyticsQualityPolicy.cs" />
+    <Compile Include="..\Services\Analytics\AnalyticsCalculationService.cs" Link="Services\Analytics\AnalyticsCalculationService.cs" />
+    <Compile Include="..\Services\Analytics\GoalkeeperAnalyticsBuilder.cs" Link="Services\Analytics\GoalkeeperAnalyticsBuilder.cs" />
+    <Compile Include="..\Models\Analytics\ContextAnalyticsModels.cs" Link="Models\Analytics\ContextAnalyticsModels.cs" />
+    <Compile Include="..\Services\Analytics\SpatialAnalyticsBuilder.cs" Link="Services\Analytics\SpatialAnalyticsBuilder.cs" />
+    <Compile Include="..\Services\Analytics\TeamAnalyticsBuilder.cs" Link="Services\Analytics\TeamAnalyticsBuilder.cs" />
+    <Compile Include="..\Services\Analytics\CompareAnalyticsBuilder.cs" Link="Services\Analytics\CompareAnalyticsBuilder.cs" />
+    <Compile Include="..\Services\Analytics\PositionBenchmarkBuilder.cs" Link="Services\Analytics\PositionBenchmarkBuilder.cs" />
+    <Compile Include="..\Services\Analytics\MatchAnalyticsBuilder.cs" Link="Services\Analytics\MatchAnalyticsBuilder.cs" />
+    <Compile Include="..\Models\Analytics\MetricDictionaryModels.cs" Link="Models\Analytics\MetricDictionaryModels.cs" />
+    <Compile Include="..\Services\Analytics\AnalyticsMetricLineage.cs" Link="Services\Analytics\AnalyticsMetricLineage.cs" />
+    <Compile Include="..\Services\Analytics\MetricValueFormatter.cs" Link="Services\Analytics\MetricValueFormatter.cs" />
+    <Compile Include="..\Services\IAppAssetReader.cs" Link="Services\IAppAssetReader.cs" />
+    <Compile Include="..\HandWStat.Web.TestHost\WebHostServices\WebAppAssetReader.cs" Link="WebHostServices\WebAppAssetReader.cs" />
   </ItemGroup>
   <ItemGroup>
     <RazorComponent Include="..\Components\Shared\AnalysisScopeSummary.razor" Link="Components\Shared\AnalysisScopeSummary.razor" />

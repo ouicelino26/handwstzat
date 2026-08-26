@@ -12,29 +12,30 @@ namespace HandWStat.Models.Analytics;
 public static class CourtZoneMapper
 {
     // ── Event name sets ──────────────────────────────────────────────────
+    // Names must match the DB `events.Name` column exactly (French accents included).
     private static readonly HashSet<string> OpenPlayGoalEvents =
         new(StringComparer.OrdinalIgnoreCase) { "But" };
 
     private static readonly HashSet<string> OpenPlayShotEvents =
-        new(StringComparer.OrdinalIgnoreCase) { "But", "Tir a cote", "Tir sur poteau", "Tir arrete", "Tir rate", "Tir contre" };
+        new(StringComparer.OrdinalIgnoreCase) { "But", "Tir à côté", "Tir sur poteau", "Tir arrêté", "Tir contré" };
 
     private static readonly HashSet<string> SevenMeterGoalEvents =
-        new(StringComparer.OrdinalIgnoreCase) { "But sur penalty" };
+        new(StringComparer.OrdinalIgnoreCase) { "But sur pénalty" };
 
     private static readonly HashSet<string> SevenMeterShotEvents =
-        new(StringComparer.OrdinalIgnoreCase) { "But sur penalty", "Penalty sur poteau", "Penalty rate", "Penalty arrete" };
+        new(StringComparer.OrdinalIgnoreCase) { "But sur pénalty", "Pénalty sur poteau", "Pénalty raté", "Pénalty arrêté" };
 
     private static readonly HashSet<string> SaveEvents =
-        new(StringComparer.OrdinalIgnoreCase) { "Tir arrete", "Penalty arrete" };
+        new(StringComparer.OrdinalIgnoreCase) { "Tir arrêté", "Pénalty arrêté" };
 
     private static readonly HashSet<string> OffTargetEvents =
-        new(StringComparer.OrdinalIgnoreCase) { "Tir a cote", "Tir sur poteau", "Penalty sur poteau" };
+        new(StringComparer.OrdinalIgnoreCase) { "Tir à côté", "Tir sur poteau", "Pénalty sur poteau" };
 
     private static readonly HashSet<string> BlockedEvents =
-        new(StringComparer.OrdinalIgnoreCase) { "Tir contre" };
+        new(StringComparer.OrdinalIgnoreCase) { "Tir contré" };
 
     private static readonly HashSet<string> GoalkeeperSaveEvents =
-        new(StringComparer.OrdinalIgnoreCase) { "Gardien arrete le tir", "Gardien arrete le penalty" };
+        new(StringComparer.OrdinalIgnoreCase) { "Gardien arrête le tir", "Gardien arrête le pénalty" };
 
     // ── Mapping ──────────────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ public static class CourtZoneMapper
 
         HashSet<string> keepSet = result switch
         {
-            PlayerCourtShotResult.Goal     => isGoalkeeper ? GoalkeeperSaveEvents : new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "But", "But sur penalty" },
+            PlayerCourtShotResult.Goal     => isGoalkeeper ? GoalkeeperSaveEvents : new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "But", "But sur pénalty" },
             PlayerCourtShotResult.Save     => SaveEvents,
             PlayerCourtShotResult.OffTarget => OffTargetEvents,
             PlayerCourtShotResult.Blocked  => BlockedEvents,

@@ -520,6 +520,7 @@ public class HomeBase : ComponentBase, IDisposable
         var next = new CancellationTokenSource();
         var previous = Interlocked.Exchange(ref _dashboardLoadCts, next);
         previous?.Cancel();
+        previous?.Dispose();
         CancelAndDispose(ref _teamOfTheDayLoadCts);
         IsTeamOfTheDayLoaded = false;
         OnDashboardRefreshing();

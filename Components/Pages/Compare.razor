@@ -133,7 +133,7 @@ else
         @foreach (var slot in CompareSlots)
         {
             var slotPlayer = GetSelectedPlayer(slot);
-            <div class="cmp-player @(_pickerSlot == slot ? "cmp-player--active" : "")" @onclick="() => OpenPicker(slot)">
+            <div class="cmp-player @(_pickerSlot == slot ? "cmp-player--active" : "")" data-testid="@($"cmp-slot-{slot}")" @onclick="() => OpenPicker(slot)">
                 <div class="cmp-player__avatar" style="background: @GetSlotColor(slot); color: var(--surface);">
                     @GetPlayerInitials(slotPlayer?.FullName)
                 </div>
@@ -305,12 +305,19 @@ else
                         </div>
                     </div>
 
+                    @if (IsGkVsFieldComparison)
+                    {
+                        <div class="cmp-compat-notice">
+                            Profils de poste différents — Gardienne vs joueuse de champ. Seules les métriques universelles sont comparables directement.
+                        </div>
+                    }
+
                     @{
                         var diffPlayers = Response.Players.ToList();
                         var finValues = diffPlayers.Select(p => (p, v: p.IsGoalkeeper ? p.GoalkeeperSaveRate : p.ShotSuccessRate)).ToList();
                         var finMax = finValues.Count > 0 ? finValues.Max(x => x.v) : 1.0;
                         var finBestId = finValues.OrderByDescending(x => x.v).Select(x => x.p.PlayerId).FirstOrDefault();
-                        var volValues = diffPlayers.Select(p => (p, v: (double)p.TotalGoals)).ToList();
+                        var volValues = diffPlayers.Select(p => (p, v: IsGkVsFieldComparison && p.IsGoalkeeper ? (double)p.SaveCount : (double)p.TotalGoals)).ToList();
                         var volMax = volValues.Count > 0 ? volValues.Max(x => x.v) : 1.0;
                         var volBestId = volValues.OrderByDescending(x => x.v).Select(x => x.p.PlayerId).FirstOrDefault();
                         var secValues = diffPlayers.Select(p => (p, v: p.MatchesPlayed > 0 ? (double)p.TurnoverCount / p.MatchesPlayed : 0.0)).OrderBy(x => x.v).ToList();
@@ -327,7 +334,7 @@ else
                         <div class="cmp-diff-item">
                             <div class="cmp-diff-meta">
                                 <span class="cmp-diff-title">Finition</span>
-                                <span class="cmp-diff-sub">Taux de tir jeu ouvert</span>
+                                <span class="cmp-diff-sub">@(IsGkVsFieldComparison ? "Efficacité principale" : "Taux de tir jeu ouvert")</span>
                             </div>
                             <div class="cmp-diff-rows">
                                 @foreach (var (fp, fv) in finValues.OrderByDescending(x => x.v))
@@ -348,7 +355,7 @@ else
                         <div class="cmp-diff-item">
                             <div class="cmp-diff-meta">
                                 <span class="cmp-diff-title">Volume offensif</span>
-                                <span class="cmp-diff-sub">Buts marqués · saison</span>
+                                <span class="cmp-diff-sub">@(IsGkVsFieldComparison ? "Volume principal · saison" : "Buts marqués · saison")</span>
                             </div>
                             <div class="cmp-diff-rows">
                                 @foreach (var (vp, vv) in volValues.OrderByDescending(x => x.v))
@@ -421,10 +428,10 @@ else
                     <div class="cmp-section" style="margin-top:1.75rem">
                         <div class="cmp-label"><span class="cmp-label__text">Visual Profile</span></div>
                         <div class="cmp-radar-hero">
-                            <div class="cmp-radar-hero__chart">
+                            <div class="cmp-radar-hero__chart" data-testid="compare-radar">
                                 @if (ShowComparisonRadarChart)
                                 {
-                                    <ApexChart @key="labResponse.Players.Count" TItem="MetricPlotPoint" Height="340" Options="@GetComparisonRadarChartOptions(labResponse.Players.Count)">
+                                    <ApexChart @key="CompareAnalyticsBuilder.BuildChartKey(labResponse.Players.Select(p => p.PlayerId))" TItem="MetricPlotPoint" Height="340" Options="@GetComparisonRadarChartOptions(labResponse.Players.Count)">
                                         @foreach (var rp in labResponse.Players)
                                         {
                                             <ApexPointSeries TItem="MetricPlotPoint"
@@ -435,6 +442,10 @@ else
                                                              YValue="point => (decimal?)point.Value" />
                                         }
                                     </ApexChart>
+                                }
+                                @if (!ShowComparisonRadarChart && IsGkVsFieldComparison)
+                                {
+                                    <div class="cmp-no-radar-notice">Profils incompatibles — comparaison radar non disponible (Gardienne vs joueuse de champ).</div>
                                 }
                             </div>
                             <div class="cmp-radar-hero__panel">
@@ -449,7 +460,7 @@ else
                                         </div>
                                     </div>
                                 }
-                                <p class="cmp-radar-legend">Normalisé 0–100<br>6 axes : Buts · Passes · Défense · Efficacité · Sécurité · Volume</p>
+                                <p class="cmp-radar-legend">Valeurs absolutes — axes calibrés par poste</p>
                             </div>
                         </div>
                     </div>
@@ -681,7 +692,7 @@ else
     private bool _filterOpen;
     private int _pickerSlot = -1;
     private string _activeTab = "brief";
-    private static readonly string[] _slotColors = ["var(--court-400)", "var(--electric-400)", "var(--signal-500)", "var(--court-300)", "var(--electric-300)", "var(--signal-300)"];
+    private static readonly string[] _slotColors = ChartPalette.ComparisonColors;
     private List<int?> SelectedPlayerIds { get; set; } = [null, null, null];
     private List<string> PlayerSearchTerms { get; set; } = [string.Empty, string.Empty, string.Empty];
     private IReadOnlyList<string> SeasonOptions => MatchFilterCatalog.GetSeasons(ScopedMatches);
@@ -732,7 +743,24 @@ else
     private bool ShowComparisonEfficiencyChart => ActiveLens is AudienceLens.Analyst or AudienceLens.Player;
     private bool ShowComparisonTechnicalChart => ActiveLens == AudienceLens.Analyst;
     private bool ShowComparisonPerMatchChart => true;
-    private bool ShowComparisonRadarChart => Response is not null && Response.Players.Count > 0;
+    private bool ShowComparisonRadarChart => Response is not null && Response.Players.Count > 0 && !IsGkVsFieldComparison;
+
+    private CompareCompatibilityResult PositionCompatibility
+    {
+        get
+        {
+            if (Response is null || Response.Players.Count == 0)
+                return new(PositionComparisonCompatibility.Compatible, [], false, []);
+            var profiles = Response.Players
+                .Select(p => new ComparePlayerProfile(
+                    p.PlayerId,
+                    AnalyticsPositionResolver.Resolve(p.PositionCode, p.PositionName, p.IsGoalkeeper)))
+                .ToList();
+            return CompareAnalyticsBuilder.GetCompatibility(profiles);
+        }
+    }
+
+    private bool IsGkVsFieldComparison => PositionCompatibility.HasGkVsField;
     private bool ShowComparisonTable => ActiveLens == AudienceLens.Analyst;
     private IEnumerable<int> CompareSlots => Enumerable.Range(0, CompareSlotCount);
 
@@ -1308,71 +1336,64 @@ else
         ];
     }
 
+    private static readonly HashSet<string> _computedRadarAxes = new(StringComparer.Ordinal)
+    {
+        "Jeu ouvert", "7 mètres", "Arrêts /60", "Charge subie", "Arrêts",
+        "Finition", "Production", "Maîtrise", "A:T", "Défense", "Impact défensif",
+    };
+
     private IReadOnlyList<MetricPlotPoint> GetComparisonRadarSeries(PlayerGlobalStatsDto player)
     {
-        if (Response is null || Response.Players.Count == 0)
+        if (Response is null || Response.Players.Count == 0) return [];
+        if (IsGkVsFieldComparison) return [];
+
+        var compat = PositionCompatibility;
+        var position = AnalyticsPositionResolver.Resolve(player.PositionCode, player.PositionName, player.IsGoalkeeper);
+
+        IReadOnlyList<PositionRadarAxis> axes;
+        if (compat.Compatibility == PositionComparisonCompatibility.Compatible)
         {
-            return [];
+            axes = PositionRadarAxisConfig.GetAxes(position)
+                .Where(a => !a.IsBackendGap && _computedRadarAxes.Contains(a.Label))
+                .ToList();
+        }
+        else
+        {
+            var commonLabels = CompareAnalyticsBuilder.GetCommonRadarAxisLabels(compat.Positions).ToHashSet();
+            axes = PositionRadarAxisConfig.GetAxes(position)
+                .Where(a => !a.IsBackendGap && commonLabels.Contains(a.Label) && _computedRadarAxes.Contains(a.Label))
+                .ToList();
         }
 
-        var metrics = Response.Players.Select(BuildComparisonRadarMetrics).ToList();
-        var playerMetrics = BuildComparisonRadarMetrics(player);
+        if (axes.Count == 0) return [];
 
-        return
-        [
-            new MetricPlotPoint("Buts", NormalizeRadarValue(playerMetrics.GoalsPerMatch, metrics.Max(item => item.GoalsPerMatch))),
-            new MetricPlotPoint("Passes", NormalizeRadarValue(playerMetrics.AssistsPerMatch, metrics.Max(item => item.AssistsPerMatch))),
-            new MetricPlotPoint("Defense", NormalizeRadarValue(playerMetrics.DefensePerMatch, metrics.Max(item => item.DefensePerMatch))),
-            new MetricPlotPoint("Efficacite", NormalizeRadarValue(playerMetrics.EfficiencyRate, metrics.Max(item => item.EfficiencyRate))),
-            new MetricPlotPoint("Securite", NormalizeRadarValue(playerMetrics.SecurityRate, metrics.Max(item => item.SecurityRate))),
-            new MetricPlotPoint("Volume", NormalizeRadarValue(playerMetrics.VolumePerMatch, metrics.Max(item => item.VolumePerMatch)))
-        ];
-    }
-
-    private RadarMetrics BuildComparisonRadarMetrics(PlayerGlobalStatsDto player)
-    {
-        var offense = GetOffense(player.PlayerId);
-        var defense = GetDefense(player.PlayerId);
-        var passing = GetPassing(player.PlayerId);
-        var sanctions = GetSanctions(player.PlayerId);
-        var goalkeeper = GetGoalkeeper(player.PlayerId);
         var technical = GetTechnical(player.PlayerId);
-        var matches = Math.Max(player.MatchesPlayed, 1);
+        var goalkeeper = GetGoalkeeper(player.PlayerId);
+        var pt = player.PlayingTimeMinutes;
 
-        var goalsPerMatch = HandballKpiHelper.PerMatch(player.TotalGoals, matches);
-        var assistsPerMatch = HandballKpiHelper.PerMatch(player.AssistCount, matches);
-        var defensiveImpact = player.IsGoalkeeper
-            ? technical?.GoalkeeperStops ?? HandballKpiHelper.GoalkeeperStops(goalkeeper)
-            : technical?.DefensiveImpact ?? HandballKpiHelper.DefensiveImpact(defense);
-        var defensePerMatch = HandballKpiHelper.PerMatch(defensiveImpact, matches);
-        var efficiencyRate = player.IsGoalkeeper
-            ? technical?.GoalkeeperSaveRate ?? goalkeeper?.TauxArret ?? 0
-            : technical?.OverallShotSuccessRate ?? HandballKpiHelper.OverallShotSuccessRate(offense);
-        var shotWaste = technical?.ShotWaste ?? HandballKpiHelper.ShotWaste(offense);
-        var technicalLosses = technical?.TechnicalLosses ?? HandballKpiHelper.TechnicalLosses(passing);
-        var sanctionsCount = technical?.Sanctions ?? HandballKpiHelper.TotalSanctions(sanctions);
-        var lossRate = HandballKpiHelper.PerMatch(shotWaste + technicalLosses + sanctionsCount, matches);
-        var securityRate = Math.Max(0, 100 - lossRate * 8);
-        var volumePerMatch = HandballKpiHelper.PerMatch(HandballKpiHelper.DirectContributions(player) + defensiveImpact, matches);
-
-        return new RadarMetrics(
-            goalsPerMatch,
-            assistsPerMatch,
-            defensePerMatch,
-            efficiencyRate,
-            securityRate,
-            volumePerMatch);
+        return axes
+            .Select(axis => new MetricPlotPoint(axis.Label, GetRadarAxisAbsoluteValue(axis.Label, player, technical, goalkeeper, pt)))
+            .ToList();
     }
 
-    private static double NormalizeRadarValue(double value, double maxValue)
+    private static double GetRadarAxisAbsoluteValue(
+        string label, PlayerGlobalStatsDto player,
+        PlayerTechnicalStatsDto? tech, PlayerGoalkeeperStatsDto? gk, double pt) => label switch
     {
-        if (maxValue <= 0)
-        {
-            return 0;
-        }
-
-        return Math.Round(Math.Clamp(value / maxValue * 100d, 0d, 100d), 1);
-    }
+        "Jeu ouvert"      => tech?.GoalkeeperSaveRate ?? gk?.TauxArret ?? 0.0,
+        "7 mètres"        => tech?.GoalkeeperPenaltyStopRate ?? HandballKpiHelper.GoalkeeperPenaltyStopRate(gk),
+        // API-provided /60 values (NormalizeApiPer60 converts 0.0-when-no-PT to null)
+        "Arrêts /60"      => AnalyticsCalculationService.NormalizeApiPer60(player.SavesPer60, pt) ?? 0.0,
+        "Charge subie"    => AnalyticsCalculationService.ComputeShotsFacedPer60(player.ShotsFaced, pt) ?? 0.0,
+        "Arrêts"          => player.SaveCount,
+        "Finition"        => tech?.OpenShotSuccessRate ?? player.ShotSuccessRate,
+        "Production"      => AnalyticsCalculationService.ComputeGoalsCreatedPer60(player.TotalGoals, player.AssistCount, pt) ?? 0.0,
+        "Maîtrise"        => AnalyticsCalculationService.NormalizeApiPer60(player.TurnoversPer60, pt) ?? 0.0,
+        "A:T"             => AnalyticsCalculationService.ComputeAssistTurnoverRatio(player.AssistCount, player.TurnoverCount) ?? 0.0,
+        "Défense"         => AnalyticsCalculationService.NormalizeApiPer60(player.InterceptionsPer60, pt) ?? 0.0,
+        "Impact défensif" => AnalyticsCalculationService.NormalizeApiPer60(player.InterceptionsPer60, pt) ?? 0.0,
+        _                 => 0.0
+    };
 
     private ApexChartOptions<MetricPlotPoint> GetComparisonRadarChartOptions(int seriesCount)
     {
@@ -1386,7 +1407,7 @@ else
                     Show = false
                 }
             },
-            Colors = ChartPalette.SeriesColors(seriesCount),
+            Colors = ChartPalette.ComparisonColors.Take(seriesCount).ToList(),
             DataLabels = new DataLabels
             {
                 Enabled = false
@@ -1422,7 +1443,7 @@ else
                     Show = false
                 }
             },
-            Colors = ChartPalette.SeriesColors(seriesCount),
+            Colors = ChartPalette.ComparisonColors.Take(seriesCount).ToList(),
             DataLabels = new DataLabels
             {
                 Enabled = false
@@ -1459,7 +1480,7 @@ else
                     Show = false
                 }
             },
-            Colors = ChartPalette.SeriesColors(seriesCount),
+            Colors = ChartPalette.ComparisonColors.Take(seriesCount).ToList(),
             DataLabels = new DataLabels
             {
                 Enabled = false
@@ -1640,12 +1661,4 @@ else
     private PlayerGoalkeeperStatsDto? GetGoalkeeper(int playerId) => Response?.Goalkeeper.FirstOrDefault(item => item.PlayerId == playerId);
     private static string FormatRate(double value) => value.ToString("0.#");
     private static string FormatNullableRate(double? value) => value.HasValue ? $"{value.Value:0.#}%" : "-";
-
-    private sealed record RadarMetrics(
-        double GoalsPerMatch,
-        double AssistsPerMatch,
-        double DefensePerMatch,
-        double EfficiencyRate,
-        double SecurityRate,
-        double VolumePerMatch);
 }

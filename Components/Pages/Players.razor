@@ -11,6 +11,8 @@
 @inject AnalysisScopeService ScopeService
 @inject CommandBarService CommandBarService
 @inject NavigationManager NavigationManager
+@inject ILogger<Players> Logger
+@inject IAppAssetReader AppAssetReader
 @implements IDisposable
 
 <PageTitle>Athletes</PageTitle>
@@ -33,7 +35,7 @@ else
                 <div class="filter-drawer__body page-filters">
                     <div class="filter-section">
                         <span class="filter-section__label">Recherche</span>
-                        <input class="form-input" value="@Search" @oninput="OnSearchChangedAsync" placeholder="Nom ou prénom" />
+                        <input class="form-input" value="@Search" @oninput="OnSearchChangedAsync" placeholder="Nom ou prénom" data-testid="player-search" />
                     </div>
                     <div class="filter-section">
                         <span class="filter-section__label">Compétition</span>
@@ -97,6 +99,11 @@ else
             <span class="badge badge-outline" style="font-variant-numeric: tabular-nums;">
                 @PlayerDirectory.Count.ToString("00") joueuses
             </span>
+            <div style="flex:1"></div>
+            <button type="button" class="btn btn-ghost btn-sm" @onclick="OpenFilterDrawer">
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;flex-shrink:0"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
+                Filtrer
+            </button>
         </div>
         <div class="page-players__layout @(IsDirectoryDrawerOpen ? string.Empty : "is-list-collapsed")">
 
@@ -120,7 +127,7 @@ else
                 </div>
                 <div class="player-list-pane__body">
                     @if (IsBusy && PlayerDirectory.Count > 0) { <p class="player-list-pane__loader">Actualisation…</p> }
-                    <PlayerList Players="@PlayerDirectory"
+                    <PlayerList Players="@FilteredPlayerDirectory"
                                 SelectedPlayerId="@SelectedPlayerId"
                                 SlimMode="true"
                                 ShowGoalKpi="true"
@@ -244,12 +251,12 @@ else
                     @* ── Tab navigation ── *@
                     <div class="tab-group">
                         <nav class="tab-bar" role="tablist" aria-label="Sections de la joueuse">
-                            <button type="button" role="tab" class="tab @(ActiveSection == "overview" ? "active" : string.Empty)" aria-selected="@(ActiveSection == "overview")" @onclick='() => SetActiveSection("overview")'>Brief</button>
-                            <button type="button" role="tab" class="tab @(ActiveSection == "analysis" ? "active" : string.Empty)" aria-selected="@(ActiveSection == "analysis")" @onclick='() => SetActiveSection("analysis")'>Performance</button>
-                            <button type="button" role="tab" class="tab @(ActiveSection == "graphs"   ? "active" : string.Empty)" aria-selected="@(ActiveSection == "graphs")"   @onclick='() => SetActiveSection("graphs")'>Évolution</button>
-                            <button type="button" role="tab" class="tab @(ActiveSection == "zones"    ? "active" : string.Empty)" aria-selected="@(ActiveSection == "zones")"    @onclick='() => SetActiveSection("zones")'>Court</button>
-                            <button type="button" role="tab" class="tab @(ActiveSection == "matches"  ? "active" : string.Empty)" aria-selected="@(ActiveSection == "matches")"  @onclick='() => SetActiveSection("matches")'>Matchs</button>
-                            <button type="button" role="tab" class="tab @(ActiveSection == "analyse"  ? "active" : string.Empty)" aria-selected="@(ActiveSection == "analyse")"  @onclick='() => SetActiveSection("analyse")'>Analyse</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "overview" ? "active" : string.Empty)" aria-selected="@(ActiveSection == "overview")" data-testid="tab-overview" @onclick='() => SetActiveSection("overview")'>Brief</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "analysis" ? "active" : string.Empty)" aria-selected="@(ActiveSection == "analysis")" data-testid="tab-analysis" @onclick='() => SetActiveSection("analysis")'>Performance</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "graphs"   ? "active" : string.Empty)" aria-selected="@(ActiveSection == "graphs")"   data-testid="tab-graphs" @onclick='() => SetActiveSection("graphs")'>Évolution</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "zones"    ? "active" : string.Empty)" aria-selected="@(ActiveSection == "zones")"    data-testid="tab-zones" @onclick='() => SetActiveSection("zones")'>Court</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "matches"  ? "active" : string.Empty)" aria-selected="@(ActiveSection == "matches")"  data-testid="tab-matches" @onclick='() => SetActiveSection("matches")'>Matchs</button>
+                            <button type="button" role="tab" class="tab @(ActiveSection == "analyse"  ? "active" : string.Empty)" aria-selected="@(ActiveSection == "analyse")"  data-testid="tab-analyse" @onclick='() => SetActiveSection("analyse")'>Analyse</button>
                         </nav>
                     </div>
 
@@ -465,13 +472,18 @@ else
                                     var _tR   = _tRM?.Value ?? technical?.OverallShotSuccessRate ?? 0;
                                     var _oR   = _oRM?.Value ?? technical?.OpenShotSuccessRate ?? 0;
                                     var _pR   = _pRM?.Value ?? technical?.PenaltySuccessRate ?? 0;
+                                    var _pt      = global.PlayingTimeMinutes;
+                                    var _gc60    = AnalyticsCalculationService.ComputeGoalsCreatedPer60(global.TotalGoals, global.AssistCount, _pt);
+                                    var _gc60Qt  = EvaluatePer60Quality(_pt, AnalyticsV3Catalog.Get("CAT-01")?.MinimumPlayingTimeMinutes ?? 150.0);
+                                    var _oRQt    = EvaluateRateQuality(_oRM, AnalyticsV3Catalog.Get("CAT-04")?.MinimumSampleCount ?? 10);
+                                    var _pwMPM   = !_pwU && _pwV > 0 && _am > 0 ? (double?)HandballKpiHelper.PerMatch(_pwV, _am) : null;
                                 }<table class="data-table"><thead><tr><th>Catégorie</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th><th class="data-table__num">/60min</th></tr></thead><tbody>
                                     <tr class="table-group-header"><td colspan="4">Production</td></tr>
                                     <tr class="table-sub-row"><td>Buts total</td><td class="data-table__num">@_tG</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_tG,_am)):"—")</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row"><td>Dans le jeu</td><td class="data-table__num">@_oG</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_oG,_am)):"—")</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row"><td>7 mètres</td><td class="data-table__num">@_pG</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_pG,_am)):"—")</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row"><td>Passes décisives</td><td class="data-table__num">@_ast</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_ast,_am)):"—")</td><td class="data-table__num">—</td></tr>
-                                    @if (!_pwU && _pwV >= 0) { <tr class="table-sub-row"><td>7m obtenus</td><td class="data-table__num">@_pwV</td><td class="data-table__num">—</td><td class="data-table__num">—</td></tr> }
+                                    @if (!_pwU && _pwV >= 0) { <tr class="table-sub-row"><td>7m obtenus</td><td class="data-table__num">@_pwV</td><td class="data-table__num">@(_pwMPM.HasValue ? HandballKpiHelper.FormatNumber(_pwMPM.Value) : "—")</td><td class="data-table__num">—</td></tr> }
                                     @if (!_sdU && _sdV >= 0) { <tr class="table-sub-row"><td>Sanctions obtenues</td><td class="data-table__num">@_sdV</td><td class="data-table__num">—</td><td class="data-table__num">—</td></tr> }
                                     <tr class="table-group-header"><td colspan="4">Volume de tir</td></tr>
                                     <tr class="table-sub-row"><td>Tirs total</td><td class="data-table__num">@_tSh</td><td class="data-table__num">@(_am>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_tSh,_am)):"—")</td><td class="data-table__num">—</td></tr>
@@ -480,8 +492,9 @@ else
                                     @if (_bl > 0) { <tr class="table-sub-row"><td>Tirs contrés</td><td class="data-table__num">@_bl</td><td class="data-table__num">—</td><td class="data-table__num">—</td></tr> }
                                     <tr class="table-group-header"><td colspan="4">Efficacité</td></tr>
                                     <tr class="table-sub-row @(_tRM!=null&&!_tRM.SampleReliable?"table-sub-row--warn":"")"><td>Taux total @if (_tRM!=null&&!_tRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_tR))%</td><td class="data-table__num" colspan="2">@(_tRM!=null?$"{_tRM.Numerator?.ToString("0")??"?"} / {_tRM.Denominator?.ToString("0")??"?"}":$"{_tG} / {_tSh}")</td></tr>
-                                    <tr class="table-sub-row @(_oRM!=null&&!_oRM.SampleReliable?"table-sub-row--warn":"")"><td>Jeu ouvert @if (_oRM!=null&&!_oRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_oR))%</td><td class="data-table__num" colspan="2">@(_oRM!=null?$"{_oRM.Numerator?.ToString("0")??"?"} / {_oRM.Denominator?.ToString("0")??"?"}":$"{_oG} / {_oSh}")</td></tr>
+                                    <tr class="table-sub-row @(_oRQt.Tier == QualityTier.Low ? "table-sub-row--warn" : "")"><td>Jeu ouvert <MetricQualityIndicator Result="@_oRQt" /></td><td class="data-table__num">@(FormatRate(_oR))%</td><td class="data-table__num" colspan="2">@(_oRM!=null?$"{_oRM.Numerator?.ToString("0")??"?"} / {_oRM.Denominator?.ToString("0")??"?"}":$"{_oG} / {_oSh}")</td></tr>
                                     <tr class="table-sub-row @(_pRM!=null&&!_pRM.SampleReliable?"table-sub-row--warn":"")"><td>7 mètres @if (_pRM!=null&&!_pRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_pR))%</td><td class="data-table__num" colspan="2">@(_pRM!=null?$"{_pRM.Numerator?.ToString("0")??"?"} / {_pRM.Denominator?.ToString("0")??"?"}":$"{_pG} / {_pSh}")</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_gc60Qt))"><td>Buts créés /60 <MetricQualityIndicator Result="@_gc60Qt" /></td><td class="data-table__num">—</td><td class="data-table__num">—</td><td class="data-table__num">@FormatV3Per60(_gc60)</td></tr>
                                 </tbody></table></div>
                             }
 
@@ -498,12 +511,20 @@ else
                                     var _t2   = PerfCountOf(v2Defense,"TWO_MINUTE_SUSPENSIONS_CONCEDED",Sanctions?.DeuxMinutes??0);
                                     var _d2   = PerfCountOf(v2Defense,"DISQUALIFICATIONS_CONCEDED",Sanctions?.Exclusions??0);
                                     var _dm   = profile.MatchesPlayed;
+                                    var _ptD      = global.PlayingTimeMinutes;
+                                    var _intPer60   = AnalyticsCalculationService.NormalizeApiPer60(global.InterceptionsPer60, _ptD);
+                                    var _intPer60Qt = EvaluatePer60Quality(_ptD, AnalyticsV3Catalog.Get("CAT-09")?.MinimumPlayingTimeMinutes ?? 150.0);
+                                    var _defImp60   = AnalyticsCalculationService.ComputeDefensiveImpactPer60(_int, _blk, _neu, _off, _ptD);
+                                    var _defImp60Qt = EvaluatePer60Quality(_ptD, AnalyticsV3Catalog.Get("CAT-10")?.MinimumPlayingTimeMinutes ?? 150.0);
                                 }<table class="data-table"><thead><tr><th>Indicateur</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th></tr></thead><tbody>
                                     <tr class="table-group-header"><td colspan="3">Impact défensif</td></tr>
                                     <tr class="table-sub-row"><td>Interceptions</td><td class="data-table__num">@_int</td><td class="data-table__num">@(_dm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_int,_dm)):"—")</td></tr>
                                     <tr class="table-sub-row"><td>Contres</td><td class="data-table__num">@_blk</td><td class="data-table__num">@(_dm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_blk,_dm)):"—")</td></tr>
-                                    <tr class="table-sub-row"><td>PF provoqués</td><td class="data-table__num">@_off</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row"><td>PF provoqués /match</td><td class="data-table__num">@_off</td><td class="data-table__num">@(_dm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_off,_dm)):"—")</td></tr>
                                     <tr class="table-sub-row"><td>Neutralisations</td><td class="data-table__num">@_neu</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-group-header"><td colspan="3">Métriques /60</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_intPer60Qt))"><td>Interceptions /60 <MetricQualityIndicator Result="@_intPer60Qt" /></td><td class="data-table__num">@FormatV3Per60(_intPer60)</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_defImp60Qt))"><td>Impact défensif /60 <MetricQualityIndicator Result="@_defImp60Qt" /></td><td class="data-table__num">@FormatV3Per60(_defImp60)</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-group-header"><td colspan="3">Coût défensif</td></tr>
                                     <tr class="table-sub-row @(_pc>3?"table-sub-row--warn":"")"><td>7m concédés</td><td class="data-table__num">@_pc</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row @(_sc2>5?"table-sub-row--warn":"")"><td>Sanctions concédées <small>@_w2 avert. · @_t2 × 2min · @_d2 excl.</small></td><td class="data-table__num">@_sc2</td><td class="data-table__num">@(_dm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_sc2,_dm)):"—")</td></tr>
@@ -519,12 +540,21 @@ else
                                     var _pivV  = _pivM?.CountValue;
                                     var _pivX  = _pivM==null||_pivM.IsUnavailable||_pivM.Availability is "DATA_MISSING" or "UNAVAILABLE_FROM_CURRENT_DATA" or "UNAVAILABLE";
                                     var _mm    = profile.MatchesPlayed;
+                                    var _ptM       = global.PlayingTimeMinutes;
+                                    var _atTurnCount = global.TurnoverCount > 0 ? global.TurnoverCount : _tTurn;
+                                    var _atRatio   = AnalyticsCalculationService.ComputeAssistTurnoverRatio(global.AssistCount, _atTurnCount);
+                                    var _atRatioQt = AnalyticsQualityPolicy.EvaluateAssistTurnoverQuality(global.AssistCount, _atTurnCount);
+                                    var _tPer60    = AnalyticsCalculationService.NormalizeApiPer60(global.TurnoversPer60, _ptM);
+                                    var _tPer60Qt  = EvaluatePer60Quality(_ptM, AnalyticsV3Catalog.Get("CAT-08")?.MinimumPlayingTimeMinutes ?? 150.0);
                                 }<table class="data-table"><thead><tr><th>Indicateur</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th></tr></thead><tbody>
                                     <tr class="table-group-header"><td colspan="3">Conservation du ballon</td></tr>
                                     <tr class="table-sub-row @(HandballKpiHelper.PerMatch(_tTurn,_mm)>3?"table-sub-row--warn":"")"><td>Pertes de balle</td><td class="data-table__num">@_tTurn</td><td class="data-table__num">@(_mm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_tTurn,_mm)):"—")</td></tr>
                                     <tr class="table-sub-row"><td>Mauvaises passes</td><td class="data-table__num">@_bPas</td><td class="data-table__num">@(_mm>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_bPas,_mm)):"—")</td></tr>
                                     @if (_pivX) { <tr class="table-sub-row table-sub-row--na"><td>Passes pivot ratées</td><td class="data-table__num" colspan="2">—</td></tr> }
                                     else if (_pivV.HasValue) { <tr class="table-sub-row"><td>Passes pivot ratées</td><td class="data-table__num">@_pivV.Value</td><td class="data-table__num">—</td></tr> }
+                                    <tr class="table-group-header"><td colspan="3">Métriques avancées</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_atRatioQt))"><td>Ratio A:T <MetricQualityIndicator Result="@_atRatioQt" /></td><td class="data-table__num">@FormatV3Ratio(_atRatio)</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_tPer60Qt))"><td>Pertes /60 <MetricQualityIndicator Result="@_tPer60Qt" /></td><td class="data-table__num">@FormatV3Per60(_tPer60)</td><td class="data-table__num">—</td></tr>
                                 </tbody></table></div>
                             }
 
@@ -537,6 +567,9 @@ else
                                     var _dS = _dW + _dT + _dD;
                                     var _dP = PerfCountOf(v2Defense,"PENALTIES_CONCEDED",Sanctions?.PenaltyConcede??0);
                                     var _dM = profile.MatchesPlayed;
+                                    var _ptDisc     = global.PlayingTimeMinutes;
+                                    var _sanctPer60   = AnalyticsCalculationService.NormalizeApiPer60(global.SanctionsPer60, _ptDisc);
+                                    var _sanctPer60Qt = EvaluatePer60Quality(_ptDisc, AnalyticsV3Catalog.Get("CAT-11")?.MinimumPlayingTimeMinutes ?? 150.0);
                                 }<table class="data-table"><thead><tr><th>Indicateur</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th></tr></thead><tbody>
                                     <tr class="table-group-header"><td colspan="3">Discipline</td></tr>
                                     <tr class="table-sub-row @(HandballKpiHelper.PerMatch(_dS,_dM)>0.5?"table-sub-row--warn":"")"><td>Total sanctions</td><td class="data-table__num">@_dS</td><td class="data-table__num">@(_dM>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_dS,_dM)):"—")</td></tr>
@@ -544,6 +577,7 @@ else
                                     <tr class="table-sub-row"><td>2 minutes</td><td class="data-table__num">@_dT</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row"><td>Exclusions</td><td class="data-table__num">@_dD</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row @(_dP>3?"table-sub-row--warn":"")"><td>7m concédés</td><td class="data-table__num">@_dP</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_sanctPer60Qt))"><td>Sanctions /60 <MetricQualityIndicator Result="@_sanctPer60Qt" /></td><td class="data-table__num">@FormatV3Per60(_sanctPer60)</td><td class="data-table__num">—</td></tr>
                                 </tbody></table></div>
                             }
 
@@ -561,22 +595,36 @@ else
                                     var _oSRM = PerfRateOf(v2Keeper,"OPEN_PLAY_SAVE_RATE");
                                     var _pSRM = PerfRateOf(v2Keeper,"PENALTY_SAVE_RATE");
                                     var _tSR  = _tSRM?.Value ?? technical?.GoalkeeperSaveRate ?? 0;
-                                    var _oSR  = _oSRM?.Value ?? (_oFa>0?_oSv*100.0/_oFa:0.0);
+                                    var _oSR  = _oSRM?.Value ?? AnalyticsCalculationService.ComputeOpenPlaySaveRate(_oSv, _oFa) ?? 0.0;
                                     var _pSR  = _pSRM?.Value ?? technical?.GoalkeeperPenaltyStopRate ?? 0;
+                                    var _ptGK      = global.PlayingTimeMinutes;
+                                    var _savePer60   = AnalyticsCalculationService.NormalizeApiPer60(global.SavesPer60, _ptGK);
+                                    var _savePer60Qt = EvaluatePer60Quality(_ptGK, AnalyticsV3Catalog.Get("CAT-15")?.MinimumPlayingTimeMinutes ?? 150.0);
+                                    var _tsFaced60   = AnalyticsCalculationService.ComputeShotsFacedPer60(goalkeeper.TirsSubis, _ptGK);
+                                    var _tsFaced60Qt = EvaluatePer60Quality(_ptGK, AnalyticsV3Catalog.Get("CAT-16")?.MinimumPlayingTimeMinutes ?? 150.0);
+                                    var _oSRQt = EvaluateRateQuality(_oSRM, AnalyticsV3Catalog.Get("CAT-13")?.MinimumSampleCount ?? 20);
+                                    var _pSRQt = EvaluateRateQuality(_pSRM, AnalyticsV3Catalog.Get("CAT-14")?.MinimumSampleCount ?? 5);
+                                    var _tSRQt       = EvaluateRateQuality(_tSRM, AnalyticsV3Catalog.Get("CAT-21")?.MinimumSampleCount ?? 20);
+                                    var _goalsConceded = goalkeeper.ButsPris + goalkeeper.ButsPenalty;
+                                    var _gcPer60     = AnalyticsCalculationService.ComputeGoalsConcededPer60(_goalsConceded, _ptGK);
+                                    var _gcPer60Qt   = EvaluatePer60Quality(_ptGK, AnalyticsV3Catalog.Get("CAT-22")?.MinimumPlayingTimeMinutes ?? 150.0);
                                 }<table class="data-table"><thead><tr><th>Indicateur</th><th class="data-table__num">Total</th><th class="data-table__num">/Match</th></tr></thead><tbody>
                                     <tr class="table-group-header"><td colspan="3">Arrêts</td></tr>
                                     <tr class="table-sub-row"><td>Arrêts total</td><td class="data-table__num">@_tSv</td><td class="data-table__num">@(_gkM>0?HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(_tSv,_gkM)):"—")</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_savePer60Qt))"><td>Arrêts /60 <MetricQualityIndicator Result="@_savePer60Qt" /></td><td class="data-table__num">@FormatV3Per60(_savePer60)</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row"><td>Dans le jeu</td><td class="data-table__num">@_oSv</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row"><td>7 mètres</td><td class="data-table__num">@_pSv</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-group-header"><td colspan="3">Tirs subis</td></tr>
                                     <tr class="table-sub-row"><td>Total</td><td class="data-table__num">@_tFa</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_tsFaced60Qt))"><td>Tirs subis /60 <MetricQualityIndicator Result="@_tsFaced60Qt" /></td><td class="data-table__num">@FormatV3Per60(_tsFaced60)</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row"><td>Dans le jeu</td><td class="data-table__num">@_oFa</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row"><td>7 mètres</td><td class="data-table__num">@_pFa</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-sub-row"><td>Buts encaissés</td><td class="data-table__num">@((Goalkeeper?.ButsPris??0)+(Goalkeeper?.ButsPenalty??0))</td><td class="data-table__num">—</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_gcPer60Qt))"><td>Buts encaissés /60 <MetricQualityIndicator Result="@_gcPer60Qt" /></td><td class="data-table__num">@FormatV3Per60(_gcPer60)</td><td class="data-table__num">—</td></tr>
                                     <tr class="table-group-header"><td colspan="3">Taux d'arrêt</td></tr>
-                                    <tr class="table-sub-row @(_tSRM!=null&&!_tSRM.SampleReliable?"table-sub-row--warn":"")"><td>Taux total @if(_tSRM!=null&&!_tSRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_tSR))%</td><td class="data-table__num">@(_tSRM!=null?$"{_tSRM.Numerator?.ToString("0")??"?"} / {_tSRM.Denominator?.ToString("0")??"?"}":$"{_tSv} / {_tFa}")</td></tr>
-                                    <tr class="table-sub-row @(_oSRM!=null&&!_oSRM.SampleReliable?"table-sub-row--warn":"")"><td>Jeu ouvert @if(_oSRM!=null&&!_oSRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_oSR))%</td><td class="data-table__num">@(_oSRM!=null?$"{_oSRM.Numerator?.ToString("0")??"?"} / {_oSRM.Denominator?.ToString("0")??"?"}":$"{_oSv} / {_oFa}")</td></tr>
-                                    <tr class="table-sub-row @(_pSRM!=null&&!_pSRM.SampleReliable?"table-sub-row--warn":"")"><td>7 mètres @if(_pSRM!=null&&!_pSRM.SampleReliable){<span class="data-insufficient">⚠</span>}</td><td class="data-table__num">@(FormatRate(_pSR))%</td><td class="data-table__num">@(_pSRM!=null?$"{_pSRM.Numerator?.ToString("0")??"?"} / {_pSRM.Denominator?.ToString("0")??"?"}":$"{_pSv} / {_pFa}")</td></tr>
+                                    <tr class="table-sub-row @(V3RowClass(_tSRQt))"><td>Taux d'arrêt global <MetricQualityIndicator Result="@_tSRQt" /></td><td class="data-table__num">@(FormatRate(_tSR))%</td><td class="data-table__num">@(_tSRM!=null?$"{_tSRM.Numerator?.ToString("0")??"?"} / {_tSRM.Denominator?.ToString("0")??"?"}":$"{_tSv} / {_tFa}")</td></tr>
+                                    <tr class="table-sub-row @(_oSRQt.Tier == QualityTier.Low ? "table-sub-row--warn" : "")"><td>Jeu ouvert <MetricQualityIndicator Result="@_oSRQt" /></td><td class="data-table__num">@(FormatRate(_oSR))%</td><td class="data-table__num">@(_oSRM!=null?$"{_oSRM.Numerator?.ToString("0")??"?"} / {_oSRM.Denominator?.ToString("0")??"?"}":$"{_oSv} / {_oFa}")</td></tr>
+                                    <tr class="table-sub-row @(_pSRQt.Tier == QualityTier.Low ? "table-sub-row--warn" : "")"><td>7 mètres <MetricQualityIndicator Result="@_pSRQt" /></td><td class="data-table__num">@(FormatRate(_pSR))%</td><td class="data-table__num">@(_pSRM!=null?$"{_pSRM.Numerator?.ToString("0")??"?"} / {_pSRM.Denominator?.ToString("0")??"?"}":$"{_pSv} / {_pFa}")</td></tr>
                                 </tbody></table></div>
                             }
 
@@ -715,15 +763,10 @@ else
                                             <span>Court map</span>
                                             <h4>Déclenchements et angles</h4>
                                         </header>
-                                        @if (CourtAttackType==PlayerCourtAttackType.SevenMeter)
-                                        { <div class="court-seven-meter-note"><p>Zones de déclenchement des 7m non disponibles.</p></div> }
-                                        else
-                                        {
-                                            <GoalKpi GoalZones="@CourtShotZones" TriggerZones="@CourtTriggerZones" IsGoalkeeper="@(Profile?.IsGoalkeeper??false)"
-                                                     ActiveZoneKey="@ActiveZoneKey" OnZoneSelected="HandleZoneSelectionAsync" HideZeroZones="@HasSpatialFocus"
-                                                     IsLoading="@IsSpatialLoading" DisplayMode="@CourtDisplayMode" DisplayModeChanged="@(mode=>CourtDisplayMode=mode)"
-                                                     AttackType="@CourtAttackType" ViewMode="trigger" />
-                                        }
+                                        <GoalKpi GoalZones="@CourtShotZones" TriggerZones="@CourtTriggerZones" IsGoalkeeper="@(Profile?.IsGoalkeeper??false)"
+                                                 ActiveZoneKey="@ActiveZoneKey" OnZoneSelected="HandleZoneSelectionAsync" HideZeroZones="@HasSpatialFocus"
+                                                 IsLoading="@IsSpatialLoading" DisplayMode="@CourtDisplayMode" DisplayModeChanged="@(mode=>CourtDisplayMode=mode)"
+                                                 AttackType="@CourtAttackType" ViewMode="trigger" />
                                     </section>
                                 </div>
 
@@ -742,6 +785,10 @@ else
                             <section class="court-zone-panel">
                                 @if (ActiveCourtZone is not null)
                                 {
+                                    var _zoneTotals = SpatialAnalyticsBuilder.AggregateZoneTotals(ActiveCourtZones);
+                                    var _attemptShare = SpatialAnalyticsBuilder.ComputeAttemptShare(ActiveCourtZone.Attempts, _zoneTotals.TotalAttempts);
+                                    var _goalShare = SpatialAnalyticsBuilder.ComputeGoalShare(ActiveCourtZone.Successes, _zoneTotals.TotalGoals);
+                                    var _zoneQuality = AnalyticsQualityPolicy.EvaluateTier(null, ActiveCourtZone.Attempts, SpatialAnalyticsBuilder.MinShotZoneSample);
                                     <div class="panel-head">
                                         <div>
                                             <p class="section-kicker">Zone active</p>
@@ -754,6 +801,13 @@ else
                                         <div class="mini-card"><span>Succès</span><strong>@ActiveCourtZone.Successes</strong></div>
                                         <div class="mini-card"><span>Échecs</span><strong>@ActiveCourtZone.Failures</strong></div>
                                     </div>
+                                    @if (_attemptShare.HasValue || _goalShare.HasValue)
+                                    {
+                                        <div class="badge-row">
+                                            @if (_attemptShare.HasValue) { <div class="mini-card"><span>Part des tirs</span><strong>@FormatRate(_attemptShare.Value)%</strong></div> }
+                                            @if (_goalShare.HasValue) { <div class="mini-card"><span>Part des buts</span><strong>@FormatRate(_goalShare.Value)%</strong></div> }
+                                        </div>
+                                    }
                                     @if (ActiveCourtZone.Outcomes.Any())
                                     {
                                         <div class="list-stack">
@@ -768,7 +822,7 @@ else
                                             }
                                         </div>
                                     }
-                                    @if (!ActiveCourtZone.SampleReliable&&ActiveCourtZone.Attempts>0)
+                                    @if (_zoneQuality.Tier == QualityTier.Low && ActiveCourtZone.Attempts > 0)
                                     { <p class="court-sample-note">Volume limite (@ActiveCourtZone.Attempts tirs) — taux indicatif.</p> }
                                 }
                                 else
@@ -966,7 +1020,10 @@ else
                         <AnalyseTabPanel PlayerId="@SelectedPlayerId"
                                          CompetitionId="@CompetitionId"
                                          TeamId="@TeamId"
-                                         Season="@Season" />
+                                         Season="@Season"
+                                         Day="@Day"
+                                         IsGoalkeeper="@profile.IsGoalkeeper"
+                                         PositionCode="@profile.PositionCode" />
                     }
 
                     </div>@* /player-detail-pane__body *@
@@ -982,7 +1039,14 @@ else
     private IReadOnlyList<MatchListItemDto> CompetitionOptionMatches { get; set; } = [];
     private IReadOnlyList<MatchListItemDto> TeamOptionMatches { get; set; } = [];
     private IReadOnlyList<MatchListItemDto> ScopedMatches { get; set; } = [];
-    private IReadOnlyList<PlayerListItemDto> PlayerDirectory { get; set; } = [];
+    private IReadOnlyList<PlayerGlobalStatsDto> PlayerDirectory { get; set; } = [];
+    private IReadOnlyList<PlayerGlobalStatsDto> FilteredPlayerDirectory =>
+        string.IsNullOrWhiteSpace(Search)
+            ? PlayerDirectory
+            : PlayerDirectory
+                .Where(p => TextSearchHelper.Contains(p.FullName, Search)
+                         || TextSearchHelper.Contains(p.TeamName, Search))
+                .ToList();
     private IReadOnlyList<PlayerMatchItemDto> PlayerMatches { get; set; } = [];
     private PlayerProfileDto? Profile { get; set; }
     private PlayerGlobalStatsDto? Global { get; set; }
@@ -1262,14 +1326,12 @@ else
         || TeamId.HasValue
         || PositionId.HasValue
         || !string.IsNullOrWhiteSpace(Season)
-        || !string.IsNullOrWhiteSpace(Day)
-        || !string.IsNullOrWhiteSpace(Search);
+        || !string.IsNullOrWhiteSpace(Day);
     private bool IsCompetitionOnlyDirectoryFilter => CompetitionId.HasValue
         && !TeamId.HasValue
         && !PositionId.HasValue
         && string.IsNullOrWhiteSpace(Season)
-        && string.IsNullOrWhiteSpace(Day)
-        && string.IsNullOrWhiteSpace(Search);
+        && string.IsNullOrWhiteSpace(Day);
     private bool UseScrollableDirectory => IsCompetitionOnlyDirectoryFilter && PlayerDirectory.Count > 10;
     private bool ShowPlayerScatterChart => PlayerScatterSeries.Count > 0;
     private double PlayerTechnicalBalanceScore => Global is null || Offense is null || Defense is null || Passing is null || Sanctions is null || Goalkeeper is null
@@ -1320,7 +1382,7 @@ else
             return;
         }
 
-        await ApplyFiltersAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task ApplyFiltersAsync()
@@ -1493,7 +1555,7 @@ else
     {
         CourtAttackType = type;
         ActiveZoneKey = null;
-        await Task.CompletedTask;
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleZoneSelectionAsync(string zoneKey)
@@ -1734,7 +1796,11 @@ else
             {
                 positionProfile = await PlayersApiClient.GetPlayerPositionProfileAsync(SelectedPlayerId!.Value, BuildPlayerSheetPositionProfileOptions());
             }
-            catch
+            catch (OperationCanceledException)
+            {
+                positionProfile = null;
+            }
+            catch (ApiRequestException)
             {
                 positionProfile = null;
             }
@@ -1777,7 +1843,7 @@ else
     /// Supports package-bundled assets (wwwroot relative paths) and absolute HTTPS URLs.
     /// Returns null on failure — caller falls back to initials.
     /// </summary>
-    private static async Task<string?> LoadPhotoAsDataUriAsync(string photoUrl)
+    private async Task<string?> LoadPhotoAsDataUriAsync(string photoUrl)
     {
         byte[]? bytes = null;
 
@@ -1797,13 +1863,21 @@ else
         {
             try
             {
-                using var stream = await FileSystem.OpenAppPackageFileAsync(candidate);
+                using var stream = await AppAssetReader.TryOpenAsync(candidate);
+                if (stream is null) continue;
                 using var ms = new System.IO.MemoryStream();
                 await stream.CopyToAsync(ms);
                 bytes = ms.ToArray();
                 if (bytes.Length > 0) break;
             }
-            catch { }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Could not load app asset '{Candidate}' for photo export; skipping.", candidate);
+            }
         }
 
         if (bytes is null || bytes.Length == 0)
@@ -1847,7 +1921,7 @@ else
             {
                 if (PlayerIdFromQuery.HasValue)
                 {
-                    var linkedPlayer = await PlayersApiClient.GetPlayerAsync(PlayerIdFromQuery.Value);
+                    var linkedPlayer = await StatsApiClient.GetPlayerGlobalAsync(PlayerIdFromQuery.Value);
                     PlayerDirectory = linkedPlayer is null ? [] : [linkedPlayer];
                     SelectedPlayerId = linkedPlayer?.PlayerId;
                     await LoadPlayerDetailsAsync(manageBusyState: false);
@@ -1891,15 +1965,7 @@ else
                 Day = null;
             }
 
-            PlayerDirectory = await PlayersApiClient.GetPlayersAsync(
-                teamId: TeamId,
-                positionId: PositionId,
-                competitionId: CompetitionId,
-                year: Year,
-                season: Season,
-                day: Day,
-                search: Search,
-                pageSize: IsCompetitionOnlyDirectoryFilter ? 1000 : 250);
+            PlayerDirectory = await StatsApiClient.GetPlayersAsync(BuildOptions());
 
             if (PlayerIdFromQuery.HasValue && PlayerDirectory.Any(player => player.PlayerId == PlayerIdFromQuery.Value))
             {
@@ -2582,7 +2648,7 @@ else
     // 4 KPI : arrêts totaux · taux arrêt jeu · taux arrêt 7m · arrêts/match
     private IReadOnlyList<BarGaugeKpiItem> BuildBriefGoalkeeperKpis()
     {
-        if (Profile is null || !Profile.IsGoalkeeper || Goalkeeper is null || Technical is null)
+        if (Profile is null || !Profile.IsGoalkeeper || Goalkeeper is null || Technical is null || Global is null)
         {
             return [];
         }
@@ -2593,6 +2659,10 @@ else
         var openPlayShotsFaced = Goalkeeper.Arrets + Goalkeeper.ButsPris;
         var openPlaySaveRate = HandballKpiHelper.Share(Goalkeeper.Arrets, Math.Max(openPlayShotsFaced, 1));
         var penaltyShotsFaced = Goalkeeper.ArretsPenalty + Goalkeeper.ButsPenalty;
+        var v2GkAnalytics = LeagueAnalytics?.Analytics?.Goalkeeper;
+        var openPlaySRMBrief = PerfRateOf(v2GkAnalytics, "OPEN_PLAY_SAVE_RATE");
+        var displayOpenPlaySaveRate = openPlaySRMBrief?.Value ?? openPlaySaveRate;
+        var savePer60Brief = AnalyticsCalculationService.NormalizeApiPer60(Global.SavesPer60, Global.PlayingTimeMinutes);
 
         return
         [
@@ -2605,28 +2675,28 @@ else
                 RankContext(p => p.SaveCount) + " · " + $"{Goalkeeper.Arrets} jeu + {Goalkeeper.ArretsPenalty} sur 7m",
                 Max: Math.Max(totalSaves + 5, 50)),
             new BarGaugeKpiItem(
-                "Taux arrêt jeu",
-                FormatRate(openPlaySaveRate) + "%",
-                openPlaySaveRate,
-                "Arrêts dans le jeu sur tirs subis dans le jeu.",
-                HandballKpiHelper.GoalkeeperSaveRateTone(openPlaySaveRate),
+                "Jeu ouvert",
+                FormatRate(displayOpenPlaySaveRate) + "%",
+                displayOpenPlaySaveRate,
+                "Taux d'arrêt sur tirs en jeu ouvert.",
+                HandballKpiHelper.GoalkeeperSaveRateTone(displayOpenPlaySaveRate),
                 RankContext(p => p.GoalkeeperSaveRate) + " · " + HandballKpiHelper.FormatBase(Goalkeeper.Arrets, Math.Max(openPlayShotsFaced, 1), "arrêts"),
                 Max: 60),
             new BarGaugeKpiItem(
-                "Taux arrêt 7m",
+                "7 mètres",
                 FormatRate(penaltyStopRate) + "%",
                 penaltyStopRate,
-                "Arrêts sur penalties. Médiane : 39%",
+                "Taux d'arrêt sur penalties. Médiane : 39%",
                 HandballKpiHelper.GoalkeeperPenaltyStopRateTone(penaltyStopRate),
                 RankContext(p => p.GoalkeeperSaveRate) + " · " + HandballKpiHelper.FormatBase(Goalkeeper.ArretsPenalty, Math.Max(penaltyShotsFaced, 1), "7m arrêtés"),
                 Max: 80),
             new BarGaugeKpiItem(
-                "Arrêts / match",
-                HandballKpiHelper.FormatNumber(HandballKpiHelper.PerMatch(totalSaves, matches)),
-                HandballKpiHelper.PerMatch(totalSaves, matches),
-                "Volume d'arrêts rapporté aux matchs joués.",
-                HandballKpiHelper.GoalkeeperStopsPerMatchTone(HandballKpiHelper.PerMatch(totalSaves, matches)),
-                RankContext(p => p.SaveCount) + " · " + HandballKpiHelper.FormatPerMatchContext(totalSaves, matches, "arrêts"),
+                "Arrêts /60",
+                savePer60Brief.HasValue ? FormatV3Per60(savePer60Brief) : "—",
+                savePer60Brief ?? 0,
+                "Arrêts par 60 minutes de jeu.",
+                HandballKpiHelper.GoalkeeperStopsPerMatchTone(savePer60Brief ?? 0),
+                RankContext(p => p.SaveCount),
                 Max: 25)
         ];
     }
@@ -3663,4 +3733,32 @@ else
         => list?.FirstOrDefault(m => m.MetricCode == code)?.Rate;
     private static bool PerfIsUnavailable(IReadOnlyList<LeagueMetricDisplayModel>? list, string code)
         => list?.FirstOrDefault(m => m.MetricCode == code)?.IsUnavailable ?? true;
+
+    // ── Analytics V3 helpers ──────────────────────────────────────────────────
+
+    private static LeagueMetricQualityDto? ToMetricQualityDto(RateDisplayModel? rate)
+        => rate is { QualityKnown: true }
+            ? new LeagueMetricQualityDto { SampleReliable = rate.SampleReliable, QualityScore = rate.QualityScore ?? 0.0, Reason = rate.QualityReason }
+            : null;
+
+    private static QualityTierResult EvaluateRateQuality(RateDisplayModel? rate, int minSample)
+        => AnalyticsQualityPolicy.EvaluateTier(ToMetricQualityDto(rate), null, minSample);
+
+    private static QualityTierResult EvaluatePer60Quality(double playingTimeMinutes, double minPlayingTimeMinutes)
+        => AnalyticsQualityPolicy.EvaluatePlayingTimeTier(playingTimeMinutes, minPlayingTimeMinutes);
+
+    private static string FormatV3Per60(double? value)
+        => value.HasValue ? value.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) : "—";
+
+    private static string FormatV3Ratio(double? value)
+        => value.HasValue ? value.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) : "—";
+
+    private static string V3RowClass(QualityTierResult qt)
+        => qt.Tier == QualityTier.Low ? "table-sub-row--warn" : qt.Tier == QualityTier.NotApplicable ? "table-sub-row--na" : "";
+
+    private bool IsMetricApplicable(string metricCode, string? positionCode)
+    {
+        var def = AnalyticsV3Catalog.Get(metricCode);
+        return def is not null && AnalyticsV3Catalog.IsApplicable(def, positionCode);
+    }
 }

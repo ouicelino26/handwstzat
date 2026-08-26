@@ -18,6 +18,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <EnableDefaultCssItems>false</EnableDefaultCssItems>
         <Nullable>enable</Nullable>
+        <!-- Exclude sibling project directories from MAUI's default item globs -->
+        <DefaultItemExcludes>$(DefaultItemExcludes);HandWStat.Tests/**;HandWStat.Web.TestHost/**;HandWStat.E2E.Tests/**</DefaultItemExcludes>
 
         <!-- Display name -->
         <ApplicationTitle>HandWStat Studio</ApplicationTitle>
@@ -68,6 +70,15 @@
       <Compile Remove="HandWStat.Tests\**\*" />
       <EmbeddedResource Remove="HandWStat.Tests\**\*" />
       <None Remove="HandWStat.Tests\**\*" />
+      <Compile Remove="HandWStat.Web.TestHost\**\*" />
+      <EmbeddedResource Remove="HandWStat.Web.TestHost\**\*" />
+      <None Remove="HandWStat.Web.TestHost\**\*" />
+      <Content Remove="HandWStat.Web.TestHost\**\*" />
+      <RazorComponent Remove="HandWStat.Web.TestHost\**\*" />
+      <Compile Remove="HandWStat.E2E.Tests\**\*" />
+      <EmbeddedResource Remove="HandWStat.E2E.Tests\**\*" />
+      <None Remove="HandWStat.E2E.Tests\**\*" />
+      <Content Remove="HandWStat.E2E.Tests\**\*" />
     </ItemGroup>
 
 </Project>

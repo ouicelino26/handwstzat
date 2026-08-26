@@ -547,49 +547,50 @@ public sealed class PlayerSheetExportV2Tests
     [Fact]
     public void PlayerSheet_RadarNegativeMetricsUseFavorableDirection()
     {
-        // An axis with HigherIsBetter=false and a high value (many turnovers) should produce
-        // a LOWER normalized score (closer to 0, not closer to 100).
+        // For HigherIsBetter=false metrics (e.g. turnovers), the API percentile is already
+        // direction-aware — a low percentile means many turnovers (bad).
+        // NormalizeRadarValue returns axis.Percentile regardless of the passed value;
+        // client-side direction inversion is forbidden per A9/A11 spec §7/§19.
         var axis = MakeAxis(
             "TURNOVERS_PER60",
             "Pertes /60",
             "passing",
             higherIsBetter: false,
-            value: 2.8,       // high turnovers (bad)
+            value: 2.8,
             medianValue: 1.0,
+            percentile: 25,   // API: bad player = low percentile (direction already handled)
             minValue: 0,
             maxValue: 4);
 
         var playerScore = PlayerSheetExportHelper.NormalizeRadarValue(axis, axis.Value);
-        var medianScore = PlayerSheetExportHelper.NormalizeRadarValue(axis, axis.MedianValue);
-
-        // Player has MORE turnovers than median → should score LOWER
-        Assert.True(playerScore < medianScore,
-            $"Negative metric: player score {playerScore} must be less than median score {medianScore}");
-        // Scores must be in 0-100
+        // Must return the API percentile — not a min-max computation
+        Assert.Equal(25.0, playerScore, precision: 9);
+        // Score is in [0, 100]
         Assert.True(playerScore >= 0 && playerScore <= 100);
-        Assert.True(medianScore >= 0 && medianScore <= 100);
+        // Value parameter has no effect — both calls return axis.Percentile
+        Assert.Equal(playerScore, PlayerSheetExportHelper.NormalizeRadarValue(axis, axis.MedianValue));
     }
 
     [Fact]
     public void PlayerSheet_RadarUsesNormalizedComparableScale()
     {
-        // All normalized values must be in [0, 100]
+        // NormalizeRadarValue must return a value in [0, 100] equal to axis.Percentile.
+        // The raw value parameter is ignored — the API percentile is the canonical score.
         var axis = MakeAxis(
             "GOALS_PER60", "Buts /60", "offense",
             higherIsBetter: true,
             value: 1.5, medianValue: 0.9,
+            percentile: 72,
             minValue: 0, maxValue: 3);
 
         var playerScore = PlayerSheetExportHelper.NormalizeRadarValue(axis, axis.Value);
-        var medianScore = PlayerSheetExportHelper.NormalizeRadarValue(axis, axis.MedianValue);
 
         Assert.True(playerScore >= 0 && playerScore <= 100,
             $"Player score {playerScore} is outside [0, 100]");
-        Assert.True(medianScore >= 0 && medianScore <= 100,
-            $"Median score {medianScore} is outside [0, 100]");
-        // Player > median when HigherIsBetter=true and player value > median value
-        Assert.True(playerScore > medianScore,
-            $"For HigherIsBetter=true: player {playerScore} must exceed median {medianScore}");
+        // Returns exactly the API percentile — not a min-max computation
+        Assert.Equal(72.0, playerScore, precision: 9);
+        // Value parameter is ignored: both calls return axis.Percentile
+        Assert.Equal(playerScore, PlayerSheetExportHelper.NormalizeRadarValue(axis, axis.MedianValue));
     }
 
     [Fact]
@@ -646,15 +647,27 @@ public sealed class PlayerSheetExportV2Tests
     [Fact]
     public void PlayerSheet_RadarNormalization_ClampedTo0_100()
     {
-        // Values outside the min/max range must be clamped
-        var axis = MakeAxis("X", "X", "offense", higherIsBetter: true,
-            value: 5.0, medianValue: 0.9, minValue: 0, maxValue: 3);
-        var score = PlayerSheetExportHelper.NormalizeRadarValue(axis, axis.Value);
-        Assert.Equal(100.0, score, precision: 0);
+        // axis.Percentile values outside [0, 100] are clamped (defensive guard against API anomalies)
+        var axisHigh = new PositionProfileAxisDto
+        {
+            Key = "X", Label = "X", Category = "offense",
+            HigherIsBetter = true,
+            Value = 5.0, MedianValue = 0.9,
+            Percentile = 150.0,   // out of range → clamped to 100
+            MinValue = 0, MaxValue = 3
+        };
+        var scoreHigh = PlayerSheetExportHelper.NormalizeRadarValue(axisHigh, axisHigh.Value);
+        Assert.Equal(100.0, scoreHigh, precision: 0);
 
-        var axisNeg = MakeAxis("Y", "Y", "offense", higherIsBetter: true,
-            value: -1.0, medianValue: 0.9, minValue: 0, maxValue: 3);
-        var scoreNeg = PlayerSheetExportHelper.NormalizeRadarValue(axisNeg, axisNeg.Value);
-        Assert.Equal(0.0, scoreNeg, precision: 0);
+        var axisLow = new PositionProfileAxisDto
+        {
+            Key = "Y", Label = "Y", Category = "offense",
+            HigherIsBetter = true,
+            Value = -1.0, MedianValue = 0.9,
+            Percentile = -10.0,   // out of range → clamped to 0
+            MinValue = 0, MaxValue = 3
+        };
+        var scoreLow = PlayerSheetExportHelper.NormalizeRadarValue(axisLow, axisLow.Value);
+        Assert.Equal(0.0, scoreLow, precision: 0);
     }
 }

@@ -1,0 +1,10 @@
+@using HandWStat.Services.Analytics
+
+@if (Result is { Tier: QualityTier.Low })
+{
+    <span class="mqi mqi--low" title="@AnalyticsQualityPolicy.ReasonToUserMessage(Result.Reason)" role="img" aria-label="Qualité de données limitée">ⓘ</span>
+}
+
+@code {
+    [Parameter] public QualityTierResult? Result { get; set; }
+}

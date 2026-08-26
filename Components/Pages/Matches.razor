@@ -7,6 +7,7 @@
 @inject AnalysisScopeService ScopeService
 @inject NavigationManager Navigation
 @inject CommandBarService CommandBarService
+@inject ILogger<Matches> Logger
 @implements IDisposable
 
 <PageTitle>Matchs</PageTitle>
@@ -25,12 +26,16 @@ else
 
         <aside class="matches-list-pane @(_listCollapsed ? "is-list-collapsed" : string.Empty)">
             <div class="matches-filters-bar">
-                <label class="filter-field" style="margin:0;">
+                <label class="filter-field" style="margin:0;flex:1;">
                     <span class="sr-only">Recherche match</span>
                     <input value="@MatchSearch"
                            @oninput="OnMatchSearchChangedAsync"
                            placeholder="Équipe, adversaire ou compétition…" />
                 </label>
+                <button type="button" class="btn btn-ghost btn-sm" @onclick="() => { _filterOpen = true; }">
+                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;flex-shrink:0"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
+                    Filtrer
+                </button>
             </div>
 
             <ul class="matches-list" role="list">
@@ -382,75 +387,76 @@ else
                                         <h3 class="section-header__title">Duel d'équipes</h3>
                                     </div>
                                     @{
-                                        var duelT1 = MatchPlayers.Where(p => p.TeamId.HasValue && p.TeamId == SelectedMatch.Team1Id).ToList();
-                                        var duelT2 = MatchPlayers.Where(p => p.TeamId.HasValue && p.TeamId == SelectedMatch.Team2Id).ToList();
-                                        var duelT1Goals = SelectedMatch.Team1Score ?? 0;
-                                        var duelT2Goals = SelectedMatch.Team2Score ?? 0;
-                                        int duelT1Ast, duelT2Ast, duelT1Sav, duelT2Sav, duelT1Int, duelT2Int, duelT1Tur, duelT2Tur, duelT1Shot, duelT2Shot, duelT1San, duelT2San;
-                                        if (duelT1.Count > 0 || duelT2.Count > 0)
-                                        {
-                                            duelT1Ast = duelT1.Sum(p => p.AssistCount);
-                                            duelT2Ast = duelT2.Sum(p => p.AssistCount);
-                                            duelT1Sav = duelT1.Sum(p => p.SaveCount);
-                                            duelT2Sav = duelT2.Sum(p => p.SaveCount);
-                                            duelT1Int = duelT1.Sum(p => p.InterceptionCount);
-                                            duelT2Int = duelT2.Sum(p => p.InterceptionCount);
-                                            duelT1Tur = duelT1.Sum(p => p.TurnoverCount);
-                                            duelT2Tur = duelT2.Sum(p => p.TurnoverCount);
-                                            duelT1Shot = duelT1.Sum(p => p.ShotAttempts);
-                                            duelT2Shot = duelT2.Sum(p => p.ShotAttempts);
-                                            duelT1San = duelT1.Sum(p => p.SanctionCount);
-                                            duelT2San = duelT2.Sum(p => p.SanctionCount);
-                                        }
-                                        else
-                                        {
-                                            duelT1Ast = MatchSummary.AssistCount; duelT2Ast = 0;
-                                            duelT1Sav = MatchSummary.SaveCount; duelT2Sav = 0;
-                                            duelT1Int = MatchSummary.InterceptionCount; duelT2Int = 0;
-                                            duelT1Tur = MatchSummary.TurnoverCount; duelT2Tur = 0;
-                                            duelT1Shot = MatchSummary.Technical.ShotAttempts; duelT2Shot = 0;
-                                            duelT1San = MatchSummary.SanctionCount; duelT2San = 0;
-                                        }
+                                        var homeA = HomeAnalytics;
+                                        var awayA = AwayAnalytics;
                                     }
                                     <div class="duel-stat-list">
                                         <div class="duel-stat-row">
-                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Goals >= duelT2Goals && (duelT1Goals > 0 || duelT2Goals > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Goals</span>
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(homeA.Goals >= awayA.Goals && (homeA.Goals > 0 || awayA.Goals > 0) ? "duel-stat-row__val--winner" : string.Empty)">@homeA.Goals</span>
                                             <span class="duel-stat-row__label">Buts</span>
-                                            <span class="duel-stat-row__val @(duelT2Goals > duelT1Goals ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Goals</span>
+                                            <span class="duel-stat-row__val @(awayA.Goals > homeA.Goals ? "duel-stat-row__val--winner" : string.Empty)">@awayA.Goals</span>
                                         </div>
                                         <div class="duel-stat-row">
-                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Shot >= duelT2Shot && (duelT1Shot > 0 || duelT2Shot > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Shot</span>
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(homeA.Attempts >= awayA.Attempts && (homeA.Attempts > 0 || awayA.Attempts > 0) ? "duel-stat-row__val--winner" : string.Empty)">@homeA.Attempts</span>
                                             <span class="duel-stat-row__label">Tirs</span>
-                                            <span class="duel-stat-row__val @(duelT2Shot > duelT1Shot ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Shot</span>
+                                            <span class="duel-stat-row__val @(awayA.Attempts > homeA.Attempts ? "duel-stat-row__val--winner" : string.Empty)">@awayA.Attempts</span>
                                         </div>
+                                        @if (homeA.Attempts > 0 || awayA.Attempts > 0)
+                                        {
+                                            <div class="duel-stat-row">
+                                                <span class="duel-stat-row__val duel-stat-row__val--left @(homeA.ShotRate.HasValue && awayA.ShotRate.HasValue && homeA.ShotRate >= awayA.ShotRate ? "duel-stat-row__val--winner" : string.Empty)">@(homeA.ShotRate.HasValue ? $"{homeA.ShotRate.Value:0%}" : "—")</span>
+                                                <span class="duel-stat-row__label">% tir</span>
+                                                <span class="duel-stat-row__val @(homeA.ShotRate.HasValue && awayA.ShotRate.HasValue && awayA.ShotRate > homeA.ShotRate ? "duel-stat-row__val--winner" : string.Empty)">@(awayA.ShotRate.HasValue ? $"{awayA.ShotRate.Value:0%}" : "—")</span>
+                                            </div>
+                                        }
                                         <div class="duel-stat-row">
-                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Ast >= duelT2Ast && (duelT1Ast > 0 || duelT2Ast > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Ast</span>
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(homeA.Assists >= awayA.Assists && (homeA.Assists > 0 || awayA.Assists > 0) ? "duel-stat-row__val--winner" : string.Empty)">@homeA.Assists</span>
                                             <span class="duel-stat-row__label">Passes</span>
-                                            <span class="duel-stat-row__val @(duelT2Ast > duelT1Ast ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Ast</span>
+                                            <span class="duel-stat-row__val @(awayA.Assists > homeA.Assists ? "duel-stat-row__val--winner" : string.Empty)">@awayA.Assists</span>
                                         </div>
                                         <div class="duel-stat-row">
-                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Sav >= duelT2Sav && (duelT1Sav > 0 || duelT2Sav > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Sav</span>
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(homeA.Saves >= awayA.Saves && (homeA.Saves > 0 || awayA.Saves > 0) ? "duel-stat-row__val--winner" : string.Empty)">@homeA.Saves</span>
                                             <span class="duel-stat-row__label">Arrêts</span>
-                                            <span class="duel-stat-row__val @(duelT2Sav > duelT1Sav ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Sav</span>
+                                            <span class="duel-stat-row__val @(awayA.Saves > homeA.Saves ? "duel-stat-row__val--winner" : string.Empty)">@awayA.Saves</span>
                                         </div>
+                                        @if (homeA.ShotsFaced > 0 || awayA.ShotsFaced > 0)
+                                        {
+                                            <div class="duel-stat-row">
+                                                <span class="duel-stat-row__val duel-stat-row__val--left @(homeA.SaveRate.HasValue && awayA.SaveRate.HasValue && homeA.SaveRate >= awayA.SaveRate ? "duel-stat-row__val--winner" : string.Empty)">@(homeA.SaveRate.HasValue ? $"{homeA.SaveRate.Value:0%}" : "—")</span>
+                                                <span class="duel-stat-row__label">% arrêt</span>
+                                                <span class="duel-stat-row__val @(homeA.SaveRate.HasValue && awayA.SaveRate.HasValue && awayA.SaveRate > homeA.SaveRate ? "duel-stat-row__val--winner" : string.Empty)">@(awayA.SaveRate.HasValue ? $"{awayA.SaveRate.Value:0%}" : "—")</span>
+                                            </div>
+                                        }
                                         <div class="duel-stat-row">
-                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Int >= duelT2Int && (duelT1Int > 0 || duelT2Int > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Int</span>
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(homeA.Interceptions >= awayA.Interceptions && (homeA.Interceptions > 0 || awayA.Interceptions > 0) ? "duel-stat-row__val--winner" : string.Empty)">@homeA.Interceptions</span>
                                             <span class="duel-stat-row__label">Interceptions</span>
-                                            <span class="duel-stat-row__val @(duelT2Int > duelT1Int ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Int</span>
+                                            <span class="duel-stat-row__val @(awayA.Interceptions > homeA.Interceptions ? "duel-stat-row__val--winner" : string.Empty)">@awayA.Interceptions</span>
                                         </div>
                                         <div class="duel-stat-row">
-                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1Tur <= duelT2Tur && (duelT1Tur > 0 || duelT2Tur > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1Tur</span>
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(homeA.Turnovers <= awayA.Turnovers && (homeA.Turnovers > 0 || awayA.Turnovers > 0) ? "duel-stat-row__val--winner" : string.Empty)">@homeA.Turnovers</span>
                                             <span class="duel-stat-row__label">Pertes</span>
-                                            <span class="duel-stat-row__val @(duelT2Tur < duelT1Tur ? "duel-stat-row__val--winner" : string.Empty)">@duelT2Tur</span>
+                                            <span class="duel-stat-row__val @(awayA.Turnovers < homeA.Turnovers ? "duel-stat-row__val--winner" : string.Empty)">@awayA.Turnovers</span>
                                         </div>
                                         <div class="duel-stat-row">
-                                            <span class="duel-stat-row__val duel-stat-row__val--left @(duelT1San <= duelT2San && (duelT1San > 0 || duelT2San > 0) ? "duel-stat-row__val--winner" : string.Empty)">@duelT1San</span>
+                                            <span class="duel-stat-row__val duel-stat-row__val--left @(homeA.Sanctions <= awayA.Sanctions && (homeA.Sanctions > 0 || awayA.Sanctions > 0) ? "duel-stat-row__val--winner" : string.Empty)">@homeA.Sanctions</span>
                                             <span class="duel-stat-row__label">Sanctions</span>
-                                            <span class="duel-stat-row__val @(duelT2San < duelT1San ? "duel-stat-row__val--winner" : string.Empty)">@duelT2San</span>
+                                            <span class="duel-stat-row__val @(awayA.Sanctions < homeA.Sanctions ? "duel-stat-row__val--winner" : string.Empty)">@awayA.Sanctions</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            @if (MatchInsights.Count > 0)
+                            {
+                                <div class="match-insights" style="margin-bottom:1rem;">
+                                    @foreach (var insight in MatchInsights)
+                                    {
+                                        <div class="match-insight @(insight.Tone != null ? $"match-insight--{insight.Tone}" : string.Empty)">
+                                            <span>@insight.Text</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
 
                             @if (ShowMatchSummaryCharts)
                             {
@@ -572,9 +578,9 @@ else
                                                     </div>
                                                     @{
                                                         var homeAttempts = HomeGoalZones.Sum(z => z.Attempts);
-                                                        var homeEff = homeAttempts > 0 ? (int)Math.Round(100.0 * HomeGoalZones.Sum(z => z.Successes) / homeAttempts) : 0;
+                                                        var homeEffVal = AnalyticsCalculationService.ComputeTriggerSuccessRate(HomeGoalZones.Sum(z => z.Successes), homeAttempts);
                                                     }
-                                                    <div class="court-team-summary"><strong>@homeEff%</strong><span>eff.</span></div>
+                                                    <div class="court-team-summary"><strong>@(homeEffVal.HasValue ? $"{(int)Math.Round(homeEffVal.Value)}%" : "—")</strong><span>eff.</span></div>
                                                 </div>
                                                 <div class="court-team-maps">
                                                     <div class="court-map-block">
@@ -633,9 +639,9 @@ else
                                                     </div>
                                                     @{
                                                         var awayAttempts = AwayGoalZones.Sum(z => z.Attempts);
-                                                        var awayEff = awayAttempts > 0 ? (int)Math.Round(100.0 * AwayGoalZones.Sum(z => z.Successes) / awayAttempts) : 0;
+                                                        var awayEffVal = AnalyticsCalculationService.ComputeTriggerSuccessRate(AwayGoalZones.Sum(z => z.Successes), awayAttempts);
                                                     }
-                                                    <div class="court-team-summary"><strong>@awayEff%</strong><span>eff.</span></div>
+                                                    <div class="court-team-summary"><strong>@(awayEffVal.HasValue ? $"{(int)Math.Round(awayEffVal.Value)}%" : "—")</strong><span>eff.</span></div>
                                                 </div>
                                                 <div class="court-team-maps">
                                                     <div class="court-map-block">
@@ -720,6 +726,7 @@ else
                                     @foreach (var player in FilteredMatchPlayers.Take(12))
                                     {
                                         var playerInitials = GetPlayerInitials(player.FullName);
+                                        var playerPhotoUrl = PlayerPhotoAssetResolver.Resolve(player.Photo, player.PlayerId, player.FullName, player.TeamName);
                                         var isAway = player.TeamId.HasValue && player.TeamId == SelectedMatch.Team2Id;
                                         var isGK = player.IsGoalkeeper;
                                         var cardClass = isGK ? "match-player-card--goalkeeper" : isAway ? "match-player-card--away" : string.Empty;
@@ -732,7 +739,14 @@ else
                                         <article class="match-player-card @cardClass" @key="@($"{player.PlayerId}_{player.TeamId}")">
                                             <div class="match-player-card__header">
                                                 <div class="match-player-card__avatar">
-                                                    @playerInitials
+                                                    @if (playerPhotoUrl != null)
+                                                    {
+                                                        <img src="@playerPhotoUrl" alt="@player.FullName" />
+                                                    }
+                                                    else
+                                                    {
+                                                        @playerInitials
+                                                    }
                                                     @if (player.Number.HasValue)
                                                     {
                                                         <span>#@player.Number</span>
@@ -967,6 +981,15 @@ else
     private IReadOnlyList<MetricPlotPoint> MatchTeam1ComparisonSeries => BuildMatchTeamComparisonSeries(SelectedMatch?.Team1Id, SelectedMatch?.Team1Name ?? "Équipe 1");
     private IReadOnlyList<MetricPlotPoint> MatchTeam2ComparisonSeries => BuildMatchTeamComparisonSeries(SelectedMatch?.Team2Id, SelectedMatch?.Team2Name ?? "Équipe 2");
     private IReadOnlyList<MetricPlotPoint> MatchPlayerImpactSeries => BuildMatchPlayerImpactSeries();
+    private MatchTeamAnalytics HomeAnalytics => MatchAnalyticsBuilder.BuildTeamAnalytics(
+        SelectedMatch?.Team1Id, SelectedMatch?.Team1Name,
+        SelectedMatch?.Team1Score ?? 0,
+        MatchPlayers.Where(p => p.TeamId == SelectedMatch?.Team1Id));
+    private MatchTeamAnalytics AwayAnalytics => MatchAnalyticsBuilder.BuildTeamAnalytics(
+        SelectedMatch?.Team2Id, SelectedMatch?.Team2Name,
+        SelectedMatch?.Team2Score ?? 0,
+        MatchPlayers.Where(p => p.TeamId == SelectedMatch?.Team2Id));
+    private IReadOnlyList<MatchInsight> MatchInsights => MatchAnalyticsBuilder.BuildInsights(HomeAnalytics, AwayAnalytics);
     private IReadOnlyList<MatchListItemDto> FilteredMatchList => GetFilteredMatches();
     private IReadOnlyList<PlayerGlobalStatsDto> FilteredMatchPlayers => GetFilteredMatchPlayers();
     private IReadOnlyList<string> SeasonOptions => MatchFilterCatalog.GetSeasons(ScopedMatches);
@@ -1496,7 +1519,11 @@ else
             _spatialHome = homeResult;
             _spatialAway = awayResult;
         }
-        catch
+        catch (OperationCanceledException)
+        {
+            // Navigation superseded this load — discard stale result.
+        }
+        catch (Exception ex)
         {
             if (!SelectedMatchId.HasValue || SelectedMatchId.Value != matchId)
             {
@@ -1505,6 +1532,7 @@ else
 
             _spatialHome = null;
             _spatialAway = null;
+            Logger.LogWarning(ex, "Spatial court data failed for match {MatchId}.", matchId);
         }
         finally
         {

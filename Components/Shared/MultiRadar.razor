@@ -607,20 +607,9 @@
 
     private static double NormalizeRadarValue(PositionProfileAxisDto axis, double value)
     {
-        if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
-        {
-            // The API percentile is already oriented so that a higher score is favorable.
-            return Math.Clamp(axis.Percentile, 0d, 100d);
-        }
-
-        var normalized = (value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);
-
-        if (!axis.HigherIsBetter)
-        {
-            normalized = 100d - normalized;
-        }
-
-        return Math.Clamp(Math.Round(normalized, 1, MidpointRounding.AwayFromZero), 0d, 100d);
+        // Always use the API percentile — direction-aware, min-max normalization forbidden (A9/A11 §7/§19).
+        _ = value;
+        return Math.Clamp(axis.Percentile, 0d, 100d);
     }
 
     private static string FormatNumber(double value, string format = "0.##")

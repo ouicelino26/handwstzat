@@ -49,8 +49,8 @@ public static class PlayerSheetExportHelper
             .Take(6)
             .Select(axis => new PlayerSheetRadarAxis(
                 HumanizeRadarLabel(axis.Label),
-                NormalizeRadarValue(axis, axis.Value),
-                NormalizeRadarValue(axis, axis.MedianValue)))
+                Math.Clamp(axis.Percentile, 0d, 100d),
+                50.0))
             .ToList();
     }
 
@@ -78,8 +78,8 @@ public static class PlayerSheetExportHelper
                 .Take(6)
                 .Select(axis => new PlayerSheetRadarAxis(
                     HumanizeRadarLabel(axis.Label),
-                    NormalizeRadarValue(axis, axis.Value),
-                    NormalizeRadarValue(axis, axis.MedianValue)))
+                    Math.Clamp(axis.Percentile, 0d, 100d),
+                    50.0))
                 .ToList();
         }
 
@@ -90,36 +90,22 @@ public static class PlayerSheetExportHelper
             .Take(6)
             .Select(axis => new PlayerSheetRadarAxis(
                 HumanizeRadarLabel(axis.Label),
-                NormalizeRadarValue(axis, axis.Value),
-                NormalizeRadarValue(axis, axis.MedianValue)))
+                Math.Clamp(axis.Percentile, 0d, 100d),
+                50.0))
             .ToList();
     }
 
     // ── Normalization ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Normalize a raw axis value to 0-100 in the "favorable" direction.
-    /// For HigherIsBetter=false metrics, the score is inverted so that a larger
-    /// radar polygon always represents better performance.
-    /// Falls back to the API-provided percentile when min/max are not meaningful.
+    /// Returns the API-provided percentile, clamped to 0-100.
+    /// The percentile is already direction-aware (API handles HigherIsBetter).
+    /// Min-max normalization is forbidden per A9 spec §7/§19 — always use percentile.
     /// </summary>
     public static double NormalizeRadarValue(PositionProfileAxisDto axis, double value)
     {
-        if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
-        {
-            // The API percentile is already oriented: higher = favorable.
-            return Math.Clamp(axis.Percentile, 0d, 100d);
-        }
-
-        var normalized = (value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);
-
-        if (!axis.HigherIsBetter)
-        {
-            // Invert so that e.g. fewer turnovers → larger radar area.
-            normalized = 100d - normalized;
-        }
-
-        return Math.Clamp(Math.Round(normalized, 1, MidpointRounding.AwayFromZero), 0d, 100d);
+        _ = value;
+        return Math.Clamp(axis.Percentile, 0d, 100d);
     }
 
     // ── Table rows ────────────────────────────────────────────────────────────

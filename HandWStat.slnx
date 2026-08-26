@@ -1,4 +1,6 @@
 <Solution>
   <Project Path="HandWStat.csproj" />
   <Project Path="HandWStat.Tests/HandWStat.Tests.csproj" />
+  <Project Path="HandWStat.Web.TestHost/HandWStat.Web.TestHost.csproj" />
+  <Project Path="HandWStat.E2E.Tests/HandWStat.E2E.Tests.csproj" />
 </Solution>

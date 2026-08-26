@@ -62,10 +62,20 @@
             </div>
 
             <div class="goal-map-wrap">
-                <svg class="goal-map" viewBox="0 0 804 440" role="img" aria-label="Carte de precision du but">
+                <svg class="goal-map" viewBox="0 0 1288 617" role="img" aria-label="Carte de precision du but">
+                    <defs>
+                        <linearGradient id="gkpi-grad-right" x1="963.25" y1="161" x2="963.25" y2="623" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#B7D5C8" />
+                            <stop offset="1" stop-color="#B7D5C8" stop-opacity="0" />
+                        </linearGradient>
+                        <linearGradient id="gkpi-grad-top" x1="641.5" y1="159" x2="641.5" y2="245" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#B7D5C8" />
+                            <stop offset="1" stop-color="#B7D5C8" stop-opacity="0" />
+                        </linearGradient>
+                    </defs>
                     <title>Carte de precision du but</title>
                     <desc>Zones de tir avec taux de reussite par secteur du but</desc>
-                    <rect x="0" y="0" width="804" height="440" rx="24" class="goal-bg" fill="#0f2520" />
+                    <rect width="1288" height="617" class="goal-bg" fill="white" pointer-events="none" />
 
                     @foreach (var zone in GoalGeometries)
                     {
@@ -137,6 +147,47 @@
                             </div>
                         </foreignObject>
                     }
+
+                    @* Decorative overlay — pointer-events: none, sits above zones *@
+                    <g pointer-events="none" aria-hidden="true">
+                        @* Net horizontal lines *@
+                        <path d="M393 244H897M393 293.4L897 287M393 343L897 337.5M393 392.4L897 388.5M393 442H897M393 487L897 491.4M393 541H897" stroke="#040000" stroke-width="0.5" />
+                        @* Net vertical lines *@
+                        <path d="M393 541V244M476.83 541V244M561 541V244M644.83 541V244M729 541V244M812.83 541V244M897 541V244" stroke="#040000" stroke-width="0.5" />
+                        @* Top diagonal net lines *@
+                        <path d="M256.5 163.5L392.5 246.5M351.875 162L476 244M446.75 162L560 244M643.5 162V244M826.5 161L729.5 244M923 161L813 246.5M1027.5 159.5L896.5 244" stroke="black" stroke-width="0.5" />
+                        @* Right diagonal net lines *@
+                        <path d="M1026.5 160L897 244M1031 231.5L897 286.243M1031 310L897 337.475M1027 388.5H897M1027.5 466.5L897 439.732M1027.5 544L897 490.757M1031 624L897 541" stroke="#090000" stroke-width="0.5" />
+                        @* Top perspective lines *@
+                        <path d="M258 164L1027 160M280 177.306L1004.5 174M302.5 190.667L984 187.5M324 203.973L964.5 200.5M346 217.333L940 216M367 230.64L918.5 229.5M393 244H898" stroke="#040000" stroke-width="0.5" />
+                        @* Left depth lines (vertical) *@
+                        <path d="M257 613V164M279.621 601.5V177.5M302.333 589V192M324.954 577V205M347.667 565.5V219M370.288 553V233M393 541V244" stroke="#040000" stroke-width="0.5" />
+                        @* Left depth lines (horizontal) *@
+                        <path d="M257 163.5L393 246.505M257 243L393 294.605M257 317L393 342.9M257 391H393M257 465L393 439.295M257 539L393 487.395M257 613L393 541" stroke="#020202" stroke-width="0.5" />
+                        @* Right depth lines (vertical) *@
+                        <path d="M897 541V244M918.789 554V229M940.667 568V215.5M961.5 581L964.5 200M984.333 595V187M1005 608V174M1028 622L1027 160" stroke="#040000" stroke-width="0.5" />
+                        @* Left side shadow overlay *@
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M258 164L393 246.5V541L258 613V164Z" fill="#0A1F38" fill-opacity="0.28" />
+                        @* Right side shadow overlay *@
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M1027 160L897.5 244.5V541L1027 624V160Z" fill="#0A1F38" fill-opacity="0.28" />
+                        @* Top shadow overlay *@
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M258 162.5L1025.5 160L898.5 244.5H393.143L258 162.5Z" fill="#05142E" fill-opacity="0.34" />
+                        @* Right gradient highlight *@
+                        <path d="M898 245L1026.5 161L1030 623L900 542L898 245Z" fill="url(#gkpi-grad-right)" />
+                        @* Top gradient highlight *@
+                        <path d="M257.5 163.5L1025.5 159L897.5 243.5L391 245L257.5 163.5Z" fill="url(#gkpi-grad-top)" />
+                        @* Inner cage dark tint *@
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M257 163H1031V622H257V163Z" fill="#030A1A" fill-opacity="0.1" />
+                        @* Crossbar — red base then white dashes *@
+                        <path d="M242 156.5L1030.96 152.5" stroke="#C71717" stroke-width="15" />
+                        <path d="M242 156.5L1030.96 152.5" stroke="white" stroke-width="15" stroke-dasharray="60 60" />
+                        @* Right post *@
+                        <line x1="1035.5" y1="624" x2="1034.5" y2="145" stroke="#C71717" stroke-opacity="0.78" stroke-width="15" />
+                        <line x1="1035.5" y1="624" x2="1034.5" y2="145" stroke="white" stroke-width="15" stroke-dasharray="60 60" />
+                        @* Left post *@
+                        <line x1="249.5" y1="613" x2="249.5" y2="153" stroke="#C71717" stroke-opacity="0.78" stroke-width="15" />
+                        <line x1="249.5" y1="613" x2="249.5" y2="153" stroke="white" stroke-width="15" stroke-dasharray="60 60" />
+                    </g>
                 </svg>
             </div>
 
@@ -200,10 +251,20 @@
                 </header>
 
                 <div class="goal-map-wrap">
-                    <svg class="goal-map" viewBox="0 0 804 440" role="img" aria-label="Carte de precision du but">
+                    <svg class="goal-map" viewBox="0 0 1288 617" role="img" aria-label="Carte de precision du but">
+                        <defs>
+                            <linearGradient id="gkpi-grad-right-s" x1="963.25" y1="161" x2="963.25" y2="623" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#B7D5C8" />
+                                <stop offset="1" stop-color="#B7D5C8" stop-opacity="0" />
+                            </linearGradient>
+                            <linearGradient id="gkpi-grad-top-s" x1="641.5" y1="159" x2="641.5" y2="245" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#B7D5C8" />
+                                <stop offset="1" stop-color="#B7D5C8" stop-opacity="0" />
+                            </linearGradient>
+                        </defs>
                         <title>Carte de precision du but</title>
                         <desc>Zones de tir avec taux de reussite par secteur du but</desc>
-                        <rect x="0" y="0" width="804" height="440" rx="24" class="goal-bg" fill="#0f2520" />
+                        <rect width="1288" height="617" class="goal-bg" fill="white" pointer-events="none" />
 
                         @foreach (var zone in GoalGeometries)
                         {
@@ -275,6 +336,30 @@
                                 </div>
                             </foreignObject>
                         }
+
+                        @* Decorative overlay — pointer-events: none, sits above zones *@
+                        <g pointer-events="none" aria-hidden="true">
+                            <path d="M393 244H897M393 293.4L897 287M393 343L897 337.5M393 392.4L897 388.5M393 442H897M393 487L897 491.4M393 541H897" stroke="#040000" stroke-width="0.5" />
+                            <path d="M393 541V244M476.83 541V244M561 541V244M644.83 541V244M729 541V244M812.83 541V244M897 541V244" stroke="#040000" stroke-width="0.5" />
+                            <path d="M256.5 163.5L392.5 246.5M351.875 162L476 244M446.75 162L560 244M643.5 162V244M826.5 161L729.5 244M923 161L813 246.5M1027.5 159.5L896.5 244" stroke="black" stroke-width="0.5" />
+                            <path d="M1026.5 160L897 244M1031 231.5L897 286.243M1031 310L897 337.475M1027 388.5H897M1027.5 466.5L897 439.732M1027.5 544L897 490.757M1031 624L897 541" stroke="#090000" stroke-width="0.5" />
+                            <path d="M258 164L1027 160M280 177.306L1004.5 174M302.5 190.667L984 187.5M324 203.973L964.5 200.5M346 217.333L940 216M367 230.64L918.5 229.5M393 244H898" stroke="#040000" stroke-width="0.5" />
+                            <path d="M257 613V164M279.621 601.5V177.5M302.333 589V192M324.954 577V205M347.667 565.5V219M370.288 553V233M393 541V244" stroke="#040000" stroke-width="0.5" />
+                            <path d="M257 163.5L393 246.505M257 243L393 294.605M257 317L393 342.9M257 391H393M257 465L393 439.295M257 539L393 487.395M257 613L393 541" stroke="#020202" stroke-width="0.5" />
+                            <path d="M897 541V244M918.789 554V229M940.667 568V215.5M961.5 581L964.5 200M984.333 595V187M1005 608V174M1028 622L1027 160" stroke="#040000" stroke-width="0.5" />
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M258 164L393 246.5V541L258 613V164Z" fill="#0A1F38" fill-opacity="0.28" />
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M1027 160L897.5 244.5V541L1027 624V160Z" fill="#0A1F38" fill-opacity="0.28" />
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M258 162.5L1025.5 160L898.5 244.5H393.143L258 162.5Z" fill="#05142E" fill-opacity="0.34" />
+                            <path d="M898 245L1026.5 161L1030 623L900 542L898 245Z" fill="url(#gkpi-grad-right-s)" />
+                            <path d="M257.5 163.5L1025.5 159L897.5 243.5L391 245L257.5 163.5Z" fill="url(#gkpi-grad-top-s)" />
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M257 163H1031V622H257V163Z" fill="#030A1A" fill-opacity="0.1" />
+                            <path d="M242 156.5L1030.96 152.5" stroke="#C71717" stroke-width="15" />
+                            <path d="M242 156.5L1030.96 152.5" stroke="white" stroke-width="15" stroke-dasharray="60 60" />
+                            <line x1="1035.5" y1="624" x2="1034.5" y2="145" stroke="#C71717" stroke-opacity="0.78" stroke-width="15" />
+                            <line x1="1035.5" y1="624" x2="1034.5" y2="145" stroke="white" stroke-width="15" stroke-dasharray="60 60" />
+                            <line x1="249.5" y1="613" x2="249.5" y2="153" stroke="#C71717" stroke-opacity="0.78" stroke-width="15" />
+                            <line x1="249.5" y1="613" x2="249.5" y2="153" stroke="white" stroke-width="15" stroke-dasharray="60 60" />
+                        </g>
                     </svg>
                 </div>
             </section>
@@ -372,32 +457,60 @@
     private const string ViewModeGoal = "goal";
     private const string ViewModeTrigger = "trigger";
 
+    // New SVG viewBox: 1288×617
+    // Outer zones follow the structural panels of GoalKpi_cleaned.svg
+    // Inner 4×3 grid: x=256..1026, y=161..619
     private static readonly ZoneGeometry[] GoalGeometries =
     [
-        new("BG12", SvgShape.Path, "M1.77525 2.52883C0.330891 1.33665 1.17066 -1.00901 3.04348 -1.0136L402.995 -1.99508C404.102 -1.9978 405 -1.10157 405 0.00491405V82C405 83.1046 404.105 84 403 84H101.198C100.733 84 100.283 83.8382 99.9248 83.5424L1.77525 2.52883Z", 0, 0, 0, 0, 226, 43),
-        new("BD12", SvgShape.Path, "M405 -0.994974C405 -1.54922 405.451 -1.99774 406.005 -1.99496L801.347 -0.0132989C802.269 -0.00867558 802.694 1.13589 801.998 1.74121L708.283 83.2539C708.101 83.4126 707.867 83.4998 707.625 83.4994L405.998 83.0016C405.447 83.0007 405 82.5533 405 82.0016V-0.994974Z", 0, 0, 0, 0, 579, 43),
-        new("BG11", SvgShape.Path, "M103.671 87.4561C102.352 86.2147 103.231 84 105.042 84H403C404.105 84 405 84.8954 405 86V133C405 134.105 404.105 135 403 135H154.96C154.45 135 153.96 134.805 153.589 134.456L103.671 87.4561Z", 0, 0, 0, 0, 251, 109),
-        new("BD11", SvgShape.Path, "M405 86C405 84.8954 405.895 84 407 84H703.093C704.886 84 705.773 86.1769 704.491 87.4301L656.416 134.43C656.043 134.795 655.541 135 655.018 135H407C405.895 135 405 134.105 405 133V86Z", 0, 0, 0, 0, 530, 109),
-        new("BG8", SvgShape.Path, "M272 136H159C155.686 136 153 138.729 153 142.096V231.504C153 234.871 155.686 237.6 159 237.6H272C275.314 237.6 278 234.871 278 231.504V142.096C278 138.729 275.314 136 272 136Z", 0, 0, 0, 0, 216, 197),
-        new("BG7", SvgShape.Path, "M399 136H286C282.686 136 280 138.729 280 142.096V231.504C280 234.871 282.686 237.6 286 237.6H399C402.314 237.6 405 234.871 405 231.504V142.096C405 138.729 402.314 136 399 136Z", 0, 0, 0, 0, 342, 197),
-        new("BD7", SvgShape.Path, "M525 136H413C409.686 136 407 138.729 407 142.096V231.504C407 234.871 409.686 237.6 413 237.6H525C528.314 237.6 531 234.871 531 231.504V142.096C531 138.729 528.314 136 525 136Z", 0, 0, 0, 0, 469, 197),
-        new("BD8", SvgShape.Path, "M651 136H539C535.686 136 533 138.729 533 142.096V231.504C533 234.871 535.686 237.6 539 237.6H651C654.314 237.6 657 234.871 657 231.504V142.096C657 138.729 654.314 136 651 136Z", 0, 0, 0, 0, 595, 197),
-        new("BG10", SvgShape.Path, "M4.2989 3.61751C3.00085 2.50888 1 3.43128 1 5.13833V286.8C1 287.905 1.89543 288.8 3 288.8H97C98.1046 288.8 99 287.905 99 286.8V85.422C99 84.8369 98.7438 84.2812 98.2989 83.9012L4.2989 3.61751Z", 0, 0, 0, 0, 50, 176),
-        new("BG9", SvgShape.Path, "M102.364 88.6368C101.085 87.4445 99 88.3512 99 90.0996V287.64C99 288.745 99.8954 289.64 101 289.64H149C150.105 289.64 151 288.745 151 287.64V134.858C151 134.304 150.77 133.774 150.364 133.396L102.364 88.6368Z", 0, 0, 0, 0, 124, 215),
-        new("BG6", SvgShape.Path, "M272 238H159C155.686 238 153 240.729 153 244.096V333.504C153 336.871 155.686 339.6 159 339.6H272C275.314 339.6 278 336.871 278 333.504V244.096C278 240.729 275.314 238 272 238Z", 0, 0, 0, 0, 216, 297),
-        new("BG5", SvgShape.Path, "M399 238H286C282.686 238 280 240.729 280 244.096V333.504C280 336.871 282.686 339.6 286 339.6H399C402.314 339.6 405 336.871 405 333.504V244.096C405 240.729 402.314 238 399 238Z", 0, 0, 0, 0, 342, 297),
-        new("BD5", SvgShape.Path, "M525 239H413C409.686 239 407 241.729 407 245.096V334.504C407 337.871 409.686 340.6 413 340.6H525C528.314 340.6 531 337.871 531 334.504V245.096C531 241.729 528.314 239 525 239Z", 0, 0, 0, 0, 469, 297),
-        new("BD6", SvgShape.Path, "M651 238H539C535.686 238 533 240.729 533 244.096V333.504C533 336.871 535.686 339.6 539 339.6H651C654.314 339.6 657 336.871 657 333.504V244.096C657 240.729 654.314 238 651 238Z", 0, 0, 0, 0, 595, 297),
-        new("BD10", SvgShape.Path, "M803.672 0.954254C804.962 -0.191021 807 0.724816 807 2.44991V288C807 289.105 806.105 290 805 290H711C709.895 290 709 289.105 709 288V85.8989C709 85.3272 709.245 84.7828 709.672 84.4032L803.672 0.954254Z", 0, 0, 0, 0, 757, 176),
-        new("BD9", SvgShape.Path, "M704.08 86.1336C705.316 84.8199 707.523 85.6858 707.536 87.4899L708.985 286.985C708.993 288.096 708.096 289 706.985 289H659C657.895 289 657 288.105 657 287V136.947C657 136.437 657.194 135.947 657.544 135.576L704.08 86.1336Z", 0, 0, 0, 0, 683, 215),
-        new("BG4", SvgShape.Path, "M93 290H7C3.68629 290 1 292.729 1 296.096V436.304C1 439.671 3.68629 442.4 7 442.4H93C96.3137 442.4 99 439.671 99 436.304V296.096C99 292.729 96.3137 290 93 290Z", 0, 0, 0, 0, 47, 373),
-        new("BG3", SvgShape.Path, "M145 290H105C101.686 290 99 292.729 99 296.096V436.304C99 439.671 101.686 442.4 105 442.4H145C148.314 442.4 151 439.671 151 436.304V296.096C151 292.729 148.314 290 145 290Z", 0, 0, 0, 0, 123, 373),
-        new("BG2", SvgShape.Path, "M272 340H159C155.686 340 153 342.729 153 346.096V435.504C153 438.871 155.686 441.6 159 441.6H272C275.314 441.6 278 438.871 278 435.504V346.096C278 342.729 275.314 340 272 340Z", 0, 0, 0, 0, 216, 395),
-        new ZoneGeometry("BG1", SvgShape.Path, "M399 340H286C282.686 340 280 342.729 280 346.096V435.504C280 438.871 282.686 441.6 286 441.6H399C402.314 441.6 405 438.871 405 435.504V346.096C405 342.729 402.314 340 399 340Z", 0, 0, 0, 0, 342, 395),
-        new("BD1", SvgShape.Path, "M525 340H413C409.686 340 407 342.729 407 346.096V435.504C407 438.871 409.686 441.6 413 441.6H525C528.314 441.6 531 438.871 531 435.504V346.096C531 342.729 528.314 340 525 340Z", 0, 0, 0, 0, 469, 395),
-        new("BD2", SvgShape.Path, "M651 340H539C535.686 340 533 342.729 533 346.096V435.504C533 438.871 535.686 441.6 539 441.6H651C654.314 441.6 657 438.871 657 435.504V346.096C657 342.729 654.314 340 651 340Z", 0, 0, 0, 0, 595, 395),
-        new("BD3", SvgShape.Path, "M703 289.4H663C659.686 289.4 657 292.14 657 295.52V436.28C657 439.66 659.686 442.4 663 442.4H703C706.314 442.4 709 439.66 709 436.28V295.52C709 292.14 706.314 289.4 703 289.4Z", 0, 0, 0, 0, 683, 373),
-        new("BD4", SvgShape.Path, "M801 290H715C711.686 290 709 292.722 709 296.08V435.92C709 439.278 711.686 442 715 442H801C804.314 442 807 439.278 807 435.92V296.08C807 292.722 804.314 290 801 290Z", 0, 0, 0, 0, 757, 373)
+        // ── Top roof zones ────────────────────────────────────────────────
+        new("BG12", SvgShape.Path,
+            "M643.285 1L0 1L157.942 67.621C158.233 67.866 158.608 68.0006 158.995 68L641.688 67.2314C642.57 67.23 643.285 66.5393 643.285 65.6875V1Z",
+            0, 0, 0, 0, 320, 34),
+        new("BD12", SvgShape.Path,
+            "M644.715 1H1288L1130.06 67.621C1129.77 67.866 1129.39 68.0006 1129.01 68L646.312 67.2314C645.43 67.23 644.715 66.5393 644.715 65.6875V1Z",
+            0, 0, 0, 0, 968, 34),
+        // ── Upper angled panels ───────────────────────────────────────────
+        new("BG11", SvgShape.Path,
+            "M163.011 74.283C160.905 72.3854 162.308 69 165.199 69H640.808C642.571 69 644 70.3687 644 72.0572V143.901C644 145.59 642.571 146.958 640.808 146.958H244.88C244.88 148.477 244.88 146.958 240 144.5L163.011 74.283Z",
+            0, 0, 0, 0, 400, 108),
+        new("BD11", SvgShape.Path,
+            "M644 72.0196C644 70.3519 645.435 69 647.206 69H1121.79C1124.66 69 1126.08 72.2867 1124.03 74.1788L1046.97 145.139C1046.38 145.69 1045.57 146 1044.73 146H647.206C645.435 146 644 144.649 644 142.98V72.0196Z",
+            0, 0, 0, 0, 884, 108),
+        // ── Left outer wall zones ─────────────────────────────────────────
+        new("BG10", SvgShape.Path,
+            "M2 1L2 377.942C2 379.631 3.42538 381 5.18367 381H154.816C156.575 381 158 379.631 158 377.942V69.9869C158 69.0922 157.592 68.2424 156.884 67.6613L2 1Z",
+            0, 0, 0, 0, 80, 191),
+        new("BG9", SvgShape.Path,
+            "M163.24 74.8271C161.248 73.005 158 74.3906 158 77.0625V378.944C158 380.632 159.395 382 161.115 382H239C240.721 382 241 380.632 241 378.944V263.5V146.5C243 146.5 238.642 143.806 238.009 143.228L163.24 74.8271Z",
+            0, 0, 0, 0, 199, 228),
+        // ── Inner top row (4 columns) ─────────────────────────────────────
+        new("BG8",  SvgShape.Rect, "", 256, 161, 191, 153, 351, 237),
+        new("BG7",  SvgShape.Rect, "", 450, 161, 191, 153, 545, 237),
+        new("BD7",  SvgShape.Rect, "", 644, 161, 190, 153, 739, 237),
+        new("BD8",  SvgShape.Rect, "", 837, 161, 189, 153, 931, 237),
+        // ── Inner middle row ──────────────────────────────────────────────
+        new("BG6",  SvgShape.Rect, "", 256, 314, 191, 153, 351, 390),
+        new("BG5",  SvgShape.Rect, "", 450, 314, 191, 153, 545, 390),
+        new("BD5",  SvgShape.Rect, "", 644, 315, 190, 154, 739, 392),
+        new("BD6",  SvgShape.Rect, "", 837, 314, 189, 153, 931, 390),
+        // ── Right outer wall zones ────────────────────────────────────────
+        new("BD9", SvgShape.Path,
+            "M1122.26 71.9676C1124.21 69.9599 1127.69 71.2833 1127.71 74.0404L1130 378.921C1130.01 380.618 1128.6 382 1126.85 382H1051.15C1049.41 382 1048 380.632 1048 378.943L1043.5 147.528C1043.5 146.749 1048.5 140.972 1048.5 144L1122.26 71.9676Z",
+            0, 0, 0, 0, 1087, 228),
+        new("BD10", SvgShape.Path,
+            "M1287 1L1287 377.942C1287 379.631 1285.57 381 1283.8 381H1133.2C1131.43 381 1130 379.631 1130 377.942V69.9869C1130 69.0922 1130.41 68.2424 1131.12 67.6613L1287 1Z",
+            0, 0, 0, 0, 1208, 191),
+        // ── Bottom left zones ─────────────────────────────────────────────
+        new("BG4",  SvgShape.Rect, "", 0,   382, 158, 230,  79, 497),
+        new("BG3",  SvgShape.Rect, "", 158, 381,  84, 230, 199, 496),
+        // ── Inner bottom row ──────────────────────────────────────────────
+        new("BG2",  SvgShape.Rect, "", 256, 467, 191, 152, 351, 543),
+        new("BG1",  SvgShape.Rect, "", 450, 467, 191, 152, 545, 543),
+        new("BD1",  SvgShape.Rect, "", 644, 467, 190, 152, 739, 543),
+        new("BD2",  SvgShape.Rect, "", 837, 467, 189, 152, 931, 543),
+        // ── Bottom right zones ────────────────────────────────────────────
+        new("BD3",  SvgShape.Rect, "", 1048, 382,  82, 232, 1089, 498),
+        new("BD4",  SvgShape.Rect, "", 1130, 382, 157, 230, 1208, 497),
     ];
 
     private static readonly ZoneGeometry[] TriggerGeometries =

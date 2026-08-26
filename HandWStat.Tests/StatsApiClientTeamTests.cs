@@ -188,16 +188,15 @@ public sealed class StatsApiClientTeamTests
     }
 
     [Fact]
-    public async Task GetTeamPlayers_NullResponse_ReturnsEmpty()
+    public async Task GetTeamPlayers_NullResponse_ThrowsApiRequestException()
     {
+        // 200 + JSON null is an invalid API response — callers must not receive false empty list.
         var (client, _) = Create(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new System.Net.Http.StringContent("null", System.Text.Encoding.UTF8, "application/json")
         });
 
-        var result = await client.GetTeamPlayersAsync(3);
-
-        Assert.Empty(result);
+        await Assert.ThrowsAsync<ApiRequestException>(() => client.GetTeamPlayersAsync(3));
     }
 
     [Fact]

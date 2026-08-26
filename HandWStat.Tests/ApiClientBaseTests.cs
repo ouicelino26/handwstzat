@@ -58,14 +58,54 @@ public sealed class ApiClientBaseTests
     }
 
     [Fact]
-    public async Task GetListAsync_304WithNoCache_ReturnsEmptyList()
+    public async Task GetListAsync_304WithNoCache_ThrowsApiRequestException()
     {
+        // 304 with no prior cache entry → null result → error (server misbehaving, not a valid empty list)
         using var httpClient = new HttpClient(new StubHandler(new HttpResponseMessage(HttpStatusCode.NotModified)));
+        var client = new TestApiClient(httpClient, new ApiSettings { BaseUrl = "https://example.test/" }, new StubAuthService());
+
+        await Assert.ThrowsAsync<ApiRequestException>(() => client.GetListValueAsync());
+    }
+
+    [Fact]
+    public async Task GetListAsync_200WithEmptyArray_ReturnsEmpty()
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("[]", Encoding.UTF8, "application/json")
+        };
+        using var httpClient = new HttpClient(new StubHandler(response));
         var client = new TestApiClient(httpClient, new ApiSettings { BaseUrl = "https://example.test/" }, new StubAuthService());
 
         var result = await client.GetListValueAsync();
 
         Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetListAsync_200WithNullBody_ThrowsApiRequestException()
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("null", Encoding.UTF8, "application/json")
+        };
+        using var httpClient = new HttpClient(new StubHandler(response));
+        var client = new TestApiClient(httpClient, new ApiSettings { BaseUrl = "https://example.test/" }, new StubAuthService());
+
+        await Assert.ThrowsAsync<ApiRequestException>(() => client.GetListValueAsync());
+    }
+
+    [Fact]
+    public async Task GetListAsync_HttpFailure_ThrowsApiRequestException()
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        using var httpClient = new HttpClient(new StubHandler(response));
+        var client = new TestApiClient(httpClient, new ApiSettings { BaseUrl = "https://example.test/" }, new StubAuthService());
+
+        await Assert.ThrowsAsync<ApiRequestException>(() => client.GetListValueAsync());
     }
 
     [Fact]

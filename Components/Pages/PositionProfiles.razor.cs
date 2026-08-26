@@ -2,6 +2,7 @@ using HandWStat.Components.Shared;
 using HandWStat.Models.Analytics;
 using HandWStat.Models.Contracts;
 using HandWStat.Services;
+using HandWStat.Services.Analytics;
 using HandWStat.Services.Api;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -697,8 +698,13 @@ public class PositionProfilesBase : ComponentBase, IDisposable
             .OrderByDescending(axis => axis.Impact)
             .ThenBy(axis => axis.Label, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var benchmarkPosition = AnalyticsPositionResolver.Resolve(
+            PositionProfile!.PositionCode,
+            PositionProfile.PositionName,
+            PositionProfile.IsGoalkeeperProfile);
+
         PositionProfileChartRows = PositionProfileAxes
-            .Where(axis => !IsRadarHistogramExcludedAxis(axis))
+            .Where(axis => !IsRadarHistogramExcludedAxis(axis, benchmarkPosition))
             .ToList();
         PositionProfileCoachRows = PositionProfileChartRows
             .OrderByDescending(axis => axis.DirectionalPercentile)
@@ -898,21 +904,11 @@ public class PositionProfilesBase : ComponentBase, IDisposable
             return [];
         }
 
-        var lookup = sourceAxes
-            .Where(axis => !string.IsNullOrWhiteSpace(axis.Key))
-            .ToDictionary(axis => axis.Key, axis => axis, StringComparer.OrdinalIgnoreCase);
-
+        // Median reference on a percentile radar is always 50 (the 50th percentile).
+        // Do not compute from raw values — the reference line anchors at the center.
         return referenceAxes
             .Where(axis => !string.IsNullOrWhiteSpace(axis.Key))
-            .Select(axis =>
-            {
-                if (!lookup.TryGetValue(axis.Key, out var sourceAxis))
-                {
-                    return new MetricPlotPoint(axis.Label, axis.RadarMedianValue);
-                }
-
-                return new MetricPlotPoint(axis.Label, NormalizeRadarValue(sourceAxis));
-            })
+            .Select(axis => new MetricPlotPoint(axis.Label, 50.0))
             .ToList();
     }
 
@@ -926,24 +922,6 @@ public class PositionProfilesBase : ComponentBase, IDisposable
             < 0 => "Sous la mediane, controle du risque correct mais a surveiller.",
             _ => "Cale sur la mediane du poste, zone de stabilite."
         };
-    }
-
-    private static double NormalizeRadarValue(PositionProfileAxisDto axis)
-    {
-        if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
-        {
-            // The API percentile is already oriented so that a higher score is favorable.
-            return Math.Clamp(axis.Percentile, 0d, 100d);
-        }
-
-        var normalized = (axis.Value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);
-
-        if (!axis.HigherIsBetter)
-        {
-            normalized = 100d - normalized;
-        }
-
-        return Math.Clamp(Math.Round(normalized, 1, MidpointRounding.AwayFromZero), 0d, 100d);
     }
 
     private static int GetAxisSortRank(PositionProfileAxisDto axis)
@@ -1118,14 +1096,13 @@ public class PositionProfilesBase : ComponentBase, IDisposable
         }));
     }
 
-    private static bool IsRadarHistogramExcludedAxis(PositionProfileAxisViewModel axis)
+    private static bool IsRadarHistogramExcludedAxis(PositionProfileAxisViewModel axis, AnalyticsPosition position)
     {
         if (string.Equals(axis.Key, "open_shot_success", StringComparison.OrdinalIgnoreCase))
-        {
             return true;
-        }
-
-        return string.Equals(axis.Label?.Trim(), "% jeu", StringComparison.OrdinalIgnoreCase);
+        if (string.Equals(axis.Label?.Trim(), "% jeu", StringComparison.OrdinalIgnoreCase))
+            return true;
+        return PositionBenchmarkBuilder.IsBackendGapAxis(position, axis.Label ?? string.Empty);
     }
 
     private void UpdatePositionProfileComparisonPreviewPlayers()

@@ -1,5 +1,6 @@
 using HandWStat.Models.Analytics;
 using HandWStat.Models.Contracts;
+using HandWStat.Services.Analytics;
 using HandWStat.Services.Api;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -21,14 +22,31 @@ public class AnalyseTabPanelBase : ComponentBase
     [Parameter]
     public string? Season { get; set; }
 
+    [Parameter]
+    public string? Day { get; set; }
+
+    [Parameter]
+    public bool IsGoalkeeper { get; set; }
+
+    [Parameter]
+    public string? PositionCode { get; set; }
+
     [Inject]
     protected PlayersApiClient PlayersApiClient { get; set; } = default!;
+
+    [Inject]
+    protected StatsApiClient StatsApiClient { get; set; } = default!;
 
     [Inject]
     protected IJSRuntime JS { get; set; } = default!;
 
     [Inject]
     protected ILogger<AnalyseTabPanelBase> Logger { get; set; } = default!;
+
+    protected EventContextBreakdownDto? EventContexts { get; private set; }
+    protected bool IsContextBusy { get; private set; }
+    protected string? ContextErrorMessage { get; private set; }
+    protected ContextDimension ActiveContextDimension { get; set; } = ContextDimension.ScoreState;
 
     protected PositionProfileResponseDto? PositionProfile { get; private set; }
     protected IReadOnlyList<PositionProfileAxisViewModel> PositionProfileAxes { get; private set; } = [];
@@ -46,13 +64,15 @@ public class AnalyseTabPanelBase : ComponentBase
     private int? _lastLoadedTeamId;
     private int? _lastLoadedCompetitionId;
     private string? _lastLoadedSeason;
+    private string? _lastLoadedDay;
 
     protected override async Task OnParametersSetAsync()
     {
         if (PlayerId == _lastLoadedPlayerId
             && TeamId == _lastLoadedTeamId
             && CompetitionId == _lastLoadedCompetitionId
-            && Season == _lastLoadedSeason)
+            && Season == _lastLoadedSeason
+            && Day == _lastLoadedDay)
         {
             return;
         }
@@ -61,7 +81,14 @@ public class AnalyseTabPanelBase : ComponentBase
         _lastLoadedTeamId = TeamId;
         _lastLoadedCompetitionId = CompetitionId;
         _lastLoadedSeason = Season;
+        _lastLoadedDay = Day;
+
+        // Set position-aware default dimension before loading
+        var position = AnalyticsPositionResolver.Resolve(PositionCode, null, IsGoalkeeper);
+        ActiveContextDimension = ContextAnalyticsHelper.GetDefaultDimension(position);
+
         await LoadProfileAsync();
+        await LoadContextAsync();
     }
 
     protected async Task ExportCsvAsync()
@@ -174,6 +201,43 @@ public class AnalyseTabPanelBase : ComponentBase
         ValidateData();
     }
 
+    private async Task LoadContextAsync()
+    {
+        if (!PlayerId.HasValue)
+        {
+            EventContexts = null;
+            ContextErrorMessage = null;
+            return;
+        }
+
+        try
+        {
+            IsContextBusy = true;
+            await InvokeAsync(StateHasChanged);
+            ContextErrorMessage = null;
+
+            var options = ContextAnalyticsHelper.BuildContextOptions(
+                playerId:      PlayerId.Value,
+                competitionId: CompetitionId,
+                teamId:        TeamId,
+                season:        Season,
+                day:           Day);
+
+            EventContexts = await StatsApiClient.GetEventContextsAsync(options);
+        }
+        catch (Exception ex)
+        {
+            ContextErrorMessage = ex.Message;
+            EventContexts = null;
+            Logger.LogWarning(ex, "Failed to load event contexts for player {PlayerId}.", PlayerId);
+        }
+        finally
+        {
+            IsContextBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private void ClearAnalysisState()
     {
         PositionProfile = null;
@@ -185,6 +249,8 @@ public class AnalyseTabPanelBase : ComponentBase
         PositionProfileInsights = PositionProfileInsightBundle.Empty;
         AnlzHistogramKey = string.Empty;
         AnlzRadarKey = string.Empty;
+        EventContexts = null;
+        ContextErrorMessage = null;
     }
 
     private IReadOnlyList<ScopeSummaryItem> BuildScopeSummaryItems()
@@ -384,19 +450,8 @@ public class AnalyseTabPanelBase : ComponentBase
 
     private static double NormalizeRadarValue(PositionProfileAxisDto axis)
     {
-        if (!double.IsFinite(axis.MinValue) || !double.IsFinite(axis.MaxValue) || axis.MaxValue <= axis.MinValue)
-        {
-            return Math.Clamp(axis.Percentile, 0d, 100d);
-        }
-
-        var normalized = (axis.Value - axis.MinValue) * 100d / (axis.MaxValue - axis.MinValue);
-
-        if (!axis.HigherIsBetter)
-        {
-            normalized = 100d - normalized;
-        }
-
-        return Math.Clamp(Math.Round(normalized, 1, MidpointRounding.AwayFromZero), 0d, 100d);
+        // Always use the API percentile — direction-aware, min-max normalization forbidden (A9/A11 §7/§19).
+        return Math.Clamp(axis.Percentile, 0d, 100d);
     }
 
     private static int GetAxisSortRank(PositionProfileAxisDto axis)

@@ -106,9 +106,9 @@ public sealed class CourtZoneMapperTests
     {
         var zone = MakeZoneWithOutcomes([
             ("But", 3),
-            ("But sur penalty", 2),
-            ("Tir arrete", 1),
-            ("Penalty arrete", 1),
+            ("But sur pénalty", 2),
+            ("Tir arrêté", 1),
+            ("Pénalty arrêté", 1),
         ]);
 
         var result = CourtZoneMapper.FilterByAttackType(zone, PlayerCourtAttackType.All, false);
@@ -121,14 +121,14 @@ public sealed class CourtZoneMapperTests
     {
         var zone = MakeZoneWithOutcomes([
             ("But", 3),
-            ("But sur penalty", 2),
-            ("Tir arrete", 1),
+            ("But sur pénalty", 2),
+            ("Tir arrêté", 1),
         ]);
 
         var result = CourtZoneMapper.FilterByAttackType(zone, PlayerCourtAttackType.OpenPlay, false);
-        // Only open play events: "But" (3) + "Tir arrete" (1) = 4
+        // Only open play events: "But" (3) + "Tir arrêté" (1) = 4
         Assert.Equal(4, result.Attempts);
-        Assert.DoesNotContain(result.Outcomes, o => o.Label == "But sur penalty");
+        Assert.DoesNotContain(result.Outcomes, o => o.Label == "But sur pénalty");
     }
 
     [Fact]
@@ -136,12 +136,12 @@ public sealed class CourtZoneMapperTests
     {
         var zone = MakeZoneWithOutcomes([
             ("But", 3),
-            ("But sur penalty", 2),
-            ("Penalty arrete", 1),
+            ("But sur pénalty", 2),
+            ("Pénalty arrêté", 1),
         ]);
 
         var result = CourtZoneMapper.FilterByAttackType(zone, PlayerCourtAttackType.SevenMeter, false);
-        // Only 7m events: "But sur penalty" (2) + "Penalty arrete" (1) = 3
+        // Only 7m events: "But sur pénalty" (2) + "Pénalty arrêté" (1) = 3
         Assert.Equal(3, result.Attempts);
         Assert.DoesNotContain(result.Outcomes, o => o.Label == "But");
     }
@@ -151,7 +151,7 @@ public sealed class CourtZoneMapperTests
     {
         var zone = MakeZoneWithOutcomes([
             ("But", 3),
-            ("Tir arrete", 2),
+            ("Tir arrêté", 2),
         ]);
 
         // Request 7m filter but no 7m events exist
@@ -177,8 +177,8 @@ public sealed class CourtZoneMapperTests
     {
         var zone = MakeZoneWithOutcomes([
             ("But", 3),
-            ("Tir arrete", 2),
-            ("Tir a cote", 2),
+            ("Tir arrêté", 2),
+            ("Tir à côté", 2),
         ]);
         // 7 total open play shots -> reliable after open play filter
         var result = CourtZoneMapper.FilterByAttackType(zone, PlayerCourtAttackType.OpenPlay, false);
@@ -222,15 +222,15 @@ public sealed class CourtZoneMapperTests
     {
         var zone = MakeZoneWithOutcomes([
             ("But", 3),
-            ("But sur penalty", 2),
-            ("Tir arrete", 1),
-            ("Penalty arrete", 1),
+            ("But sur pénalty", 2),
+            ("Tir arrêté", 1),
+            ("Pénalty arrêté", 1),
         ]);
 
         var openPlay = CourtZoneMapper.FilterByAttackType(zone, PlayerCourtAttackType.OpenPlay, false);
         var sevenMeter = CourtZoneMapper.FilterByAttackType(zone, PlayerCourtAttackType.SevenMeter, false);
 
-        // Open play goals (But) and 7m goals (But sur penalty) must be separate
+        // Open play goals (But) and 7m goals (But sur pénalty) must be separate
         Assert.Equal(3, openPlay.Successes);
         Assert.Equal(2, sevenMeter.Successes);
     }
