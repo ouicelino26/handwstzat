@@ -21,6 +21,9 @@ public sealed class PageMonitor : IDisposable
     [
         "ResizeObserver loop",          // ApexCharts SVG animation noise in headless
         "_content/",                    // NuGet package static web assets (CSS, fonts)
+        "/_framework/",                 // Blazor framework JS — TestHost serves blazor.server.js,
+                                        // not blazor.web.js; circuit still works via /_blazor SignalR
+        "/_blazor",                     // Blazor SignalR hub path
         ".styles.css",                  // Blazor component isolation CSS
         ".css",                         // Any CSS resource 404 (layout only, not functional)
         ".woff",                        // Fonts
@@ -39,8 +42,13 @@ public sealed class PageMonitor : IDisposable
     private void OnConsole(object? _, IConsoleMessage msg)
     {
         if (msg.Type is not ("error" or "assert")) return;
+
+        // "Failed to load resource: 404" messages put the URL in msg.Location,
+        // not in msg.Text — check both so the allowlist works for asset 404s.
+        var location = msg.Location ?? string.Empty;
         if (AllowlistedConsolePatterns.Any(p =>
-            msg.Text.Contains(p, StringComparison.OrdinalIgnoreCase))) return;
+            msg.Text.Contains(p, StringComparison.OrdinalIgnoreCase) ||
+            location.Contains(p, StringComparison.OrdinalIgnoreCase))) return;
 
         _consoleErrors.Add($"[console.{msg.Type}] {msg.Text}");
     }

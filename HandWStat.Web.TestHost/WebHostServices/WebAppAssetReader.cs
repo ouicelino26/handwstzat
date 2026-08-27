@@ -1,4 +1,5 @@
 using HandWStat.Services;
+using Microsoft.AspNetCore.Hosting;
 
 namespace HandWStat.Web.TestHost.WebHostServices;
 

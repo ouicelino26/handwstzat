@@ -4,9 +4,6 @@ namespace HandWStat.Models.Analytics;
 
 /// <summary>
 /// Converts PlayerMatchItemDto records into PlayerTrajectoryPoint for a given metric.
-/// NOTE: PlayerMatchItemDto does not include per-match shot attempt counts, so rate metrics
-/// (ShotSuccessRate, OpenPlayShotSuccessRate, SaveRate, etc.) are marked DATA_MISSING per match.
-/// They can only be shown as per-match counts (Goals, Saves, etc.).
 /// </summary>
 public static class TrajectoryPointBuilder
 {
@@ -84,7 +81,7 @@ public static class TrajectoryPointBuilder
             Interceptions: match.Interceptions,
             Turnovers: match.Turnovers,
             Saves: match.Saves,
-            ShotsFaced: null, // Per-match shots faced not available in PlayerMatchItemDto
+            ShotsFaced: match.ShotsFaced > 0 ? (int?)match.ShotsFaced : null,
             ResultLabel: resultLabel
         );
     }
@@ -99,21 +96,38 @@ public static class TrajectoryPointBuilder
             "ASSISTS_PER_MATCH" => ((double)match.Assists, null, null, "AVAILABLE"),
             "INTERCEPTIONS_PER_MATCH" => ((double)match.Interceptions, null, null, "AVAILABLE"),
             "TURNOVERS_PER_MATCH" => ((double)match.Turnovers, null, null, "AVAILABLE"),
-            "PENALTIES_WON_PER_MATCH" => (null, null, null, "DATA_MISSING"), // V2 only — no per-match data
+            "PENALTIES_WON_PER_MATCH" => (null, null, null, "DATA_MISSING"),
 
-            // Rate metrics: no per-match denominator available
-            "SHOT_SUCCESS_RATE" => (null, null, null, "DATA_MISSING"),
-            "OPEN_PLAY_SHOT_SUCCESS_RATE" => (null, null, null, "DATA_MISSING"),
+            // Field player rate metrics
+            "SHOT_SUCCESS_RATE" => match.ShotAttempts > 0
+                ? (Math.Round(100.0 * (match.Goals + match.PenaltyGoals) / match.ShotAttempts, 1),
+                   (double)(match.Goals + match.PenaltyGoals), (double)match.ShotAttempts, "AVAILABLE")
+                : (null, null, null, "DATA_MISSING"),
+            "OPEN_PLAY_SHOT_SUCCESS_RATE" => match.OpenPlayShotAttempts > 0
+                ? (Math.Round(100.0 * match.Goals / match.OpenPlayShotAttempts, 1),
+                   (double)match.Goals, (double)match.OpenPlayShotAttempts, "AVAILABLE")
+                : (null, null, null, "DATA_MISSING"),
 
             // Goalkeeper count metrics
             "SAVES_PER_MATCH" => ((double)match.Saves, null, null, "AVAILABLE"),
-            "GOALS_CONCEDED_PER_MATCH" => (null, null, null, "DATA_MISSING"), // goals conceded not in DTO
-            "SHOTS_FACED_PER_MATCH" => (null, null, null, "DATA_MISSING"),    // not in DTO
+            "GOALS_CONCEDED_PER_MATCH" => ((double)match.GoalsConceded, null, null, "AVAILABLE"),
+            "SHOTS_FACED_PER_MATCH" => match.ShotsFaced > 0
+                ? ((double?)match.ShotsFaced, null, null, "AVAILABLE")
+                : (null, null, null, "DATA_MISSING"),
 
-            // Goalkeeper rate metrics: no per-match denominator
-            "SAVE_RATE" => (null, null, null, "DATA_MISSING"),
-            "OPEN_PLAY_SAVE_RATE" => (null, null, null, "DATA_MISSING"),
-            "PENALTY_SAVE_RATE" => (null, null, null, "DATA_MISSING"),
+            // Goalkeeper rate metrics
+            "SAVE_RATE" => match.ShotsFaced > 0
+                ? (Math.Round(100.0 * match.Saves / match.ShotsFaced, 1),
+                   (double)match.Saves, (double)match.ShotsFaced, "AVAILABLE")
+                : (null, null, null, "DATA_MISSING"),
+            "OPEN_PLAY_SAVE_RATE" => match.OpenPlayShotsFaced > 0
+                ? (Math.Round(100.0 * match.OpenPlaySaves / match.OpenPlayShotsFaced, 1),
+                   (double)match.OpenPlaySaves, (double)match.OpenPlayShotsFaced, "AVAILABLE")
+                : (null, null, null, "DATA_MISSING"),
+            "PENALTY_SAVE_RATE" => match.PenaltyShotsFaced > 0
+                ? (Math.Round(100.0 * (match.Saves - match.OpenPlaySaves) / match.PenaltyShotsFaced, 1),
+                   (double)(match.Saves - match.OpenPlaySaves), (double)match.PenaltyShotsFaced, "AVAILABLE")
+                : (null, null, null, "DATA_MISSING"),
 
             // Shared goalkeeper/field
             "GK_ASSISTS_PER_MATCH" => ((double)match.Assists, null, null, "AVAILABLE"),

@@ -14,10 +14,10 @@ public sealed class ResponsiveSmokeTests(E2EFixture fixture) : E2ETestBase(fixtu
         (430,  900, "mobile"),
     ];
 
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_RendersOnAllViewports()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             foreach (var (w, h, label) in Viewports)
@@ -46,10 +46,10 @@ public sealed class ResponsiveSmokeTests(E2EFixture fixture) : E2ETestBase(fixtu
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Dashboard_RendersOnAllViewports), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Players_RendersOnAllViewports()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             foreach (var (w, h, label) in Viewports)

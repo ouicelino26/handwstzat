@@ -35,7 +35,7 @@ public sealed class AppAssetReaderTests : IDisposable
 
         Assert.NotNull(stream);
         var buf = new byte[4];
-        await stream!.ReadAsync(buf);
+        await stream!.ReadExactlyAsync(buf);
         Assert.Equal(0x89, buf[0]);
     }
 

@@ -32,10 +32,6 @@ else
                            @oninput="OnMatchSearchChangedAsync"
                            placeholder="Équipe, adversaire ou compétition…" />
                 </label>
-                <button type="button" class="btn btn-ghost btn-sm" @onclick="() => { _filterOpen = true; }">
-                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;flex-shrink:0"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
-                    Filtrer
-                </button>
             </div>
 
             <ul class="matches-list" role="list">
@@ -217,7 +213,7 @@ else
                         <button type="button"
                                 class="tab @(ActiveSection == "zones" ? "active" : string.Empty)"
                                 @onclick='() => SetActiveSection("zones")'>
-                            Timeline
+                            Court
                         </button>
                         <div class="match-tab-bar__actions">
                             <div class="team-toggle" role="group" aria-label="Filtre équipe">
@@ -448,11 +444,31 @@ else
 
                             @if (MatchInsights.Count > 0)
                             {
-                                <div class="match-insights" style="margin-bottom:1rem;">
+                                <div class="match-insights">
                                     @foreach (var insight in MatchInsights)
                                     {
-                                        <div class="match-insight @(insight.Tone != null ? $"match-insight--{insight.Tone}" : string.Empty)">
-                                            <span>@insight.Text</span>
+                                        var catLabel = insight.Category switch {
+                                            "shot_rate"     => "Réussite au tir",
+                                            "save_rate"     => "% Arrêt",
+                                            "turnovers"     => "Pertes de balle",
+                                            "interceptions" => "Interceptions",
+                                            _               => "Analyse"
+                                        };
+                                        var catIcon = insight.Category switch {
+                                            "shot_rate"     => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z",
+                                            "save_rate"     => "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z",
+                                            "turnovers"     => "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z",
+                                            "interceptions" => "M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z",
+                                            _               => "M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"
+                                        };
+                                        <div class="insight-card insight-card--@(insight.Tone ?? "neutral")">
+                                            <div class="insight-card__icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24"><path d="@catIcon"/></svg>
+                                            </div>
+                                            <div class="insight-card__body">
+                                                <p class="insight-card__eyebrow">@catLabel</p>
+                                                <p class="insight-card__text">@insight.Text</p>
+                                            </div>
                                         </div>
                                     }
                                 </div>
@@ -492,6 +508,79 @@ else
                                 </section>
                             }
 
+                            <details class="match-expert-details" data-testid="match-advanced-disclosure">
+                            <summary class="match-expert-summary">Analyse avancée du match</summary>
+
+                            @* ── Séries de buts (B5.12-B5.13) ── *@
+                            @if (IsRunsLoading || MatchRuns is not null)
+                            {
+                                <section class="page-panel" style="margin-bottom:1.5rem;">
+                                    <div class="panel-head">
+                                        <p class="section-kicker">Séries de buts</p>
+                                        <h4>Enchaînements consécutifs</h4>
+                                    </div>
+                                    @if (IsRunsLoading)
+                                    {
+                                        <div class="ctx-loading"><span>Chargement…</span></div>
+                                    }
+                                    else if (MatchRuns is not null)
+                                    {
+                                        @if (MatchRuns.DataQualityWarning)
+                                        {
+                                            <p class="court-sample-note">Données événements partielles — résultats indicatifs</p>
+                                        }
+                                        <div class="badge-row" style="margin-bottom:0.75rem;">
+                                            @if (MatchRuns.Runs3PlusTeam1 > 0 || MatchRuns.LongestRunTeam1 is not null)
+                                            {
+                                                var _r1code = SelectedMatch?.Team1Code ?? SelectedMatch?.Team1Name ?? "Éq. 1";
+                                                <div class="mini-card"><span>Séries ≥3 @_r1code</span><strong>@MatchRuns.Runs3PlusTeam1</strong></div>
+                                            }
+                                            @if (MatchRuns.Runs3PlusTeam2 > 0 || MatchRuns.LongestRunTeam2 is not null)
+                                            {
+                                                var _r2code = SelectedMatch?.Team2Code ?? SelectedMatch?.Team2Name ?? "Éq. 2";
+                                                <div class="mini-card"><span>Séries ≥3 @_r2code</span><strong>@MatchRuns.Runs3PlusTeam2</strong></div>
+                                            }
+                                        </div>
+                                        @if (MatchRuns.LongestRunTeam1 is not null)
+                                        {
+                                            var _lr1 = MatchRuns.LongestRunTeam1;
+                                            var _lr1code = SelectedMatch?.Team1Code ?? SelectedMatch?.Team1Name ?? "Éq. 1";
+                                            <p class="section-kicker" style="margin-bottom:0.25rem;">Plus longue série — @_lr1code</p>
+                                            <p style="font-variant-numeric:tabular-nums;">@_lr1.Goals buts consécutifs · @_lr1.StartScore → @_lr1.EndScore</p>
+                                        }
+                                        @if (MatchRuns.LongestRunTeam2 is not null)
+                                        {
+                                            var _lr2 = MatchRuns.LongestRunTeam2;
+                                            var _lr2code = SelectedMatch?.Team2Code ?? SelectedMatch?.Team2Name ?? "Éq. 2";
+                                            <p class="section-kicker" style="margin-bottom:0.25rem;">Plus longue série — @_lr2code</p>
+                                            <p style="font-variant-numeric:tabular-nums;">@_lr2.Goals buts consécutifs · @_lr2.StartScore → @_lr2.EndScore</p>
+                                        }
+                                        var _bigRuns = MatchRuns.AllRuns.Where(r => r.Goals >= 3).OrderByDescending(r => r.Goals).ToList();
+                                        @if (_bigRuns.Count > 0)
+                                        {
+                                            <div class="table-container" style="margin-top:0.5rem;">
+                                                <table class="data-table data-table--compact">
+                                                    <thead><tr><th>Équipe</th><th class="data-table__num">Buts consécutifs</th><th>Score début → fin</th></tr></thead>
+                                                    <tbody>
+                                                    @foreach (var _run in _bigRuns)
+                                                    {
+                                                        var _runTeam = _run.TeamId == SelectedMatch?.Team1Id
+                                                            ? (SelectedMatch?.Team1Code ?? SelectedMatch?.Team1Name ?? "Éq. 1")
+                                                            : (SelectedMatch?.Team2Code ?? SelectedMatch?.Team2Name ?? "Éq. 2");
+                                                        <tr class="table-sub-row">
+                                                            <td>@_runTeam</td>
+                                                            <td class="data-table__num">@_run.Goals</td>
+                                                            <td>@_run.StartScore → @_run.EndScore</td>
+                                                        </tr>
+                                                    }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                    }
+                                </section>
+                            }
+
                             @if (ShowMatchAnalystPanels)
                             {
                                 <div class="dual-grid" style="margin-bottom:1.5rem;">
@@ -522,6 +611,8 @@ else
                                     </section>
                                 </div>
                             }
+
+                            </details>
                         }
                         else if (ActiveSection == "zones")
                         {
@@ -590,6 +681,7 @@ else
                                                                      TriggerZones="@HomeTriggerZones"
                                                                      IsGoalkeeper="false"
                                                                      ViewMode="goal"
+                                                                     HideModeBar="true"
                                                                      IsLoading="@_isCourtBothLoading" />
                                                         </div>
                                                         <details class="court-zone-detail">
@@ -613,6 +705,7 @@ else
                                                                      TriggerZones="@HomeTriggerZones"
                                                                      IsGoalkeeper="false"
                                                                      ViewMode="trigger"
+                                                                     HideModeBar="true"
                                                                      IsLoading="@_isCourtBothLoading" />
                                                         </div>
                                                         <details class="court-zone-detail">
@@ -651,6 +744,7 @@ else
                                                                      TriggerZones="@AwayTriggerZones"
                                                                      IsGoalkeeper="false"
                                                                      ViewMode="goal"
+                                                                     HideModeBar="true"
                                                                      IsLoading="@_isCourtBothLoading" />
                                                         </div>
                                                         <details class="court-zone-detail">
@@ -674,6 +768,7 @@ else
                                                                      TriggerZones="@AwayTriggerZones"
                                                                      IsGoalkeeper="false"
                                                                      ViewMode="trigger"
+                                                                     HideModeBar="true"
                                                                      IsLoading="@_isCourtBothLoading" />
                                                         </div>
                                                         <details class="court-zone-detail">
@@ -727,16 +822,23 @@ else
                                     {
                                         var playerInitials = GetPlayerInitials(player.FullName);
                                         var playerPhotoUrl = PlayerPhotoAssetResolver.Resolve(player.Photo, player.PlayerId, player.FullName, player.TeamName);
-                                        var isAway = player.TeamId.HasValue && player.TeamId == SelectedMatch.Team2Id;
                                         var isGK = player.IsGoalkeeper;
-                                        var cardClass = isGK ? "match-player-card--goalkeeper" : isAway ? "match-player-card--away" : string.Empty;
+                                        var accentColor = (player.PositionCode ?? "").ToUpperInvariant() switch
+                                        {
+                                            "GK" or "GB" or "G" or "GARDIENNE" or "GARDEN" => "var(--electric-400)",
+                                            var p when p.StartsWith("AR") => "var(--court-400)",
+                                            "PIV" or "PIVOT" => "var(--danger-400)",
+                                            "AIL" or "AILG" or "ALD" or "AIL-G" or "AIL-D" or "AILIERE" or "AILIÈRE" => "var(--warning-400)",
+                                            "DC" or "DCE" or "DEMI" or "DEMI-CENTRE" => "#c97fff",
+                                            _ => null
+                                        };
                                         var effRate = isGK ? player.GoalkeeperSaveRate : player.ShotSuccessRate;
                                         var signal = isGK && player.GoalkeeperSaveRate >= 0.5 ? "Impact gardienne"
                                             : player.TotalGoals >= 5 ? "Performance forte"
                                             : player.AssistCount >= 3 ? "Volume + création"
                                             : player.InterceptionCount >= 3 ? "Impact défensif"
                                             : (string?)null;
-                                        <article class="match-player-card @cardClass" @key="@($"{player.PlayerId}_{player.TeamId}")">
+                                        <article class="match-player-card" style="@(accentColor != null ? $"--card-accent: {accentColor}" : null)" @key="@($"{player.PlayerId}_{player.TeamId}")">
                                             <div class="match-player-card__header">
                                                 <div class="match-player-card__avatar">
                                                     @if (playerPhotoUrl != null)
@@ -915,6 +1017,8 @@ else
     private IReadOnlyList<ScoreTimelinePoint> SelectedMatchTimeline { get; set; } = [];
     private MatchListItemDto? SelectedMatch { get; set; }
     private MatchSummaryDto? MatchSummary { get; set; }
+    private MatchRunSummaryDto? MatchRuns { get; set; }
+    private bool IsRunsLoading { get; set; }
     private MatchSpatialStatsDto? MatchSpatial { get; set; }
     private MatchSpatialStatsDto? _spatialHome;
     private MatchSpatialStatsDto? _spatialAway;
@@ -1283,6 +1387,8 @@ else
     {
         SelectedMatch = null;
         MatchSummary = null;
+        MatchRuns = null;
+        IsRunsLoading = false;
         MatchPlayers = [];
         MatchSpatial = null;
         _spatialHome = null;
@@ -1293,6 +1399,45 @@ else
         SpatialFocusKey = null;
         IsSpatialLoading = false;
         System.Threading.Interlocked.Increment(ref SpatialLoadToken);
+    }
+
+    private async Task LoadMatchRunsAsync(int matchId)
+    {
+        if (!SelectedMatchId.HasValue || SelectedMatchId.Value != matchId)
+        {
+            return;
+        }
+
+        try
+        {
+            IsRunsLoading = true;
+            await InvokeAsync(StateHasChanged);
+
+            var result = await StatsApiClient.GetMatchRunsAsync(matchId);
+
+            if (!SelectedMatchId.HasValue || SelectedMatchId.Value != matchId)
+            {
+                return;
+            }
+
+            MatchRuns = result;
+        }
+        catch (Exception ex)
+        {
+            if (SelectedMatchId.HasValue && SelectedMatchId.Value == matchId)
+            {
+                Logger.LogWarning(ex, "Failed to load match runs for match {MatchId}.", matchId);
+                MatchRuns = null;
+            }
+        }
+        finally
+        {
+            if (SelectedMatchId.HasValue && SelectedMatchId.Value == matchId)
+            {
+                IsRunsLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
     }
 
     private long BeginSelectedMatchLoad()
@@ -2087,6 +2232,9 @@ else
         {
             SelectedMatchId = MatchIdFromQuery.Value;
             MatchSpatial = null;
+            _spatialHome = null;
+            _spatialAway = null;
+            MatchRuns = null;
             ActiveZoneKey = null;
             SpatialFocusKey = null;
             MatchAttackTypeFilter = "all";
@@ -2094,6 +2242,9 @@ else
             ErrorMessage = null;
             BeginSelectedMatchLoad();
             await LoadSelectedMatchAsync(SelectedMatchLoadToken, replaceCurrentSelection: true);
+            _ = LoadMatchRunsAsync(MatchIdFromQuery.Value);
+            if (ActiveSection == "zones")
+                await LoadCourtBothTeamsAsync();
         }
     }
 

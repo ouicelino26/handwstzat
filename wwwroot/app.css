@@ -8454,6 +8454,10 @@ html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
 .page-matches .studio-stage__content { min-width: 0; min-height: 0; }
 .page-matches .studio-stage__content { width: 100%; max-width: none; margin: 0; padding: 0; overflow: hidden; height: 100%; }
 
+/* ── Players page layout ── */
+.studio-stage:has(.page-players-shell) { height: 100%; overflow: hidden; }
+.studio-stage__content:has(.page-players-shell) { width: 100%; max-width: none; margin: 0; padding: 0; overflow: hidden; height: 100%; }
+
 /* ── Teams page layout ── */
 .page-teams.studio-shell {
     grid-template:

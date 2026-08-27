@@ -9,10 +9,10 @@ namespace HandWStat.E2E.Tests.Tests;
 [Collection("E2E")]
 public sealed class ExportSmokeTests(E2EFixture fixture) : E2ETestBase(fixture)
 {
-    [Fact]
+    [SkippableFact]
     public async Task Export_WizardLoads_AfterLogin()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -24,10 +24,10 @@ public sealed class ExportSmokeTests(E2EFixture fixture) : E2ETestBase(fixture)
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Export_WizardLoads_AfterLogin), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Export_WizardAdvancesThreeSteps()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -51,10 +51,10 @@ public sealed class ExportSmokeTests(E2EFixture fixture) : E2ETestBase(fixture)
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Export_WizardAdvancesThreeSteps), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Export_Download_ProducesFile()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();

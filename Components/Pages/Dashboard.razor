@@ -232,79 +232,6 @@ else if (Snapshot is not null)
                       </aside>
                     </section>
 
-                    @if (Snapshot.TopScorers.Count > 0 || Snapshot.EfficiencyRanking.Count > 0 || Snapshot.InterceptionRanking.Count > 0)
-                    {
-                      <section class="dashboard-insight-strip" aria-label="Insights complémentaires">
-                        @if (Snapshot.TopScorers.FirstOrDefault() is { } ins1)
-                        {
-                          <article class="dashboard-insight">
-                            <span>Meilleure buteuse</span>
-                            <strong>@ins1.PlayerName · @ins1.ValueLabel</strong>
-                            <small>@ins1.SampleLabel</small>
-                          </article>
-                        }
-                        @if (Snapshot.EfficiencyRanking.FirstOrDefault() is { } ins2)
-                        {
-                          <article class="dashboard-insight">
-                            <span>Meilleure efficacité</span>
-                            <strong>@ins2.PlayerName · @ins2.ValueLabel</strong>
-                            <small>@ins2.SampleLabel</small>
-                          </article>
-                        }
-                        @if (Snapshot.InterceptionRanking.FirstOrDefault() is { } ins3)
-                        {
-                          <article class="dashboard-insight">
-                            <span>Plus grand impact défensif</span>
-                            <strong>@ins3.PlayerName · @ins3.ValueLabel</strong>
-                            <small>@ins3.SampleLabel</small>
-                          </article>
-                        }
-                      </section>
-                    }
-
-                    @{
-                      var sec1 = Snapshot.TopScorers.Take(3).ToList();
-                      var sec2 = Snapshot.EfficiencyRanking.Take(3).ToList();
-                    }
-                    @if (sec1.Count > 0 || sec2.Count > 0)
-                    {
-                      <section class="dashboard-secondary-grid">
-                        @if (sec1.Count > 0)
-                        {
-                          <article class="dashboard-secondary-panel">
-                            <div class="dashboard-section-head">
-                              <div><p class="dashboard-section-kicker">Classement offensif</p><h3>Top buteuses</h3></div>
-                            </div>
-                            <table class="dashboard-mini-table">
-                              <thead><tr><th>Joueuse</th><th>Buts</th><th>Contexte</th></tr></thead>
-                              <tbody>
-                                @foreach (var r in sec1)
-                                {
-                                  <tr><td>@r.PlayerName</td><td>@r.ValueLabel</td><td>@r.SampleLabel</td></tr>
-                                }
-                              </tbody>
-                            </table>
-                          </article>
-                        }
-                        @if (sec2.Count > 0)
-                        {
-                          <article class="dashboard-secondary-panel">
-                            <div class="dashboard-section-head">
-                              <div><p class="dashboard-section-kicker">Efficacité au tir</p><h3>Top efficiency</h3></div>
-                            </div>
-                            <table class="dashboard-mini-table">
-                              <thead><tr><th>Joueuse</th><th>Taux</th><th>Contexte</th></tr></thead>
-                              <tbody>
-                                @foreach (var r in sec2)
-                                {
-                                  <tr><td>@r.PlayerName</td><td>@r.ValueLabel</td><td>@r.SampleLabel</td></tr>
-                                }
-                              </tbody>
-                            </table>
-                          </article>
-                        }
-                      </section>
-                    }
 
                   </div>
                 </div>
@@ -1025,9 +952,15 @@ else if (Snapshot is not null)
     private string ActiveLens { get; set; } = AudienceLens.Analyst;
     private string ActiveDashboardSection { get; set; } = "league";
 
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            CommandBarService.Register(() => { _filterOpen = !_filterOpen; return InvokeAsync(StateHasChanged); });
+        return Task.CompletedTask;
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        CommandBarService.Register(() => { _filterOpen = !_filterOpen; StateHasChanged(); return Task.CompletedTask; });
         await base.OnInitializedAsync();
         await LoadPlayerTableAsync();
     }

@@ -140,4 +140,63 @@ public sealed class StatsApiClient : ApiClientBase
     {
         return GetListAsync<PlayerGlobalStatsDto>($"api/Stats/teams/{teamId}/players", ApiQueryBuilder.FromStatsOptions(options), cancellationToken);
     }
+
+    // ── B5 — B1-B4 endpoint wrappers ──────────────────────────────────────────
+
+    public Task<HalfTimeBreakdownDto?> GetPlayerHalfTimeBreakdownAsync(int playerId, StatsQueryOptionsDto? options = null, CancellationToken cancellationToken = default)
+    {
+        return GetAsync<HalfTimeBreakdownDto>($"api/Stats/players/{playerId}/halves", ApiQueryBuilder.FromStatsOptions(options), cancellationToken);
+    }
+
+    public Task<ArmSideBreakdownDto?> GetPlayerArmSideAsync(int playerId, StatsQueryOptionsDto? options = null, CancellationToken cancellationToken = default)
+    {
+        return GetAsync<ArmSideBreakdownDto>($"api/Stats/players/{playerId}/arm-side", ApiQueryBuilder.FromStatsOptions(options), cancellationToken);
+    }
+
+    public Task<GkScoreStateBreakdownDto?> GetGkScoreStateAsync(int playerId, StatsQueryOptionsDto? options = null, CancellationToken cancellationToken = default)
+    {
+        return GetAsync<GkScoreStateBreakdownDto>($"api/Stats/players/{playerId}/goalkeeper/score-state", ApiQueryBuilder.FromStatsOptions(options), cancellationToken);
+    }
+
+    public Task<IReadOnlyList<PlayerMatchPlayingTimeDto>> GetPlayerPlayingTimeAsync(int playerId, StatsQueryOptionsDto? options = null, CancellationToken cancellationToken = default)
+    {
+        return GetListAsync<PlayerMatchPlayingTimeDto>($"api/Stats/players/{playerId}/playing-time", ApiQueryBuilder.FromStatsOptions(options), cancellationToken);
+    }
+
+    public Task<PlayerTimelineDto?> GetPlayerTimelineAsync(int playerId, int bucketMinutes = 5, StatsQueryOptionsDto? options = null, CancellationToken cancellationToken = default)
+    {
+        var query = ApiQueryBuilder.FromStatsOptions(options)
+            .Add("bucketMinutes", (int?)bucketMinutes);
+        return GetAsync<PlayerTimelineDto>($"api/Stats/players/{playerId}/timeline", query, cancellationToken);
+    }
+
+    public Task<ClutchBreakdownDto?> GetPlayerClutchAsync(int playerId, int maxScoreDiff = 2, int lastMinutes = 5, StatsQueryOptionsDto? options = null, CancellationToken cancellationToken = default)
+    {
+        var query = ApiQueryBuilder.FromStatsOptions(options)
+            .Add("maxScoreDiff", (int?)maxScoreDiff)
+            .Add("lastMinutes", (int?)lastMinutes);
+        return GetAsync<ClutchBreakdownDto>($"api/Stats/players/{playerId}/clutch", query, cancellationToken);
+    }
+
+    public Task<MatchRunSummaryDto?> GetMatchRunsAsync(int matchId, CancellationToken cancellationToken = default)
+    {
+        return GetAsync<MatchRunSummaryDto>($"api/Stats/matches/{matchId}/runs", cancellationToken: cancellationToken);
+    }
+
+    public Task<PlayerBenchmarkDto?> GetPlayerBenchmarkAsync(int playerId, int? competitionId = null, string? season = null, CancellationToken cancellationToken = default)
+    {
+        var query = new ApiQueryBuilder()
+            .Add("competitionId", competitionId)
+            .Add("season", season);
+        return GetAsync<PlayerBenchmarkDto>($"api/analytics/players/{playerId}/benchmark", query, cancellationToken);
+    }
+
+    public Task<PlayerAnalyticsSnapshotDto?> GetPlayerAnalyticsSnapshotAsync(int playerId, int? competitionId = null, int? teamId = null, string? season = null, CancellationToken cancellationToken = default)
+    {
+        var query = new ApiQueryBuilder()
+            .Add("competitionId", competitionId)
+            .Add("teamId", teamId)
+            .Add("season", season);
+        return GetAsync<PlayerAnalyticsSnapshotDto>($"api/analytics/players/{playerId}", query, cancellationToken);
+    }
 }

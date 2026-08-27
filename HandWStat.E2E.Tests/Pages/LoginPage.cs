@@ -28,9 +28,14 @@ public sealed class LoginPage(IPage page, string baseUrl)
         await NavigateAsync();
         await LoginAsync(E2EConfig.Username!, E2EConfig.Password!);
 
-        await page.WaitForURLAsync(url => url.Contains("/dashboard"), new PageWaitForURLOptions
+        // After successful login, Blazor Server renders MainLayout which contains .studio-domain-rail.
+        // This selector appears only when authenticated, regardless of which route was loaded.
+        // DOM polling is used instead of WaitForURLAsync because NavigationManager.NavigateTo
+        // uses History pushState which does not fire Playwright's CDP framenavigated event.
+        await page.WaitForSelectorAsync(".studio-domain-rail", new PageWaitForSelectorOptions
         {
-            Timeout = 15_000
+            Timeout = 25_000,
+            State = WaitForSelectorState.Visible
         });
     }
 }

@@ -23,7 +23,7 @@ public sealed record MatchTeamAnalytics(
     public double? PenaltyRate => PenaltyAttempts > 0 ? (double)PenaltyGoals / PenaltyAttempts : null;
 }
 
-public sealed record MatchInsight(string Text, string? Tone = null);
+public sealed record MatchInsight(string Text, string? Tone = null, string? Category = null);
 
 public static class MatchAnalyticsBuilder
 {
@@ -78,7 +78,7 @@ public static class MatchAnalyticsBuilder
                 var worse = delta > 0 ? away : home;
                 insights.Add(new MatchInsight(
                     $"{better.TeamName} a eu une meilleure réussite au tir : {better.ShotRate!.Value:0%} contre {worse.ShotRate!.Value:0%}.",
-                    "positive"));
+                    "positive", "shot_rate"));
             }
         }
 
@@ -94,7 +94,7 @@ public static class MatchAnalyticsBuilder
                 var worse = delta > 0 ? away : home;
                 insights.Add(new MatchInsight(
                     $"Les gardiennes de {better.TeamName} ont mieux arrêté : {better.SaveRate!.Value:0%} contre {worse.SaveRate!.Value:0%}.",
-                    "positive"));
+                    "positive", "save_rate"));
             }
         }
 
@@ -108,7 +108,7 @@ public static class MatchAnalyticsBuilder
                 var less = delta > 0 ? away : home;
                 insights.Add(new MatchInsight(
                     $"{more.TeamName} a perdu {Math.Abs(delta)} ballons de plus ({more.Turnovers} contre {less.Turnovers}).",
-                    "warning"));
+                    "warning", "turnovers"));
             }
         }
 
@@ -122,7 +122,7 @@ public static class MatchAnalyticsBuilder
                 var less = delta > 0 ? away : home;
                 insights.Add(new MatchInsight(
                     $"{more.TeamName} a dominé défensivement : {more.Interceptions} interceptions contre {less.Interceptions}.",
-                    null));
+                    null, "interceptions"));
             }
         }
 

@@ -8,10 +8,10 @@ namespace HandWStat.E2E.Tests.Tests;
 [Collection("E2E")]
 public sealed class AccessibilityBasicsTests(E2EFixture fixture) : E2ETestBase(fixture)
 {
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_NavItems_HaveAccessibleNames()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -33,10 +33,10 @@ public sealed class AccessibilityBasicsTests(E2EFixture fixture) : E2ETestBase(f
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Dashboard_NavItems_HaveAccessibleNames), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_TabButtons_HaveRoles()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();

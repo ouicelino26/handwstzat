@@ -1,34 +1,37 @@
 @using System.Globalization
 
 <div class="court-studio @(IsLoading ? "is-loading" : string.Empty)" aria-busy="@(IsLoading ? "true" : "false")">
-    <header class="court-studio__head">
-        <div>
-            <span>Analyse spatiale</span>
-            <h3>Zones et declenchements</h3>
-            <p>Selectionnez un secteur pour isoler son volume, son efficacite et ses issues.</p>
-        </div>
+    @if (!HideModeBar)
+    {
+        <header class="court-studio__head">
+            <div>
+                <span>Analyse spatiale</span>
+                <h3>Zones et declenchements</h3>
+                <p>Selectionnez un secteur pour isoler son volume, son efficacite et ses issues.</p>
+            </div>
 
-        <div class="court-studio__modes" role="group" aria-label="Filtre spatial">
-            <button type="button"
-                    class="map-mode-button @(IsViewModeActive(ViewModeBoth) ? "is-active" : string.Empty)"
-                    aria-pressed="@(IsViewModeActive(ViewModeBoth))"
-                    @onclick="() => SetViewModeAsync(ViewModeBoth)">
-                Les deux
-            </button>
-            <button type="button"
-                    class="map-mode-button @(IsViewModeActive(ViewModeGoal) ? "is-active" : string.Empty)"
-                    aria-pressed="@(IsViewModeActive(ViewModeGoal))"
-                    @onclick="() => SetViewModeAsync(ViewModeGoal)">
-                Buts
-            </button>
-            <button type="button"
-                    class="map-mode-button @(IsViewModeActive(ViewModeTrigger) ? "is-active" : string.Empty)"
-                    aria-pressed="@(IsViewModeActive(ViewModeTrigger))"
-                    @onclick="() => SetViewModeAsync(ViewModeTrigger)">
-                Déclenchements
-            </button>
-        </div>
-    </header>
+            <div class="court-studio__modes" role="group" aria-label="Filtre spatial">
+                <button type="button"
+                        class="map-mode-button @(IsViewModeActive(ViewModeBoth) ? "is-active" : string.Empty)"
+                        aria-pressed="@(IsViewModeActive(ViewModeBoth))"
+                        @onclick="() => SetViewModeAsync(ViewModeBoth)">
+                    Les deux
+                </button>
+                <button type="button"
+                        class="map-mode-button @(IsViewModeActive(ViewModeGoal) ? "is-active" : string.Empty)"
+                        aria-pressed="@(IsViewModeActive(ViewModeGoal))"
+                        @onclick="() => SetViewModeAsync(ViewModeGoal)">
+                    Buts
+                </button>
+                <button type="button"
+                        class="map-mode-button @(IsViewModeActive(ViewModeTrigger) ? "is-active" : string.Empty)"
+                        aria-pressed="@(IsViewModeActive(ViewModeTrigger))"
+                        @onclick="() => SetViewModeAsync(ViewModeTrigger)">
+                    Déclenchements
+                </button>
+            </div>
+        </header>
+    }
 
     @if (HideZeroZones)
     {
@@ -196,16 +199,57 @@
             </div>
 
             <div class="pitch-map-wrap">
-                <svg class="pitch-map" viewBox="0 0 706 464" role="img" aria-label="Carte terrain des declenchements">
+                <svg class="pitch-map" viewBox="0 0 227 150" overflow="hidden" fill="none" role="img" aria-label="Carte terrain des declenchements">
                     <title>Carte terrain des declenchements</title>
                     <desc>Zones de declenchement des tirs avec volume et efficacite par secteur</desc>
-                    <image href="/design/pitch-map-template.svg"
-                           x="0"
-                           y="0"
-                           width="706"
-                           height="464"
-                           preserveAspectRatio="none" />
-
+                    <g pointer-events="none" aria-hidden="true">
+                        <rect width="225.888" height="149.184" transform="translate(226.395 149.183) rotate(179.805)" fill="#1B1B1B"/>
+                        <path d="M199.016 29.683L226.236 126.683L1.04509 126.683L26.7795 29.683L199.016 29.683Z" fill="#1B1B1B" fill-opacity="0.65" stroke="white"/>
+                        <path d="M177.064 29.683C177.037 32.5736 176.722 36.36 173.87 39.0335L173.57 39.3031C170.302 42.0989 167.667 44.6061 161.728 46.7113C155.715 48.8424 148.669 50.8365 140.822 51.9886C132.969 53.1416 121.917 53.683 113.395 53.683C104.876 53.683 91.3232 52.8813 83.467 51.7279C75.6254 50.5766 70.5813 48.9826 64.5617 46.849C58.6225 44.7438 55.4872 41.8929 52.2199 39.097C49.311 36.6079 48.9302 32.6747 48.8976 29.683L177.064 29.683Z" fill="#D9D9D9" fill-opacity="0.47" stroke="white"/>
+                        <path d="M23.8947 40.683L26.8976 45.683L31.3947 49.683L34.3947 51.683L39.8947 55.183L49.3947 59.683L61.3947 63.183L79.8947 65.683L99.3947 67.1455L117.395 67.1455L126.895 67.183L138.395 66.183L143.395 65.683L149.895 65.183L156.895 64.183L164.395 63.183L172.895 60.683L179.395 58.183L182.395 56.683L185.395 55.183L187.395 54.183L190.395 52.183L194.895 49.183L196.395 47.683L198.895 45.683L200.395 43.183L201.895 40.183" stroke="white" stroke-dasharray="2 2"/>
+                        <path d="M19.8947 55.683L28.3977 67.183L32.3977 71.183L35.3977 73.183L40.8977 76.683L50.3977 81.183L62.3977 84.683L80.8977 87.183L100.398 88.6455L118.398 88.6455L127.898 88.683L138.398 88.183L147.398 87.683L156.898 86.183L163.395 84.683L167.895 83.183L175.395 80.683L185.395 76.183L189.895 73.183L195.895 68.683L199.395 64.183L206.395 55.683" stroke="white"/>
+                        <ellipse cx="113.145" cy="45.433" rx="1.25" ry="0.75" fill="white"/>
+                        <path d="M112.895 26.7831L24.47 127.249" stroke="white" stroke-width="0.2"/>
+                        <path d="M112.895 26.683L201.395 127.183" stroke="white" stroke-width="0.2"/>
+                        <path d="M112.895 26.683L113.488 127.182" stroke="white" stroke-width="0.2"/>
+                        <path d="M24.3886 40.1828L49.8946 36.3429" stroke="white" stroke-width="0.2"/>
+                        <path d="M66.395 47.1328L26.3947 64.563" stroke="white" stroke-width="0.2"/>
+                        <path d="M159.694 47.183L198.895 64.183" stroke="white" stroke-width="0.4"/>
+                        <path d="M202.38 40.2819L175.895 36.183" stroke="white" stroke-width="0.2"/>
+                        <path d="M99.3947 12.183L125.395 12.183" stroke="white" stroke-width="0.1"/>
+                        <path d="M99.3947 12.183L104.395 15.3222M99.3947 15.1896L104.395 17.1413M99.3947 17.9883L104.395 18.9678M99.3947 20.787L104.395 20.787M99.3947 23.5856L104.395 22.6135M99.3947 26.3843L104.395 24.4326M99.3947 29.183L104.395 26.441" stroke="white" stroke-width="0.5"/>
+                        <path d="M99.3947 29.183L99.3947 12.183M100.226 28.7475L100.226 12.6941M101.061 28.2743L101.061 13.2431M101.893 27.8199L101.893 13.7353M102.728 27.3845L102.728 14.2654M103.56 26.9112L103.56 14.7954M104.395 26.4569L104.395 15.3157" stroke="white" stroke-width="0.5"/>
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M99.3947 12.183L104.395 15.3066L104.395 26.4569L99.3947 29.183L99.3947 12.183Z" fill="#0A1F38" fill-opacity="0.28"/>
+                        <path d="M99.3947 12.183L104.395 15.2842L104.395 26.1965L99.3947 29.183L99.3947 12.183Z" fill="#071422"/>
+                        <path d="M125.395 12.183L120.395 15.3222M125.395 15.1896L120.395 17.1413M125.395 17.9883L120.395 18.9678M125.395 20.787L120.395 20.787M125.395 23.5856L120.395 22.6135M125.395 26.3843L120.395 24.4326M125.395 29.183L120.395 26.441" stroke="white" stroke-width="0.5"/>
+                        <path d="M125.395 29.183L125.395 12.183M124.563 28.7475L124.563 12.6941M123.728 28.2743L123.728 13.2431M122.896 27.8199L122.896 13.7353M122.061 27.3845L122.061 14.2654M121.23 26.9112L121.23 14.7954M120.395 26.4569L120.395 15.3157" stroke="white" stroke-width="0.5"/>
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M125.395 12.183L120.395 15.3066L120.395 26.4569L125.395 29.183L125.395 12.183Z" fill="#0A1F38" fill-opacity="0.28"/>
+                        <path d="M125.395 12.183L120.395 15.2842L120.395 26.1965L125.395 29.183L125.395 12.183Z" fill="#071422"/>
+                        <line x1="98.3947" y1="29.183" x2="98.3947" y2="11.183" stroke="white" stroke-width="2"/>
+                        <line x1="98.3947" y1="29.183" x2="98.3947" y2="11.183" stroke="#E80B0B" stroke-width="2" stroke-dasharray="5 5"/>
+                        <line x1="126.395" y1="29.183" x2="126.395" y2="11.183" stroke="white" stroke-width="2"/>
+                        <line x1="126.395" y1="29.183" x2="126.395" y2="11.183" stroke="#E80B0B" stroke-width="2" stroke-dasharray="5 5"/>
+                        <line x1="97.3947" y1="11.183" x2="127.395" y2="11.183" stroke="white" stroke-width="2"/>
+                        <line x1="104.395" y1="26.533" x2="120.395" y2="26.533" stroke="white" stroke-width="0.3"/>
+                        <path d="M106.395 26.683L106.395 15.183L103.395 12.183M108.395 26.683L108.395 15.183L105.395 12.183M110.395 26.683L110.395 15.183L107.395 12.183M112.395 26.683L112.395 15.183L115.395 12.183M114.395 26.683L114.395 15.183L115.895 13.683L117.395 12.183M116.395 26.683L116.395 15.183M118.395 26.683L118.395 15.183" stroke="white" stroke-width="0.3"/>
+                        <line x1="104.395" y1="24.533" x2="120.395" y2="24.533" stroke="white" stroke-width="0.3"/>
+                        <line x1="104.395" y1="22.533" x2="120.395" y2="22.533" stroke="white" stroke-width="0.3"/>
+                        <line x1="104.395" y1="20.833" x2="120.395" y2="20.833" stroke="white" stroke-width="0.3"/>
+                        <path d="M101.395 13.183L123.895 13.183M102.605 14.0336L122.081 14.0336" stroke="white" stroke-width="0.3"/>
+                        <line x1="104.395" y1="18.833" x2="120.395" y2="18.833" stroke="white" stroke-width="0.3"/>
+                        <line x1="104.395" y1="17.1331" x2="120.395" y2="17.1331" stroke="white" stroke-width="0.3"/>
+                        <line x1="104.395" y1="15.2329" x2="120.395" y2="15.2329" stroke="white" stroke-width="0.3"/>
+                        <path d="M116.393 15.1835L119.393 12.1835M118.393 15.1835L121.393 12.1835M111.394 15.1833L111.395 12.183" stroke="white" stroke-width="0.3"/>
+                        <line x1="97.3947" y1="11.183" x2="127.395" y2="11.183" stroke="#E80B0B" stroke-width="2" stroke-dasharray="5 5"/>
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M99.3959 12.1839L125.396 12.1833L120.896 15.1839L103.896 15.1839L99.3959 12.1839Z" fill="#05142E" fill-opacity="0.34"/>
+                        <path d="M99.5531 12.183L125.396 12.1833L120.895 15.183L104.395 15.183L99.5531 12.183Z" fill="#05142E" fill-opacity="0.34"/>
+                        <rect x="99.3947" y="12.183" width="26" height="1" fill="#080D14" fill-opacity="0.88"/>
+                        <rect width="17" height="1" transform="matrix(0 -1 -1 0 100.395 29.183)" fill="#080D14" fill-opacity="0.88"/>
+                        <rect width="17" height="1" transform="matrix(0 -1 -1 0 125.395 29.183)" fill="#080D14" fill-opacity="0.88"/>
+                        <line x1="108.395" y1="58.433" x2="118.395" y2="58.433" stroke="white" stroke-width="1.5"/>
+                        <path d="M0.394702 127.183L226.395 127.183L224.395 132.183L3.3947 132.183L0.394702 127.183Z" fill="#B3B3B3"/>
+                        <path d="M141.395 126.683C141.395 124.647 140.67 122.632 139.263 120.751C137.856 118.871 135.794 117.162 133.194 115.723C130.594 114.283 127.507 113.142 124.11 112.363C120.713 111.584 117.072 111.183 113.395 111.183C109.718 111.183 106.077 111.584 102.68 112.363C99.2824 113.142 96.1958 114.283 93.5957 115.723C90.9957 117.162 88.9332 118.871 87.5261 120.751C86.1189 122.632 85.3947 124.647 85.3947 126.683L113.395 126.683L141.395 126.683Z" fill="#253AFF" fill-opacity="0.53" stroke="#B7AE11" stroke-width="1"/>
+                    </g>
                     @foreach (var zone in TriggerGeometries)
                     {
                         var stat = GetTriggerZone(zone.Key);
@@ -227,6 +271,10 @@
                               @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
                             <title>@GetTooltip(zone.Key, stat)</title>
                         </path>
+                        @if (stat.Attempts > 0)
+                        {
+                            @:<text x="@Format(zone.LabelX)" y="@Format(zone.LabelY)" text-anchor="middle" dominant-baseline="middle" pointer-events="none" font-size="5.5" font-weight="700" paint-order="stroke fill" stroke="#000000" stroke-width="1" stroke-linejoin="round" fill="white">@GetLabel(stat)</text>
+                        }
                     }
                 </svg>
             </div>
@@ -376,16 +424,57 @@
                 </header>
 
                 <div class="pitch-map-wrap">
-                    <svg class="pitch-map" viewBox="0 0 706 464" role="img" aria-label="Carte terrain des declenchements">
+                    <svg class="pitch-map" viewBox="0 0 227 150" overflow="hidden" fill="none" role="img" aria-label="Carte terrain des declenchements">
                         <title>Carte terrain des declenchements</title>
                         <desc>Zones de declenchement des tirs avec volume et efficacite par secteur</desc>
-                        <image href="/design/pitch-map-template.svg"
-                               x="0"
-                               y="0"
-                               width="706"
-                               height="464"
-                               preserveAspectRatio="none" />
-
+                        <g pointer-events="none" aria-hidden="true">
+                            <rect width="225.888" height="149.184" transform="translate(226.395 149.183) rotate(179.805)" fill="#1B1B1B"/>
+                            <path d="M199.016 29.683L226.236 126.683L1.04509 126.683L26.7795 29.683L199.016 29.683Z" fill="#1B1B1B" fill-opacity="0.65" stroke="white"/>
+                            <path d="M177.064 29.683C177.037 32.5736 176.722 36.36 173.87 39.0335L173.57 39.3031C170.302 42.0989 167.667 44.6061 161.728 46.7113C155.715 48.8424 148.669 50.8365 140.822 51.9886C132.969 53.1416 121.917 53.683 113.395 53.683C104.876 53.683 91.3232 52.8813 83.467 51.7279C75.6254 50.5766 70.5813 48.9826 64.5617 46.849C58.6225 44.7438 55.4872 41.8929 52.2199 39.097C49.311 36.6079 48.9302 32.6747 48.8976 29.683L177.064 29.683Z" fill="#D9D9D9" fill-opacity="0.47" stroke="white"/>
+                            <path d="M23.8947 40.683L26.8976 45.683L31.3947 49.683L34.3947 51.683L39.8947 55.183L49.3947 59.683L61.3947 63.183L79.8947 65.683L99.3947 67.1455L117.395 67.1455L126.895 67.183L138.395 66.183L143.395 65.683L149.895 65.183L156.895 64.183L164.395 63.183L172.895 60.683L179.395 58.183L182.395 56.683L185.395 55.183L187.395 54.183L190.395 52.183L194.895 49.183L196.395 47.683L198.895 45.683L200.395 43.183L201.895 40.183" stroke="white" stroke-dasharray="2 2"/>
+                            <path d="M19.8947 55.683L28.3977 67.183L32.3977 71.183L35.3977 73.183L40.8977 76.683L50.3977 81.183L62.3977 84.683L80.8977 87.183L100.398 88.6455L118.398 88.6455L127.898 88.683L138.398 88.183L147.398 87.683L156.898 86.183L163.395 84.683L167.895 83.183L175.395 80.683L185.395 76.183L189.895 73.183L195.895 68.683L199.395 64.183L206.395 55.683" stroke="white"/>
+                            <ellipse cx="113.145" cy="45.433" rx="1.25" ry="0.75" fill="white"/>
+                            <path d="M112.895 26.7831L24.47 127.249" stroke="white" stroke-width="0.2"/>
+                            <path d="M112.895 26.683L201.395 127.183" stroke="white" stroke-width="0.2"/>
+                            <path d="M112.895 26.683L113.488 127.182" stroke="white" stroke-width="0.2"/>
+                            <path d="M24.3886 40.1828L49.8946 36.3429" stroke="white" stroke-width="0.2"/>
+                            <path d="M66.395 47.1328L26.3947 64.563" stroke="white" stroke-width="0.2"/>
+                            <path d="M159.694 47.183L198.895 64.183" stroke="white" stroke-width="0.4"/>
+                            <path d="M202.38 40.2819L175.895 36.183" stroke="white" stroke-width="0.2"/>
+                            <path d="M99.3947 12.183L125.395 12.183" stroke="white" stroke-width="0.1"/>
+                            <path d="M99.3947 12.183L104.395 15.3222M99.3947 15.1896L104.395 17.1413M99.3947 17.9883L104.395 18.9678M99.3947 20.787L104.395 20.787M99.3947 23.5856L104.395 22.6135M99.3947 26.3843L104.395 24.4326M99.3947 29.183L104.395 26.441" stroke="white" stroke-width="0.5"/>
+                            <path d="M99.3947 29.183L99.3947 12.183M100.226 28.7475L100.226 12.6941M101.061 28.2743L101.061 13.2431M101.893 27.8199L101.893 13.7353M102.728 27.3845L102.728 14.2654M103.56 26.9112L103.56 14.7954M104.395 26.4569L104.395 15.3157" stroke="white" stroke-width="0.5"/>
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M99.3947 12.183L104.395 15.3066L104.395 26.4569L99.3947 29.183L99.3947 12.183Z" fill="#0A1F38" fill-opacity="0.28"/>
+                            <path d="M99.3947 12.183L104.395 15.2842L104.395 26.1965L99.3947 29.183L99.3947 12.183Z" fill="#071422"/>
+                            <path d="M125.395 12.183L120.395 15.3222M125.395 15.1896L120.395 17.1413M125.395 17.9883L120.395 18.9678M125.395 20.787L120.395 20.787M125.395 23.5856L120.395 22.6135M125.395 26.3843L120.395 24.4326M125.395 29.183L120.395 26.441" stroke="white" stroke-width="0.5"/>
+                            <path d="M125.395 29.183L125.395 12.183M124.563 28.7475L124.563 12.6941M123.728 28.2743L123.728 13.2431M122.896 27.8199L122.896 13.7353M122.061 27.3845L122.061 14.2654M121.23 26.9112L121.23 14.7954M120.395 26.4569L120.395 15.3157" stroke="white" stroke-width="0.5"/>
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M125.395 12.183L120.395 15.3066L120.395 26.4569L125.395 29.183L125.395 12.183Z" fill="#0A1F38" fill-opacity="0.28"/>
+                            <path d="M125.395 12.183L120.395 15.2842L120.395 26.1965L125.395 29.183L125.395 12.183Z" fill="#071422"/>
+                            <line x1="98.3947" y1="29.183" x2="98.3947" y2="11.183" stroke="white" stroke-width="2"/>
+                            <line x1="98.3947" y1="29.183" x2="98.3947" y2="11.183" stroke="#E80B0B" stroke-width="2" stroke-dasharray="5 5"/>
+                            <line x1="126.395" y1="29.183" x2="126.395" y2="11.183" stroke="white" stroke-width="2"/>
+                            <line x1="126.395" y1="29.183" x2="126.395" y2="11.183" stroke="#E80B0B" stroke-width="2" stroke-dasharray="5 5"/>
+                            <line x1="97.3947" y1="11.183" x2="127.395" y2="11.183" stroke="white" stroke-width="2"/>
+                            <line x1="104.395" y1="26.533" x2="120.395" y2="26.533" stroke="white" stroke-width="0.3"/>
+                            <path d="M106.395 26.683L106.395 15.183L103.395 12.183M108.395 26.683L108.395 15.183L105.395 12.183M110.395 26.683L110.395 15.183L107.395 12.183M112.395 26.683L112.395 15.183L115.395 12.183M114.395 26.683L114.395 15.183L115.895 13.683L117.395 12.183M116.395 26.683L116.395 15.183M118.395 26.683L118.395 15.183" stroke="white" stroke-width="0.3"/>
+                            <line x1="104.395" y1="24.533" x2="120.395" y2="24.533" stroke="white" stroke-width="0.3"/>
+                            <line x1="104.395" y1="22.533" x2="120.395" y2="22.533" stroke="white" stroke-width="0.3"/>
+                            <line x1="104.395" y1="20.833" x2="120.395" y2="20.833" stroke="white" stroke-width="0.3"/>
+                            <path d="M101.395 13.183L123.895 13.183M102.605 14.0336L122.081 14.0336" stroke="white" stroke-width="0.3"/>
+                            <line x1="104.395" y1="18.833" x2="120.395" y2="18.833" stroke="white" stroke-width="0.3"/>
+                            <line x1="104.395" y1="17.1331" x2="120.395" y2="17.1331" stroke="white" stroke-width="0.3"/>
+                            <line x1="104.395" y1="15.2329" x2="120.395" y2="15.2329" stroke="white" stroke-width="0.3"/>
+                            <path d="M116.393 15.1835L119.393 12.1835M118.393 15.1835L121.393 12.1835M111.394 15.1833L111.395 12.183" stroke="white" stroke-width="0.3"/>
+                            <line x1="97.3947" y1="11.183" x2="127.395" y2="11.183" stroke="#E80B0B" stroke-width="2" stroke-dasharray="5 5"/>
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M99.3959 12.1839L125.396 12.1833L120.896 15.1839L103.896 15.1839L99.3959 12.1839Z" fill="#05142E" fill-opacity="0.34"/>
+                            <path d="M99.5531 12.183L125.396 12.1833L120.895 15.183L104.395 15.183L99.5531 12.183Z" fill="#05142E" fill-opacity="0.34"/>
+                            <rect x="99.3947" y="12.183" width="26" height="1" fill="#080D14" fill-opacity="0.88"/>
+                            <rect width="17" height="1" transform="matrix(0 -1 -1 0 100.395 29.183)" fill="#080D14" fill-opacity="0.88"/>
+                            <rect width="17" height="1" transform="matrix(0 -1 -1 0 125.395 29.183)" fill="#080D14" fill-opacity="0.88"/>
+                            <line x1="108.395" y1="58.433" x2="118.395" y2="58.433" stroke="white" stroke-width="1.5"/>
+                            <path d="M0.394702 127.183L226.395 127.183L224.395 132.183L3.3947 132.183L0.394702 127.183Z" fill="#B3B3B3"/>
+                            <path d="M141.395 126.683C141.395 124.647 140.67 122.632 139.263 120.751C137.856 118.871 135.794 117.162 133.194 115.723C130.594 114.283 127.507 113.142 124.11 112.363C120.713 111.584 117.072 111.183 113.395 111.183C109.718 111.183 106.077 111.584 102.68 112.363C99.2824 113.142 96.1958 114.283 93.5957 115.723C90.9957 117.162 88.9332 118.871 87.5261 120.751C86.1189 122.632 85.3947 124.647 85.3947 126.683L113.395 126.683L141.395 126.683Z" fill="#253AFF" fill-opacity="0.53" stroke="#B7AE11" stroke-width="1"/>
+                        </g>
                         @foreach (var zone in TriggerGeometries)
                         {
                             var stat = GetTriggerZone(zone.Key);
@@ -407,6 +496,10 @@
                                   @onkeydown="@(e => HandleZoneKeyDownAsync(zone.Key, e))">
                                 <title>@GetTooltip(zone.Key, stat)</title>
                             </path>
+                            @if (stat.Attempts > 0)
+                            {
+                                @:<text x="@Format(zone.LabelX)" y="@Format(zone.LabelY)" text-anchor="middle" dominant-baseline="middle" pointer-events="none" font-size="5.5" font-weight="700" paint-order="stroke fill" stroke="#000000" stroke-width="1" stroke-linejoin="round" fill="white">@GetLabel(stat)</text>
+                            }
                         }
                     </svg>
                 </div>
@@ -436,6 +529,9 @@
 
     [Parameter]
     public EventCallback<string> ViewModeChanged { get; set; }
+
+    [Parameter]
+    public bool HideModeBar { get; set; }
 
     [Parameter]
     public bool HideZeroZones { get; set; }
@@ -515,24 +611,26 @@
 
     private static readonly ZoneGeometry[] TriggerGeometries =
     [
-        new("TG6", SvgShape.Path, "M169.12 0H112.7L95 176L90 226.5L93 220L97.5 214L107.5 202L123.5 186.5L132.5 178L135 176L142 170L152 163L162 156.5L180.7 148L188.7 146L191.5 145.5L197.5 144.5L202 144L209.5 143.5L215.5 143L220.5 142.5L226.5 142H232L169.12 0Z", 0, 0, 0, 0, 146, 101),
-        new("TG9", SvgShape.Path, "M353 1.5L171 2L233 142L237.5 141.5L241 141L256.5 140.5L270.5 140L283 139.5L295 139H311L324 138.5H338.5L352.5 138L353 1.5Z", 0, 0, 0, 0, 307, 70),
-        new("TD9", SvgShape.Path, "M354 1.5H539L475.5 139L464 138L448 137L431.5 136.5H415.5H399H384.5L371 137L353.28 138L354 1.5Z", 0, 0, 0, 0, 431, 70),
-        new("TD6", SvgShape.Path, "M539.58 1H596L616 223L613 217L605 206.5L599.5 200.5L596 196.5L585.5 185.5L572.5 174.5L565 169L556 162.5L543.5 155.5L528 149L520 147L505 143.5L496.5 142L484 140L478.5 139.5L476 139L539.58 1Z", 0, 0, 0, 0, 555, 101),
-        new("TG5", SvgShape.Path, "M232 143.5L257.5 198.171L219.5 201L191 203.5L165 211.839L149 225L116.5 196L132.5 181L149 168L175 152.106L203 146L232 143.5Z", 0, 0, 0, 0, 146, 158),
-        new("TG8", SvgShape.Path, "M234 143.5L351.5 140V196L258.5 198.5L234 143.5Z", 0, 0, 0, 0, 305, 173),
-        new("TD8", SvgShape.Path, "M353.5 140.5L388.5 139.5H403.5H417.5H432L453 140.5L465 141L475 142.43L449 197.5L410 196H353.5V140.5Z", 0, 0, 0, 0, 395, 173),
-        new("TD5", SvgShape.Path, "M475.5 141L496.5 144L507 145.5L516.5 148L526 150.5L535 154L547.5 160L559.5 167L578 181.5L593.5 196L561 224L553 217.5L535 208L512.5 202L492.5 199L450.5 195L475.5 141Z", 0, 0, 0, 0, 533, 158),
-        new("TG3", SvgShape.Path, "M116.5 196.5L148.5 225L136 237L126 248L115 260L104.5 274L97 284.5L89.5 296.5L81.5 309V305.5L89.5 228L91.5 225.5L95.5 220L98.5 216L104.5 209L110 202L116.5 196.5Z", 0, 0, 0, 0, 107, 223),
-        new("TG4", SvgShape.Path, "M226 202L242 201.25L258 200.5L260 205.5L263.5 213L267.5 222L274 236L244 237.5L221.5 242L203.5 249.5L187 259.5L149 226.423L163.5 216.5L180 208L190 205.5L226 202Z", 0, 0, 0, 0, 213, 219),
-        new("TG7", SvgShape.Path, "M259 200.5L305.5 198.5L352 198V236L275 237L259 200.5Z", 0, 0, 0, 0, 310, 209),
-        new("TD7", SvgShape.Path, "M353 198.513L363 197.5H377H402H449L430.5 237H352.5L353 198.513Z", 0, 0, 0, 0, 393, 209),
-        new("TD4", SvgShape.Path, "M449.5 197L486 200L516 205L535 210.5L547.5 217L560 225.5L522 259L512.5 253L504 248.5L490 243L476 239L456.5 236H431.5L449.5 197Z", 0, 0, 0, 0, 497, 219),
-        new("TD3", SvgShape.Path, "M593.5 196.5L602 206.5L610 216.5L616 223L623.5 305.5V308.5L611 284L605 274.5L598.5 265L589 252L577 238.5L571.5 232.5L562 224.5L593.5 196.5Z", 0, 0, 0, 0, 596, 223),
-        new("TG1", SvgShape.Path, "M81.5 311L84.5 307L252 371.5H74.5L81.5 311Z", 0, 0, 0, 0, 109, 351),
-        new("TG2", SvgShape.Path, "M149.5 226.5L187 260.5L172 275L162.5 287L152 306.5L144.5 329L84.5 306.5L105 275.5L122 253.5L137 238L149.5 226.5Z", 0, 0, 0, 0, 139, 284),
-        new("TD2", SvgShape.Path, "M562.5 226L575.5 237.5L586 249L603.5 272L623.5 306.5L569.5 326.5L564.5 312L556 294L543.5 277.5L524 260L562.5 226Z", 0, 0, 0, 0, 593, 284),
-        new("TD1", SvgShape.Path, "M624.5 313L629.5 371.5H451L621.5 306.5L624.5 313Z", 0, 0, 0, 0, 595, 351)
+        // Left side (TG) — near goal to far, left to center
+        new("TG1", SvgShape.Path, "M27.1794 30.183L48.1794 30.183L48.3945 30.183L48.4445 31.183L48.4645 31.4525L48.4845 31.7181L48.5045 31.9369L48.5245 32.1244L48.5545 32.3783L48.5945 32.7337L48.6645 33.2064L48.7145 33.4486L48.7445 33.597L48.7845 33.8353L48.8245 34.0228L48.8645 34.183L48.9145 34.4134L48.9545 34.5619L48.9945 34.7259L49.0645 34.933L49.1345 35.183L49.1945 35.3705L49.2745 35.5892L49.3445 35.765L49.4345 36.0072L49.4845 36.1244L49.5145 36.2064L49.5545 36.2884L24.5546 40.053L27.1794 30.183Z", 0, 0, 0, 0, 37, 35),
+        new("TG2", SvgShape.Path, "M32.3947 39.073L49.6347 36.473L49.8147 36.828L50.0047 37.183L50.3047 37.683L50.4747 37.933L50.6747 38.183L50.7557 38.308L50.8547 38.433L51.0747 38.6831L51.3147 38.9332L51.4447 39.0582L51.5647 39.1832L52.1147 39.683L52.7047 40.183L53.8747 41.183L54.4947 41.683L55.0947 42.183L56.0947 42.933L56.5947 43.308L57.1447 43.683L58.2947 44.433L59.5747 45.183L61.0447 45.933L61.8407 46.308L62.7147 46.683L63.9847 47.1831L64.6747 47.4332L65.1447 47.583L44.1947 56.6832L41.5947 55.4332L40.2947 54.8082L39.7447 54.4957L39.2547 54.1832L34.5447 51.1832L32.2947 49.6832L31.5647 49.1832L30.9447 48.6832L29.2947 47.1832L28.3538 46.3039L27.2347 45.3039L26.5747 44.1832L25.3447 42.1832L24.4147 40.5732L24.4947 40.2532L32.3947 39.073Z", 0, 0, 0, 0, 46, 46),
+        new("TG3", SvgShape.Path, "M24.0547 41.943L25.8947 45.023L26.3947 45.883L30.3947 49.483L31.3947 50.283L33.8947 51.963L36.3947 53.563L38.3947 54.823L39.3947 55.483L43.0347 57.223L26.8447 64.243L20.3947 55.6829L24.0547 41.943Z", 0, 0, 0, 0, 32, 53),
+        new("TG4", SvgShape.Path, "M65.3951 47.683L68.3947 48.683L69.8947 49.183L70.6447 49.403L71.3947 49.633L72.3947 49.923L73.3947 50.183L74.3947 50.463L75.3947 50.683L77.3947 51.163L79.8947 51.663L83.3947 52.183L86.8947 52.683L89.7148 52.963L79.0548 65.073L61.3947 62.683L49.3947 59.183L48.3948 58.683L44.4448 56.803L65.3951 47.683Z", 0, 0, 0, 0, 66, 57),
+        new("TG5", SvgShape.Path, "M43.2447 57.3229L49.3947 60.183L61.3947 63.683L78.2548 65.9627L62.2948 84.1327L50.3947 80.683L41.3947 76.383L36.8947 73.683L32.6147 70.683L28.6147 66.683L26.9748 64.4027L43.2447 57.3229Z", 0, 0, 0, 0, 52, 71),
+        new("TG6", SvgShape.Path, "M20.0447 56.683L28.3947 67.683L32.3947 71.683L40.8947 77.183L50.3947 81.683L61.5947 84.933L25.3946 126.183L1.64812 126.183L20.0447 56.683Z", 0, 0, 0, 0, 30, 92),
+        new("TG7", SvgShape.Path, "M89.9147 52.963L98.3947 53.683L99.3947 53.683L100.395 53.783L101.395 53.833L102.395 53.883L103.395 53.933L104.395 53.983L105.395 54.023L106.395 54.043L107.395 54.083L108.395 54.108L110.395 54.183L112.895 54.1829L112.995 66.6829L99.3947 66.6829L79.2448 65.1029L89.9147 52.963Z", 0, 0, 0, 0, 96, 59),
+        new("TG8", SvgShape.Path, "M78.5151 66.003L99.3947 67.683L113.035 67.6632L113.145 88.1832L100.395 88.183L94.3947 87.683L80.8947 86.683L62.5148 84.1832L78.5151 66.003Z", 0, 0, 0, 0, 91, 76),
+        new("TG9", SvgShape.Path, "M61.7947 85.003L80.8947 87.683L100.395 89.1829L113.115 89.1829L113.365 126.133L25.5446 126.183L61.7947 85.003Z", 0, 0, 0, 0, 80, 105),
+        // Right side (TD) — symmetric
+        new("TD1", SvgShape.Path, "M198.77 30.183L177.77 30.183L177.555 30.183L177.505 31.183L177.485 31.4525L177.465 31.7181L177.445 31.9369L177.425 32.1244L177.395 32.3783L177.355 32.7337L177.285 33.2064L177.235 33.4486L177.205 33.597L177.165 33.8353L177.125 34.0228L177.085 34.183L177.035 34.4134L176.995 34.5619L176.955 34.7259L176.885 34.933L176.815 35.183L176.755 35.3705L176.675 35.5892L176.605 35.765L176.515 36.0072L176.465 36.1244L176.435 36.2064L176.395 36.2884L201.395 40.053L198.77 30.183Z", 0, 0, 0, 0, 190, 35),
+        new("TD2", SvgShape.Path, "M193.545 38.983L176.305 36.3829L176.125 36.7379L175.935 37.0929L175.635 37.5929L175.465 37.8429L175.265 38.0929L175.184 38.2179L175.085 38.3429L174.865 38.593L174.625 38.8431L174.495 38.9681L174.375 39.0931L173.825 39.5929L173.235 40.0929L172.065 41.0929L171.445 41.5929L170.845 42.0929L169.845 42.8429L169.345 43.2179L168.795 43.5929L167.645 44.3429L166.365 45.0929L164.895 45.8429L164.099 46.2179L163.225 46.5929L161.955 47.093L161.265 47.3431L160.795 47.4929L181.745 56.5931L184.345 55.3431L185.645 54.7181L186.195 54.4056L186.685 54.0931L191.395 51.0931L193.645 49.5931L194.375 49.0931L194.995 48.5931L196.645 47.0931L197.586 46.2138L198.705 45.2138L199.365 44.0931L200.595 42.0931L201.525 40.4831L201.445 40.1631L193.545 38.983Z", 0, 0, 0, 0, 181, 46),
+        new("TD3", SvgShape.Path, "M201.815 41.6229L199.895 44.7628L199.395 45.6228L195.395 49.2228L194.395 50.0228L191.895 51.7028L189.395 53.3028L187.395 54.5628L186.395 55.2228L182.755 56.9628L198.945 63.9828L205.795 55.6828L201.815 41.6229Z", 0, 0, 0, 0, 195, 53),
+        new("TD4", SvgShape.Path, "M160.514 47.6529L157.515 48.6529L156.015 49.1529L155.265 49.3729L154.515 49.6029L153.515 49.8929L152.515 50.1529L151.515 50.4329L150.515 50.6529L148.515 51.1329L146.015 51.6329L142.515 52.1529L139.015 52.6529L135.995 52.983L146.745 65.143L164.515 62.6529L176.515 59.1529L177.515 58.6529L181.465 56.7729L160.514 47.6529Z", 0, 0, 0, 0, 161, 57),
+        new("TD5", SvgShape.Path, "M182.405 57.183L176.255 60.0431L164.255 63.5431L147.395 65.8228L163.395 84.183L175.255 80.5431L184.255 76.2431L188.755 73.5431L193.035 70.5431L195.395 68.683L197.035 66.5431L198.675 64.2628L182.405 57.183Z", 0, 0, 0, 0, 175, 71),
+        new("TD6", SvgShape.Path, "M206.095 56.683L199.895 64.183L197.395 67.683L193.395 71.183L185.395 76.683L175.395 81.183L164.245 84.933L200.391 126.433L225.691 126.433L206.095 56.683Z", 0, 0, 0, 0, 197, 92),
+        new("TD7", SvgShape.Path, "M136.125 52.993L127.645 53.713L126.645 53.713L125.645 53.813L124.645 53.863L123.645 53.913L122.645 53.963L121.645 54.013L120.645 54.053L119.645 54.073L118.645 54.113L117.645 54.138L115.645 54.213L113.145 54.2129L113.045 66.7129L126.645 66.7129L146.795 65.1329L136.125 52.993Z", 0, 0, 0, 0, 131, 59),
+        new("TD8", SvgShape.Path, "M147.194 65.933L126.895 67.713L113.255 67.6933L113.145 88.2133L125.895 88.213L137.394 87.683L147.394 87.183L156.894 85.683L163.395 84.183L147.194 65.933Z", 0, 0, 0, 0, 136, 76),
+        new("TD9", SvgShape.Path, "M163.895 84.683L156.895 86.683L146.895 88.183L138.895 88.683L126.085 89.1629L113.365 89.1629L113.115 126.113L200.395 126.183L163.895 84.683Z", 0, 0, 0, 0, 143, 105),
     ];
 
     private static readonly HeatColorStop[] HeatPalette = Enumerable.Range(0, ChartPalette.GoalHeatColors.Length)

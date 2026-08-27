@@ -8,10 +8,10 @@ namespace HandWStat.E2E.Tests.Tests;
 [Collection("E2E")]
 public sealed class CompareSmokeTests(E2EFixture fixture) : E2ETestBase(fixture)
 {
-    [Fact]
+    [SkippableFact]
     public async Task Compare_LoadsAfterLogin()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -23,10 +23,10 @@ public sealed class CompareSmokeTests(E2EFixture fixture) : E2ETestBase(fixture)
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Compare_LoadsAfterLogin), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Compare_TwoPlayers_ShowsResults()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -46,11 +46,11 @@ public sealed class CompareSmokeTests(E2EFixture fixture) : E2ETestBase(fixture)
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Compare_TwoPlayers_ShowsResults), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Compare_RadarChart_RendersWithFieldPlayers()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
-        if (!E2EConfig.HasFieldPlayer) Assert.Skip("HANDWSTAT_E2E_FIELD_PLAYER not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasFieldPlayer, "HANDWSTAT_E2E_FIELD_PLAYER not configured");
         try
         {
             await LoginAsync();
@@ -76,10 +76,10 @@ public sealed class CompareSmokeTests(E2EFixture fixture) : E2ETestBase(fixture)
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Compare_RadarChart_RendersWithFieldPlayers), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Compare_SecondPlayerReplaced_ChartRefreshes()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -107,12 +107,12 @@ public sealed class CompareSmokeTests(E2EFixture fixture) : E2ETestBase(fixture)
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Compare_SecondPlayerReplaced_ChartRefreshes), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Compare_GkVsField_ShowsIncompatibilityNotice()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
-        if (!E2EConfig.HasFieldPlayer || !E2EConfig.HasGoalkeeper)
-            Assert.Skip("Both HANDWSTAT_E2E_FIELD_PLAYER and HANDWSTAT_E2E_GOALKEEPER required");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasFieldPlayer || !E2EConfig.HasGoalkeeper,
+            "Both HANDWSTAT_E2E_FIELD_PLAYER and HANDWSTAT_E2E_GOALKEEPER required");
         try
         {
             await LoginAsync();

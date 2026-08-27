@@ -1,4 +1,5 @@
 @page "/teams"
+@using HandWStat.Services.Navigation
 @inject ReferenceDataService ReferenceDataService
 @inject StatsApiClient StatsApiClient
 @inject MatchesApiClient MatchesApiClient
@@ -17,13 +18,6 @@
     }
     else
     {
-        <div class="studio-subtoolbar">
-            <div class="studio-subtoolbar__spacer"></div>
-            <button type="button" class="btn btn-ghost btn-sm" @onclick="() => _filterOpen = true">
-                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;flex-shrink:0"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
-                Filtrer
-            </button>
-        </div>
 
         @if (_filterOpen)
         {
@@ -327,54 +321,75 @@
                             var rosterRows = FilteredRosterPlayers.ToArray();
                         }
                         <div class="table-wrapper" style="border:none;border-radius:0;">
-                            <div style="padding:0.75rem 1rem 0;">
-                                <label class="filter-field table-search">
+                            <div style="padding:0.75rem 1rem 0;display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                                <label class="filter-field table-search" style="flex:1;min-width:12rem;">
                                     <span>Filtrer le tableau</span>
                                     <input value="@RosterSearch" @oninput="OnRosterSearchChanged" placeholder="Joueuse, poste ou équipe" />
                                 </label>
+                                <button type="button" class="btn btn-ghost btn-sm" @onclick="() => _showAllRosterColumns = !_showAllRosterColumns" data-testid="roster-expand-cols">
+                                    @(_showAllRosterColumns ? "Réduire colonnes" : "Plus de colonnes")
+                                </button>
                             </div>
-                            <table class="data-table">
+                            @if (rosterRows.Length == 0)
+                            {
+                                <StateCard Kicker="Effectif vide"
+                                           Title="Aucune joueuse dans cette sélection"
+                                           Message="Modifiez les filtres ou élargissez la recherche."
+                                           Tone="empty"
+                                           CssClass="empty-card-inline" />
+                            }
+                            else
+                            {
+                            <table class="data-table" data-testid="roster-table">
                                 <thead>
                                     <tr>
-                                        <th class="col-jersey-num">#</th>
                                         <th>@TableHeader("name", "Joueuse", SetRosterSort)</th>
                                         <th>@TableHeader("position", "Poste", SetRosterSort)</th>
                                         <th class="numeric">@TableHeader("matches", "Matchs", SetRosterSort)</th>
                                         <th class="numeric">@TableHeader("goals", "Buts", SetRosterSort)</th>
                                         <th class="numeric">@TableHeader("goalsshare", "Part buts", SetRosterSort)</th>
-                                        <th class="numeric">@TableHeader("assists", "Passes", SetRosterSort)</th>
-                                        <th class="numeric">@TableHeader("interceptions", "Intercept.", SetRosterSort)</th>
-                                        <th class="numeric">@TableHeader("saves", "Arrêts", SetRosterSort)</th>
-                                        <th class="numeric">@TableHeader("turnovers", "Pertes", SetRosterSort)</th>
-                                        <th class="numeric">@TableHeader("shot", "Eff. %", SetRosterSort)</th>
+                                        @if (_showAllRosterColumns)
+                                        {
+                                            <th class="col-jersey-num">#</th>
+                                            <th class="numeric">@TableHeader("assists", "Passes", SetRosterSort)</th>
+                                            <th class="numeric">@TableHeader("interceptions", "Intercept.", SetRosterSort)</th>
+                                            <th class="numeric">@TableHeader("saves", "Arrêts", SetRosterSort)</th>
+                                            <th class="numeric">@TableHeader("turnovers", "Pertes", SetRosterSort)</th>
+                                            <th class="numeric">@TableHeader("shot", "Eff. %", SetRosterSort)</th>
+                                        }
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var player in rosterRows)
                                     {
                                         <tr>
-                                            <td class="col-jersey-num">@(player.Number?.ToString() ?? "—")</td>
                                             <td>
                                                 <div class="player-cell">
                                                     <div class="player-cell__avatar">
                                                         <span>@GetInitials(player.FullName)</span>
                                                     </div>
-                                                    <span class="player-cell__name">@player.FullName</span>
+                                                    <a href="@AnalyticsNavigationService.BuildPlayerUri(player.PlayerId, TeamId, Season, CompetitionId)"
+                                                       class="player-cell__name roster-player-link">@player.FullName</a>
                                                 </div>
                                             </td>
                                             <td><span class="badge badge--neutral">@(player.PositionCode ?? player.PositionName ?? "-")</span></td>
                                             <td class="numeric">@player.MatchesPlayed</td>
                                             <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.TotalGoals, player)" style="font-family:var(--font-display);font-weight:700;">@player.TotalGoals</td>
                                             <td class="numeric" title="% buts équipe">@GoalsShareCell(player)</td>
-                                            <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.AssistCount, player)">@player.AssistCount</td>
-                                            <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.InterceptionCount, player)">@player.InterceptionCount</td>
-                                            <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.SaveCount, player)">@player.SaveCount</td>
-                                            <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.TurnoverCount, player, higherIsBetter: false)">@player.TurnoverCount</td>
-                                            <td class="numeric" title="@(player.IsGoalkeeper ? "% arrêts" : "% tir")">@(player.IsGoalkeeper ? (player.GoalkeeperSaveRate > 0 ? $"{FormatRate(player.GoalkeeperSaveRate)}%" : "—") : (player.ShotSuccessRate > 0 ? $"{FormatRate(player.ShotSuccessRate)}%" : "—"))</td>
+                                            @if (_showAllRosterColumns)
+                                            {
+                                                <td class="col-jersey-num">@(player.Number?.ToString() ?? "—")</td>
+                                                <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.AssistCount, player)">@player.AssistCount</td>
+                                                <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.InterceptionCount, player)">@player.InterceptionCount</td>
+                                                <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.SaveCount, player)">@player.SaveCount</td>
+                                                <td class="numeric @TableHeatToneHelper.HeatClass(rosterRows, row => (double?)row.TurnoverCount, player, higherIsBetter: false)">@player.TurnoverCount</td>
+                                                <td class="numeric" title="@(player.IsGoalkeeper ? "% arrêts" : "% tir")">@(player.IsGoalkeeper ? (player.GoalkeeperSaveRate > 0 ? $"{FormatRate(player.GoalkeeperSaveRate)}%" : "—") : (player.ShotSuccessRate > 0 ? $"{FormatRate(player.ShotSuccessRate)}%" : "—"))</td>
+                                            }
                                         </tr>
                                     }
                                 </tbody>
                             </table>
+                            }
                         </div>
                     </div>
                 }
@@ -472,6 +487,9 @@
     private bool _publishingScope;
     private bool _filterOpen;
     private bool _showAllPerformers;
+    private bool _initialLoadDone;
+    private bool _explicitAllSeasons;
+    private bool _showAllRosterColumns;
 
     [Parameter, SupplyParameterFromQuery(Name = "teamId")]
     public int? TeamIdFromQuery { get; set; }
@@ -554,10 +572,15 @@
         return s1.HasValue && s2.HasValue ? $"{s1.Value} - {s2.Value}" : "— - —";
     }
 
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            CommandBarService.Register(() => { _filterOpen = !_filterOpen; return InvokeAsync(StateHasChanged); });
+        return Task.CompletedTask;
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        CommandBarService.Register(() => { _filterOpen = !_filterOpen; StateHasChanged(); return Task.CompletedTask; });
-
         if (!AuthService.Session.IsAuthenticated)
         {
             return;
@@ -601,10 +624,18 @@
 
     private RenderFragment PerformerCard(PlayerGlobalStatsDto player) => builder =>
     {
+        var posVariant = (player.PositionCode ?? "").ToUpperInvariant() switch
+        {
+            "GK" or "GB" or "G" or "GARDIENNE" or "GARDEN" => "gardienne",
+            var p when p.StartsWith("AR") => "arriere",
+            "PIV" or "PIVOT" => "pivot",
+            "AIL" or "AILG" or "ALD" or "AIL-G" or "AIL-D" or "AILIERE" or "AILIÈRE" => "ailiere",
+            "DC" or "DCE" or "DEMI" or "DEMI-CENTRE" => "demi",
+            _ => ""
+        };
         var isGk = player.IsGoalkeeper;
-        var isDefense = !isGk && player.InterceptionCount > player.TotalGoals;
-        var cardClass = isGk ? "team-performer-card team-performer-card--goalkeeper"
-            : isDefense ? "team-performer-card team-performer-card--defense"
+        var cardClass = posVariant != ""
+            ? $"team-performer-card team-performer-card--{posVariant}"
             : "team-performer-card";
         var signal = GetPerformerSignal(player);
         var rating = FormatRating(player);
@@ -620,6 +651,8 @@
         var _goalsShareHtml = _goalsShare.HasValue
             ? $"<span class=\"team-performer-card__goals-share\">{_goalsShare.Value:F1}% éq.</span>"
             : "";
+        var _playerHref = System.Net.WebUtility.HtmlEncode(
+            AnalyticsNavigationService.BuildPlayerUri(player.PlayerId, TeamId, Season, CompetitionId));
 
         builder.OpenElement(0, "article");
         builder.AddAttribute(1, "class", cardClass);
@@ -652,7 +685,7 @@
             </div>
             <div class="team-performer-card__footer">
                 <span class="team-performer-card__signal"><i></i>{System.Net.WebUtility.HtmlEncode(signal)}</span>
-                <a href="/players" class="team-performer-card__link">Voir la fiche →</a>
+                <a href="{_playerHref}" class="team-performer-card__link">Voir la fiche →</a>
             </div>
             """);
         builder.CloseElement();
@@ -675,6 +708,7 @@
 
     private Task OnScopeSelectionChangedAsync()
     {
+        _explicitAllSeasons = string.IsNullOrWhiteSpace(Season);
         PublishGlobalScope();
         return LoadTeamAsync();
     }
@@ -837,6 +871,16 @@
             {
                 Season = null;
             }
+
+            if (!_initialLoadDone && !_explicitAllSeasons && string.IsNullOrWhiteSpace(Season) && SeasonOptions.Count > 0)
+            {
+                _initialLoadDone = true;
+                Season = SeasonOptions[0];
+                await LoadTeamAsync(manageBusyState: false);
+                return;
+            }
+
+            _initialLoadDone = true;
 
             if (!string.IsNullOrWhiteSpace(Day) && !DayOptions.Contains(Day, StringComparer.OrdinalIgnoreCase))
             {

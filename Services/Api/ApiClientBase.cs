@@ -189,7 +189,7 @@ public abstract class ApiClientBase
             HttpStatusCode.BadRequest =>
                 !string.IsNullOrWhiteSpace(problemDetail)
                     ? problemDetail.Trim()
-                    : "Le filtre statistique n'a pas pu etre traite. Verifiez le perimetre choisi.",
+                    : TryReadProblemErrors(details) ?? "Le filtre statistique n'a pas pu etre traite. Verifiez le perimetre choisi.",
             HttpStatusCode.NotFound =>
                 "Les donnees demandees sont introuvables dans ce perimetre.",
             HttpStatusCode.TooManyRequests =>
@@ -231,6 +231,34 @@ public abstract class ApiClientBase
             return seconds > 0 ? (int)Math.Ceiling(seconds) : 0;
         }
 
+        return null;
+    }
+
+    private static string? TryReadProblemErrors(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("errors", out var errors)
+                && errors.ValueKind == JsonValueKind.Object)
+            {
+                var parts = new System.Text.StringBuilder();
+                foreach (var field in errors.EnumerateObject())
+                {
+                    parts.Append(field.Name).Append(": ");
+                    if (field.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        parts.Append(string.Join(", ", field.Value.EnumerateArray().Select(v => v.GetString())));
+                    }
+                    parts.Append("; ");
+                }
+                var result = parts.ToString().TrimEnd(' ', ';');
+                return string.IsNullOrEmpty(result) ? null : result;
+            }
+        }
+        catch (JsonException) { }
         return null;
     }
 

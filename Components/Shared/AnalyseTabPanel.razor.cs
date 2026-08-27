@@ -48,6 +48,19 @@ public class AnalyseTabPanelBase : ComponentBase
     protected string? ContextErrorMessage { get; private set; }
     protected ContextDimension ActiveContextDimension { get; set; } = ContextDimension.ScoreState;
 
+    // ── B5 — Clutch / HalfTime / GK ScoreState ───────────────────────────────
+    protected ClutchBreakdownDto? ClutchData { get; private set; }
+    protected bool IsClutchBusy { get; private set; }
+    protected string? ClutchErrorMessage { get; private set; }
+
+    protected HalfTimeBreakdownDto? HalfTimeData { get; private set; }
+    protected bool IsHalfTimeBusy { get; private set; }
+    protected string? HalfTimeErrorMessage { get; private set; }
+
+    protected GkScoreStateBreakdownDto? GkScoreStateData { get; private set; }
+    protected bool IsGkScoreStateBusy { get; private set; }
+    protected string? GkScoreStateErrorMessage { get; private set; }
+
     protected PositionProfileResponseDto? PositionProfile { get; private set; }
     protected IReadOnlyList<PositionProfileAxisViewModel> PositionProfileAxes { get; private set; } = [];
     protected IReadOnlyList<PositionProfileAxisViewModel> PositionProfileChartRows { get; private set; } = [];
@@ -88,7 +101,7 @@ public class AnalyseTabPanelBase : ComponentBase
         ActiveContextDimension = ContextAnalyticsHelper.GetDefaultDimension(position);
 
         await LoadProfileAsync();
-        await LoadContextAsync();
+        await Task.WhenAll(LoadContextAsync(), LoadClutchAsync(), LoadHalfTimeAsync(), LoadGkScoreStateAsync());
     }
 
     protected async Task ExportCsvAsync()
@@ -238,6 +251,120 @@ public class AnalyseTabPanelBase : ComponentBase
         }
     }
 
+    private async Task LoadClutchAsync()
+    {
+        if (!PlayerId.HasValue)
+        {
+            ClutchData = null;
+            ClutchErrorMessage = null;
+            return;
+        }
+
+        try
+        {
+            IsClutchBusy = true;
+            await InvokeAsync(StateHasChanged);
+            ClutchErrorMessage = null;
+
+            var options = new StatsQueryOptionsDto
+            {
+                PlayerId = PlayerId.Value,
+                CompetitionId = CompetitionId,
+                TeamId = TeamId,
+                Season = Season
+            };
+
+            ClutchData = await StatsApiClient.GetPlayerClutchAsync(PlayerId.Value, options: options);
+        }
+        catch (Exception ex)
+        {
+            ClutchErrorMessage = ex.Message;
+            ClutchData = null;
+            Logger.LogWarning(ex, "Failed to load clutch data for player {PlayerId}.", PlayerId);
+        }
+        finally
+        {
+            IsClutchBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadHalfTimeAsync()
+    {
+        if (!PlayerId.HasValue)
+        {
+            HalfTimeData = null;
+            HalfTimeErrorMessage = null;
+            return;
+        }
+
+        try
+        {
+            IsHalfTimeBusy = true;
+            await InvokeAsync(StateHasChanged);
+            HalfTimeErrorMessage = null;
+
+            var options = new StatsQueryOptionsDto
+            {
+                PlayerId = PlayerId.Value,
+                CompetitionId = CompetitionId,
+                TeamId = TeamId,
+                Season = Season
+            };
+
+            HalfTimeData = await StatsApiClient.GetPlayerHalfTimeBreakdownAsync(PlayerId.Value, options);
+        }
+        catch (Exception ex)
+        {
+            HalfTimeErrorMessage = ex.Message;
+            HalfTimeData = null;
+            Logger.LogWarning(ex, "Failed to load half-time data for player {PlayerId}.", PlayerId);
+        }
+        finally
+        {
+            IsHalfTimeBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadGkScoreStateAsync()
+    {
+        if (!PlayerId.HasValue || !IsGoalkeeper)
+        {
+            GkScoreStateData = null;
+            GkScoreStateErrorMessage = null;
+            return;
+        }
+
+        try
+        {
+            IsGkScoreStateBusy = true;
+            await InvokeAsync(StateHasChanged);
+            GkScoreStateErrorMessage = null;
+
+            var options = new StatsQueryOptionsDto
+            {
+                PlayerId = PlayerId.Value,
+                CompetitionId = CompetitionId,
+                TeamId = TeamId,
+                Season = Season
+            };
+
+            GkScoreStateData = await StatsApiClient.GetGkScoreStateAsync(PlayerId.Value, options);
+        }
+        catch (Exception ex)
+        {
+            GkScoreStateErrorMessage = ex.Message;
+            GkScoreStateData = null;
+            Logger.LogWarning(ex, "Failed to load GK score-state data for player {PlayerId}.", PlayerId);
+        }
+        finally
+        {
+            IsGkScoreStateBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private void ClearAnalysisState()
     {
         PositionProfile = null;
@@ -251,6 +378,12 @@ public class AnalyseTabPanelBase : ComponentBase
         AnlzRadarKey = string.Empty;
         EventContexts = null;
         ContextErrorMessage = null;
+        ClutchData = null;
+        ClutchErrorMessage = null;
+        HalfTimeData = null;
+        HalfTimeErrorMessage = null;
+        GkScoreStateData = null;
+        GkScoreStateErrorMessage = null;
     }
 
     private IReadOnlyList<ScopeSummaryItem> BuildScopeSummaryItems()

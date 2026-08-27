@@ -195,6 +195,92 @@
     transform: rotate(180deg);
 }
 
+/* ── Match insights cards ── */
+.match-insights {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.insight-card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.insight-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.insight-card--positive::before { background: var(--court-400); }
+.insight-card--warning::before  { background: var(--warning-400); }
+.insight-card--neutral::before  { background: var(--text-muted); }
+
+.insight-card__icon {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--court-400) 12%, transparent);
+}
+
+.insight-card--warning .insight-card__icon {
+    background: color-mix(in srgb, var(--warning-400) 12%, transparent);
+}
+
+.insight-card--neutral .insight-card__icon {
+    background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+}
+
+.insight-card__icon svg {
+    width: 1rem;
+    height: 1rem;
+    fill: var(--court-400);
+}
+
+.insight-card--warning .insight-card__icon svg { fill: var(--warning-400); }
+.insight-card--neutral .insight-card__icon svg { fill: var(--text-muted); }
+
+.insight-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.insight-card__eyebrow {
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--court-400);
+    margin: 0;
+}
+
+.insight-card--warning .insight-card__eyebrow { color: var(--warning-400); }
+.insight-card--neutral .insight-card__eyebrow { color: var(--text-muted); }
+
+.insight-card__text {
+    font-size: 0.8125rem;
+    color: var(--text-body);
+    margin: 0;
+    line-height: 1.4;
+}
+
 /* ── Detail pane ── */
 .matches-detail-pane {
     display: flex;

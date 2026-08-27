@@ -426,6 +426,12 @@ public class ZoneStatDto
     public int FailureCount { get; set; }
     public double SuccessRate { get; set; }
     public List<ZoneOutcomeDto> Outcomes { get; set; } = [];
+    // B1.2 — GK zone fields: MetricMode == 1 means GoalkeeperSaveRate
+    public int MetricMode { get; set; }
+    public int? ShotsFaced { get; set; }
+    public int? SaveCount { get; set; }
+    public int? GoalsConceded { get; set; }
+    public bool SampleReliable { get; set; }
 }
 
 public class TriggerZoneStatDto
@@ -516,8 +522,15 @@ public class PlayerMatchItemDto : MatchListItemDto
     public int Assists { get; set; }
     public int Interceptions { get; set; }
     public int Saves { get; set; }
+    public int OpenPlaySaves { get; set; }
     public int Turnovers { get; set; }
     public int Sanctions { get; set; }
+    public int GoalsConceded { get; set; }
+    public int ShotsFaced { get; set; }
+    public int OpenPlayShotsFaced { get; set; }
+    public int PenaltyShotsFaced { get; set; }
+    public int OpenPlayShotAttempts { get; set; }
+    public int ShotAttempts { get; set; }
 }
 
 public class PositionProfileAxisDto
@@ -659,4 +672,217 @@ public class ProblemDetailsDto
     public string? Detail { get; set; }
     public string? Instance { get; set; }
     public string? CorrelationId { get; set; }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// B1-B4 Analytics DTOs (frontend mirror of HandballManagerCore.DTO)
+// ──────────────────────────────────────────────────────────────────────────────
+
+// B1.6 — per-match playing time
+public class PlayerMatchPlayingTimeDto
+{
+    public int MatchId { get; set; }
+    public DateTime? MatchDate { get; set; }
+    public int? CompetitionId { get; set; }
+    public string? Season { get; set; }
+    public string? Day { get; set; }
+    public int? TeamId { get; set; }
+    public string? TeamName { get; set; }
+    public double PlayingTimeMinutes { get; set; }
+}
+
+// B2.1/B2.2/B2.3 — Half-time analytics
+public class HalfTimeStatsDto
+{
+    public int Goals { get; set; }
+    public int Attempts { get; set; }
+    public double? ShotSuccessRate { get; set; }
+    public int Assists { get; set; }
+    public int Turnovers { get; set; }
+    public int Interceptions { get; set; }
+    public int Blocks { get; set; }
+    public int Neutralisations { get; set; }
+    public int Sanctions { get; set; }
+    public int Saves { get; set; }
+    public int ShotsFaced { get; set; }
+    public double? SaveRate { get; set; }
+    public int ValidTemporalEvents { get; set; }
+    public int InvalidTemporalEvents { get; set; }
+}
+
+public class HalfTimeBreakdownDto
+{
+    public HalfTimeStatsDto? FirstHalf { get; set; }
+    public HalfTimeStatsDto? SecondHalf { get; set; }
+    public int ExcludedEventCount { get; set; }
+}
+
+// B2.4/B2.5/B2.6/B2.7 — Arm side analytics
+public class ArmSideStatDto
+{
+    public string Code { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public int Attempts { get; set; }
+    public int Goals { get; set; }
+    public double? SuccessRate { get; set; }
+    public double? AttemptSharePct { get; set; }
+    public int SampleCount { get; set; }
+    public bool SampleReliable { get; set; }
+}
+
+public class ArmSideBreakdownDto
+{
+    public List<ArmSideStatDto> Categories { get; set; } = [];
+    public int TotalShotAttempts { get; set; }
+    public int CoveredAttempts { get; set; }
+    public double CoveragePct { get; set; }
+    public bool CoverageReliable { get; set; }
+}
+
+// B2.9/B2.10 — GK score state analytics
+public class GkScoreStateDto
+{
+    public string ScoreState { get; set; } = string.Empty;
+    public int Saves { get; set; }
+    public int GoalsConceded { get; set; }
+    public int ShotsFaced { get; set; }
+    public double? SaveRate { get; set; }
+    public int SampleCount { get; set; }
+    public bool SampleReliable { get; set; }
+}
+
+public class GkScoreStateBreakdownDto
+{
+    public List<GkScoreStateDto> ByScoreState { get; set; } = [];
+}
+
+// B3.6 — Timeline analytics
+public class TimelineBucketDto
+{
+    public string Bucket { get; set; } = string.Empty;
+    public double BucketStartMinute { get; set; }
+    public double BucketEndMinute { get; set; }
+    public int Goals { get; set; }
+    public int Attempts { get; set; }
+    public double? ShotSuccessRate { get; set; }
+    public int Assists { get; set; }
+    public int Turnovers { get; set; }
+    public int Interceptions { get; set; }
+    public int Sanctions { get; set; }
+    public int Saves { get; set; }
+    public int ShotsFaced { get; set; }
+    public double? SaveRate { get; set; }
+}
+
+public class PlayerTimelineDto
+{
+    public List<TimelineBucketDto> Buckets { get; set; } = [];
+    public int BucketSizeMinutes { get; set; }
+    public int TotalRelevantEvents { get; set; }
+    public int TemporallyValidEvents { get; set; }
+    public double TemporalCoveragePct { get; set; }
+}
+
+public class TeamTimelineDto
+{
+    public int TeamId { get; set; }
+    public List<TimelineBucketDto> Buckets { get; set; } = [];
+    public int BucketSizeMinutes { get; set; }
+    public int TotalRelevantEvents { get; set; }
+    public int TemporallyValidEvents { get; set; }
+    public double TemporalCoveragePct { get; set; }
+}
+
+// B3.8-B3.12 — Clutch analytics
+public class ClutchBreakdownDto
+{
+    public int ClutchEventCount { get; set; }
+    public int Goals { get; set; }
+    public int Attempts { get; set; }
+    public double? ShotSuccessRate { get; set; }
+    public int Assists { get; set; }
+    public int Turnovers { get; set; }
+    public int Interceptions { get; set; }
+    public int Saves { get; set; }
+    public int ShotsFaced { get; set; }
+    public double? SaveRate { get; set; }
+    public int SampleCount { get; set; }
+    public bool SampleReliable { get; set; }
+}
+
+// B3.14-B3.20 — Run analytics
+public class ScoringRunDto
+{
+    public int TeamId { get; set; }
+    public long StartEventId { get; set; }
+    public long EndEventId { get; set; }
+    public double StartElapsedMinute { get; set; }
+    public double EndElapsedMinute { get; set; }
+    public int Goals { get; set; }
+    public int OpponentGoals { get; set; }
+    public double? DurationMinutes { get; set; }
+    public string StartScore { get; set; } = string.Empty;
+    public string EndScore { get; set; } = string.Empty;
+}
+
+public class MatchRunSummaryDto
+{
+    public int MatchId { get; set; }
+    public ScoringRunDto? LongestRunTeam1 { get; set; }
+    public ScoringRunDto? LongestRunTeam2 { get; set; }
+    public int Runs3PlusTeam1 { get; set; }
+    public int Runs3PlusTeam2 { get; set; }
+    public List<ScoringRunDto> AllRuns { get; set; } = [];
+    public string? OfficialFinalScore { get; set; }
+    public string? EventDerivedFinalScore { get; set; }
+    public bool ScoreConsistent { get; set; }
+    public bool DataQualityWarning { get; set; }
+}
+
+// B4 — Cohort + Quality Engine DTOs
+public class CohortMetricStatsDto
+{
+    public string MetricCode { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public double? Median { get; set; }
+    public double? P25 { get; set; }
+    public double? P75 { get; set; }
+    public double? Min { get; set; }
+    public double? Max { get; set; }
+    public double? Mean { get; set; }
+    public bool SampleReliable { get; set; }
+}
+
+public class MetricBenchmarkDto
+{
+    public string MetricCode { get; set; } = string.Empty;
+    public double? Value { get; set; }
+    public double? Median { get; set; }
+    public double? P25 { get; set; }
+    public double? P75 { get; set; }
+    public double? Percentile { get; set; }
+    public bool Applicable { get; set; }
+    public bool BackendGap { get; set; }
+    public int SampleCount { get; set; }
+    public bool SampleReliable { get; set; }
+}
+
+public class PlayerBenchmarkDto
+{
+    public int PlayerId { get; set; }
+    public string? Position { get; set; }
+    public int CohortSize { get; set; }
+    public List<MetricBenchmarkDto> Metrics { get; set; } = [];
+}
+
+public class PlayerAnalyticsSnapshotDto
+{
+    public int PlayerId { get; set; }
+    public string? Position { get; set; }
+    public PlayerGlobalStatsDto? Global { get; set; }
+    public HalfTimeBreakdownDto? HalfTime { get; set; }
+    public PlayerTimelineDto? Timeline { get; set; }
+    public ClutchBreakdownDto? Clutch { get; set; }
+    public PlayerBenchmarkDto? Benchmark { get; set; }
+    public int QueryCount { get; set; }
 }

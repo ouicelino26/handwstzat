@@ -26,6 +26,9 @@ public class PositionProfilesBase : ComponentBase, IDisposable
     protected MatchesApiClient MatchesApiClient { get; set; } = default!;
 
     [Inject]
+    protected StatsApiClient StatsApiClient { get; set; } = default!;
+
+    [Inject]
     protected IApiAuthService AuthService { get; set; } = default!;
 
     [Inject]
@@ -48,6 +51,9 @@ public class PositionProfilesBase : ComponentBase, IDisposable
     protected IReadOnlyList<PlayerListItemDto> PlayerDirectory { get; set; } = [];
 
     protected PositionProfileResponseDto? PositionProfile { get; set; }
+
+    // B6.10 — Backend benchmark overlay (parallel to position profile)
+    protected PlayerBenchmarkDto? BackendBenchmark { get; set; }
 
     protected PositionProfileResponseDto? PositionProfileComparison { get; set; }
 
@@ -455,7 +461,8 @@ public class PositionProfilesBase : ComponentBase, IDisposable
     {
         if (!SelectedPlayerId.HasValue)
         {
-            PositionProfile = null;
+            PositionProfile  = null;
+            BackendBenchmark = null;
             PositionProfileComparison = null;
             PositionProfileComparisonPlayers = [];
             PositionProfileComparisonPreviewPlayers = [];
@@ -473,7 +480,12 @@ public class PositionProfilesBase : ComponentBase, IDisposable
             }
 
             ErrorMessage = null;
-            PositionProfile = await PlayersApiClient.GetPlayerPositionProfileAsync(SelectedPlayerId.Value, BuildPositionProfileOptions());
+            // B6.10: call position profile and benchmark in parallel (POSITIONPROFILES_API_CALLS: 2)
+            var posProfileTask = PlayersApiClient.GetPlayerPositionProfileAsync(SelectedPlayerId.Value, BuildPositionProfileOptions());
+            var benchmarkTask  = StatsApiClient.GetPlayerBenchmarkAsync(SelectedPlayerId.Value, CompetitionId, Season);
+            await Task.WhenAll(posProfileTask, benchmarkTask);
+            PositionProfile  = posProfileTask.Result;
+            BackendBenchmark = benchmarkTask.Result;
             SyncPositionProfileComparisonFromPrimary();
             RebuildPositionProfileDerivedState();
         }
@@ -693,7 +705,9 @@ public class PositionProfilesBase : ComponentBase, IDisposable
             .ToList();
 
         ScatterBounds = BuildScatterBounds(orderedAxes);
-        PositionProfileAxes = BuildPositionProfileAxisViewModels(orderedAxes, ScatterBounds);
+        // B6.10: build benchmark overlay for non-BackendGap metrics
+        var _benchmarkLookup = BuildBenchmarkLookup(BackendBenchmark);
+        PositionProfileAxes = BuildPositionProfileAxisViewModels(orderedAxes, ScatterBounds, _benchmarkLookup);
         PositionProfileDetailRows = PositionProfileAxes
             .OrderByDescending(axis => axis.Impact)
             .ThenBy(axis => axis.Label, StringComparer.OrdinalIgnoreCase)
@@ -750,6 +764,7 @@ public class PositionProfilesBase : ComponentBase, IDisposable
 
     private void ClearAnalysisState()
     {
+        BackendBenchmark = null;
         PositionProfileCandidates = [];
         PositionProfileAxes = [];
         PositionProfileDetailRows = [];
@@ -818,7 +833,8 @@ public class PositionProfilesBase : ComponentBase, IDisposable
 
     private IReadOnlyList<PositionProfileAxisViewModel> BuildPositionProfileAxisViewModels(
         IReadOnlyList<PositionProfileAxisDto> axes,
-        PositionProfileScatterBounds bounds)
+        PositionProfileScatterBounds bounds,
+        IReadOnlyDictionary<string, MetricBenchmarkDto>? benchmarkLookup = null)
     {
         if (axes.Count == 0)
         {
@@ -831,12 +847,24 @@ public class PositionProfilesBase : ComponentBase, IDisposable
 
         foreach (var axis in axes)
         {
-            var direction = GetScatterDirection(axis.Value, axis.MedianValue, axis.Format);
+            // B6.10: apply backend benchmark overlay when available and not a backend gap
+            var percentile  = axis.Percentile;
+            var medianValue = axis.MedianValue;
+            if (benchmarkLookup is not null
+                && benchmarkLookup.TryGetValue(axis.Key, out var bench)
+                && bench.Applicable
+                && !bench.BackendGap)
+            {
+                if (bench.Percentile.HasValue) percentile  = bench.Percentile.Value;
+                if (bench.Median.HasValue)     medianValue = bench.Median.Value;
+            }
+
+            var direction = GetScatterDirection(axis.Value, medianValue, axis.Format);
             var summary = BuildAxisSummary(axis, direction);
             var directionLabel = direction > 0 ? "Au-dessus" : direction < 0 ? "Sous" : "Au niveau";
             var displayValue = FormatPositionProfileAxisValue(axis.Value, axis.Format);
-            var displayMedian = FormatPositionProfileAxisValue(axis.MedianValue, axis.Format);
-            var delta = FormatScatterDelta(axis.Value - axis.MedianValue, axis.Format);
+            var displayMedian = FormatPositionProfileAxisValue(medianValue, axis.Format);
+            var delta = FormatScatterDelta(axis.Value - medianValue, axis.Format);
             var offset = offsets.TryGetValue(axis.Key, out var jitter)
                 ? jitter
                 : (PlayerOffset: 0d, MedianOffset: 0d);
@@ -848,8 +876,8 @@ public class PositionProfilesBase : ComponentBase, IDisposable
                 axis.HigherIsBetter,
                 axis.Format,
                 axis.Value,
-                axis.MedianValue,
-                axis.Percentile,
+                medianValue,
+                percentile,
                 axis.Tone,
                 displayValue,
                 displayMedian,
@@ -858,7 +886,7 @@ public class PositionProfilesBase : ComponentBase, IDisposable
                 summary,
                 GetPositionProfileCoachLegend(axis),
                 Math.Clamp(axis.Value + offset.PlayerOffset, bounds.Min, bounds.Max),
-                Math.Clamp(axis.MedianValue + offset.MedianOffset, bounds.Min, bounds.Max),
+                Math.Clamp(medianValue + offset.MedianOffset, bounds.Min, bounds.Max),
                 axis.MinValue,
                 axis.MaxValue,
                 axis.IsEvaluative,
@@ -866,6 +894,59 @@ public class PositionProfilesBase : ComponentBase, IDisposable
         }
 
         return result;
+    }
+
+    // ── B6.10 — Benchmark lookup helpers ────────────────────────────────────
+
+    /// <summary>
+    /// Maps PositionProfileAxisDto.Key to CAT metric codes used by PlayerBenchmarkDto.
+    /// Best-effort: axes not in this table fall back to the position profile API values.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> s_axisKeyToCatCode =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["goals_created_per60"]         = "CAT-01",
+            ["open_goals_per60"]            = "CAT-01",
+            ["open_play_shot_success_rate"] = "CAT-04",
+            ["open_shot_success"]           = "CAT-04",
+            ["assist_turnover_ratio"]       = "CAT-05",
+            ["turnovers_per60"]             = "CAT-08",
+            ["interceptions_per60"]         = "CAT-09",
+            ["defensive_impact_per60"]      = "CAT-10",
+            ["sanctions_per60"]             = "CAT-11",
+            ["saves_per60"]                 = "CAT-15",
+            ["gk_saves_per60"]              = "CAT-15",
+            ["penalty_stops_per60"]         = "CAT-14",
+            ["gk_penalty_save_rate"]        = "CAT-14",
+            ["save_rate"]                   = "CAT-21",
+            ["goalkeeper_total_save_rate"]  = "CAT-21",
+            ["shots_faced_per60"]           = "CAT-16",
+            ["gk_shots_faced_per60"]        = "CAT-16",
+            ["goals_conceded_per60"]        = "CAT-22",
+            ["goalkeeper_goals_conceded_per60"] = "CAT-22",
+        };
+
+    // BACKEND_FALLBACK_METRICS: CAT-17A (goals_share_pct) — BackendGap=true,
+    // requires team data not available in cohort context.
+
+    private static IReadOnlyDictionary<string, MetricBenchmarkDto>? BuildBenchmarkLookup(PlayerBenchmarkDto? benchmark)
+    {
+        if (benchmark is null || benchmark.Metrics.Count == 0) return null;
+
+        var metricsIndex = benchmark.Metrics
+            .Where(m => !string.IsNullOrWhiteSpace(m.MetricCode))
+            .ToDictionary(m => m.MetricCode, m => m, StringComparer.OrdinalIgnoreCase);
+
+        var result = new Dictionary<string, MetricBenchmarkDto>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (axisKey, catCode) in s_axisKeyToCatCode)
+        {
+            if (metricsIndex.TryGetValue(catCode, out var metricDto))
+            {
+                result.TryAdd(axisKey, metricDto);
+            }
+        }
+
+        return result.Count == 0 ? null : result;
     }
 
     private static Dictionary<string, (double PlayerOffset, double MedianOffset)> BuildScatterOffsets(

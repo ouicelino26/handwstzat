@@ -56,6 +56,141 @@ else
             <KpiTileGrid Items="@insights.SnapshotKpis" />
         </section>
 
+        @* ── HalfTime MT1/MT2 (B5.9) ── *@
+        <section class="page-panel anlz-halftime-section">
+            <div class="panel-head">
+                <p class="section-kicker">1re MT vs 2e MT</p>
+                <h4>Comparaison mi-temps</h4>
+            </div>
+            @if (IsHalfTimeBusy)
+            {
+                <div class="ctx-loading"><span>Chargement…</span></div>
+            }
+            else if (!string.IsNullOrWhiteSpace(HalfTimeErrorMessage))
+            {
+                <p class="data-na">Données mi-temps indisponibles</p>
+            }
+            else if (HalfTimeData?.FirstHalf is null && HalfTimeData?.SecondHalf is null)
+            {
+                <p class="data-na">Aucune donnée de mi-temps</p>
+            }
+            else
+            {
+                var _mt1 = HalfTimeData?.FirstHalf;
+                var _mt2 = HalfTimeData?.SecondHalf;
+                <table class="data-table">
+                    <thead><tr><th>Indicateur</th><th class="data-table__num">1re MT</th><th class="data-table__num">2e MT</th></tr></thead>
+                    <tbody>
+                    @if (!IsGoalkeeper)
+                    {
+                        <tr class="table-sub-row"><td>Buts</td><td class="data-table__num">@(_mt1?.Goals ?? 0)</td><td class="data-table__num">@(_mt2?.Goals ?? 0)</td></tr>
+                        <tr class="table-sub-row"><td>Tirs</td><td class="data-table__num">@(_mt1?.Attempts ?? 0)</td><td class="data-table__num">@(_mt2?.Attempts ?? 0)</td></tr>
+                        <tr class="table-sub-row"><td>Réussite</td><td class="data-table__num">@(_mt1?.ShotSuccessRate.HasValue == true ? $"{_mt1.ShotSuccessRate:0.#}%" : "—")</td><td class="data-table__num">@(_mt2?.ShotSuccessRate.HasValue == true ? $"{_mt2.ShotSuccessRate:0.#}%" : "—")</td></tr>
+                        <tr class="table-sub-row"><td>Passes déc.</td><td class="data-table__num">@(_mt1?.Assists ?? 0)</td><td class="data-table__num">@(_mt2?.Assists ?? 0)</td></tr>
+                        <tr class="table-sub-row"><td>Pertes</td><td class="data-table__num">@(_mt1?.Turnovers ?? 0)</td><td class="data-table__num">@(_mt2?.Turnovers ?? 0)</td></tr>
+                    }
+                    else
+                    {
+                        <tr class="table-sub-row"><td>Arrêts</td><td class="data-table__num">@(_mt1?.Saves ?? 0)</td><td class="data-table__num">@(_mt2?.Saves ?? 0)</td></tr>
+                        <tr class="table-sub-row"><td>Tirs subis</td><td class="data-table__num">@(_mt1?.ShotsFaced ?? 0)</td><td class="data-table__num">@(_mt2?.ShotsFaced ?? 0)</td></tr>
+                        <tr class="table-sub-row"><td>Taux arrêt</td><td class="data-table__num">@(_mt1?.SaveRate.HasValue == true ? $"{_mt1.SaveRate:0.#}%" : "—")</td><td class="data-table__num">@(_mt2?.SaveRate.HasValue == true ? $"{_mt2.SaveRate:0.#}%" : "—")</td></tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        @* ── Clutch (B5.7-B5.8) ── *@
+        <section class="page-panel anlz-clutch-section">
+            <div class="panel-head">
+                <p class="section-kicker">5 dernières minutes · écart ≤ 2</p>
+                <h4>Clutch</h4>
+            </div>
+            @if (IsClutchBusy)
+            {
+                <div class="ctx-loading"><span>Chargement…</span></div>
+            }
+            else if (!string.IsNullOrWhiteSpace(ClutchErrorMessage))
+            {
+                <p class="data-na">Données clutch indisponibles</p>
+            }
+            else if (ClutchData is null || ClutchData.SampleCount == 0)
+            {
+                <p class="data-na">Aucune donnée clutch disponible pour ce scope</p>
+            }
+            else
+            {
+                var _clutch = ClutchData;
+                @if (_clutch.SampleCount < 5)
+                {
+                    <p class="court-sample-note">Échantillon limité (@_clutch.SampleCount évènements)</p>
+                }
+                <div class="badge-row">
+                    <div class="mini-card"><span>Évènements</span><strong>@_clutch.SampleCount</strong></div>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>Indicateur</th><th class="data-table__num">Valeur</th></tr></thead>
+                    <tbody>
+                    @if (!IsGoalkeeper)
+                    {
+                        <tr class="table-sub-row"><td>Buts</td><td class="data-table__num">@_clutch.Goals</td></tr>
+                        <tr class="table-sub-row"><td>Tirs</td><td class="data-table__num">@_clutch.Attempts</td></tr>
+                        <tr class="table-sub-row"><td>Réussite</td><td class="data-table__num">@(_clutch.ShotSuccessRate.HasValue ? $"{_clutch.ShotSuccessRate:0.#}%" : "—")</td></tr>
+                        <tr class="table-sub-row"><td>Passes déc.</td><td class="data-table__num">@_clutch.Assists</td></tr>
+                        <tr class="table-sub-row"><td>Pertes</td><td class="data-table__num">@_clutch.Turnovers</td></tr>
+                    }
+                    else
+                    {
+                        <tr class="table-sub-row"><td>Arrêts</td><td class="data-table__num">@_clutch.Saves</td></tr>
+                        <tr class="table-sub-row"><td>Tirs subis</td><td class="data-table__num">@_clutch.ShotsFaced</td></tr>
+                        <tr class="table-sub-row"><td>Taux arrêt</td><td class="data-table__num">@(_clutch.SaveRate.HasValue ? $"{_clutch.SaveRate:0.#}%" : "—")</td></tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+        @* ── GK ScoreState (B5.11) — gardienne uniquement ── *@
+        @if (IsGoalkeeper)
+        {
+            <section class="page-panel anlz-gk-scorestate-section">
+                <div class="panel-head">
+                    <p class="section-kicker">Gardienne selon le score</p>
+                    <h4>Taux d'arrêt par situation</h4>
+                </div>
+                @if (IsGkScoreStateBusy)
+                {
+                    <div class="ctx-loading"><span>Chargement…</span></div>
+                }
+                else if (!string.IsNullOrWhiteSpace(GkScoreStateErrorMessage))
+                {
+                    <p class="data-na">Données score-état indisponibles</p>
+                }
+                else if (GkScoreStateData is null || GkScoreStateData.ByScoreState.Count == 0)
+                {
+                    <p class="data-na">Aucune donnée disponible</p>
+                }
+                else
+                {
+                    <table class="data-table">
+                        <thead><tr><th>Situation</th><th class="data-table__num">Arrêts</th><th class="data-table__num">Tirs subis</th><th class="data-table__num">Taux arrêt</th></tr></thead>
+                        <tbody>
+                        @foreach (var _ss in GkScoreStateData.ByScoreState)
+                        {
+                            var _ssLabel = _ss.ScoreState switch { "Leading" => "En avance", "Tied" => "Égalité", "Trailing" => "Menée", _ => _ss.ScoreState };
+                            <tr class="table-sub-row @(!_ss.SampleReliable ? "table-sub-row--warn" : string.Empty)">
+                                <td>@_ssLabel @if (!_ss.SampleReliable) { <span class="data-insufficient">⚠</span> }</td>
+                                <td class="data-table__num">@_ss.Saves</td>
+                                <td class="data-table__num">@_ss.ShotsFaced</td>
+                                <td class="data-table__num">@(_ss.SaveRate.HasValue ? $"{_ss.SaveRate:0.#}%" : "—")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                }
+            </section>
+        }
+
         <div class="anlz-charts-row">
             <PositionProfileHistogram @key="AnlzHistogramKey"
                                       Kicker="Histogramme poste"

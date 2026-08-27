@@ -23,6 +23,10 @@ public sealed record PositionBenchmarkHistogramBin(
 
 // ── Builder ───────────────────────────────────────────────────────────────────
 
+// TEST_REFERENCE: kept for parity tests. Production code (PositionProfiles.razor.cs B6.10)
+// now calls GetPlayerBenchmarkAsync to source Percentile and Median from the backend.
+// ComputePercentile / ComputeMedian / BuildHistogram remain authoritative for unit tests
+// validating formula equivalence with the backend (see AnalyticsB6Tests.cs B6.27).
 public static class PositionBenchmarkBuilder
 {
     public const int MinRadarAxes = 3;
@@ -129,9 +133,9 @@ public static class PositionBenchmarkBuilder
 
     /// <summary>
     /// Returns a quality tier based on cohort size.
-    /// CohortSize = 0 → NotApplicable (no data).
-    /// CohortSize < minSize → Low (unreliable benchmark).
-    /// CohortSize >= minSize → High.
+    /// CohortSize = 0 -&gt; NotApplicable (no data).
+    /// CohortSize &lt; minSize -&gt; Low (unreliable benchmark).
+    /// CohortSize &gt;= minSize -&gt; High.
     /// </summary>
     public static QualityTierResult GetCohortQuality(
         int cohortSize,

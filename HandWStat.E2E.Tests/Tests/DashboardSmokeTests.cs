@@ -8,10 +8,10 @@ namespace HandWStat.E2E.Tests.Tests;
 [Collection("E2E")]
 public sealed class DashboardSmokeTests(E2EFixture fixture) : E2ETestBase(fixture)
 {
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_LoadsAfterLogin()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -23,10 +23,10 @@ public sealed class DashboardSmokeTests(E2EFixture fixture) : E2ETestBase(fixtur
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Dashboard_LoadsAfterLogin), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_HasKpiOrRankingContent()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -41,10 +41,10 @@ public sealed class DashboardSmokeTests(E2EFixture fixture) : E2ETestBase(fixtur
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Dashboard_HasKpiOrRankingContent), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_SectionTabs_Navigate()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -65,10 +65,10 @@ public sealed class DashboardSmokeTests(E2EFixture fixture) : E2ETestBase(fixtur
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Dashboard_SectionTabs_Navigate), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_ScopeLabel_IsPresent()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();
@@ -81,10 +81,10 @@ public sealed class DashboardSmokeTests(E2EFixture fixture) : E2ETestBase(fixtur
         catch (Exception ex) { await FailWithArtifactsAsync(nameof(Dashboard_ScopeLabel_IsPresent), ex); }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_NoVisibleErrorUI()
     {
-        if (!E2EConfig.HasCredentials) Assert.Skip("HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
+        Skip.If(!E2EConfig.HasCredentials, "HANDWSTAT_E2E_USERNAME / _PASSWORD not configured");
         try
         {
             await LoginAsync();

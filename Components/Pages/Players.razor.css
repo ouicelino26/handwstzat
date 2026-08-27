@@ -17,7 +17,7 @@
 
 .page-players__layout {
     display: grid;
-    grid-template-columns: 22rem 1fr;
+    grid-template-columns: 22rem 0 minmax(0, 1fr);
     flex: 1;
     min-height: 0;
     overflow: hidden;
@@ -30,6 +30,7 @@
     border-right: 1px solid var(--line);
     overflow: hidden;
     background: var(--surface-raised);
+    min-width: 0;
 }
 
 .player-list-pane__toolbar {
@@ -42,35 +43,60 @@
 }
 
 .page-players__layout.is-list-collapsed {
-    grid-template-columns: 2.75rem 1fr;
+    grid-template-columns: 0 0 minmax(0, 1fr);
 }
 
-.page-players__layout.is-list-collapsed .player-list-pane__body {
-    display: none;
+.player-list-pane.is-list-collapsed {
+    width: 0;
+    min-width: 0;
+    border-right: 0;
+    pointer-events: none;
+    visibility: hidden;
 }
 
-.page-players__layout.is-list-collapsed .player-list-pane__toolbar {
-    justify-content: center;
-    padding: 0.625rem 0;
-}
-
-.player-list-pane__toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-muted);
+/* ── Expander button (pill, same as Matches) ── */
+.player-list-expander {
+    position: relative;
+    width: 1.75rem;
+    min-width: 1.75rem;
+    height: 5rem;
+    align-self: center;
+    margin-left: -0.875rem;
+    z-index: 20;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.25rem;
-    border-radius: var(--radius-sm);
-    flex-shrink: 0;
-    margin-left: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    background: var(--surface-raised);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
 }
 
-.player-list-pane__toggle:hover {
+.player-list-expander:hover,
+.player-list-expander:focus-visible {
+    border-color: var(--line-strong);
     color: var(--text);
-    background: var(--surface-raised);
+    background: var(--surface-soft);
+    outline: none;
+}
+
+.player-list-expander svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    transition: transform var(--transition-fast);
+}
+
+.page-players__layout.is-list-collapsed .player-list-expander {
+    margin-left: 0.875rem;
+}
+
+.page-players__layout.is-list-collapsed .player-list-expander svg {
+    transform: rotate(180deg);
 }
 
 .player-list-count {
@@ -504,8 +530,8 @@
 }
 
 .chart-container--lg {
-    height: 260px;
-    max-height: 260px;
+    height: 400px;
+    max-height: 400px;
 }
 
 .chart-container__header {
@@ -1054,4 +1080,67 @@
     color: var(--text-muted);
     text-align: center;
     padding: 0.25rem 0;
+}
+
+/* ── Timeline intra-match (B6) ── */
+.timeline-section {
+    margin-top: 1.5rem;
+}
+
+.timeline-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 130px;
+    padding-bottom: 24px;
+    overflow-x: auto;
+}
+
+.timeline-bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 32px;
+    flex: 1;
+}
+
+.timeline-bar-value {
+    font-size: 0.6rem;
+    color: var(--text-secondary, #888);
+    text-align: center;
+    min-height: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.timeline-bar-track {
+    width: 100%;
+    height: 72px;
+    display: flex;
+    align-items: flex-end;
+    background: var(--surface-secondary, rgba(255,255,255,0.05));
+    border-radius: 3px 3px 0 0;
+    overflow: hidden;
+}
+
+.timeline-bar-fill {
+    width: 100%;
+    background: var(--color-primary, #4fc3f7);
+    border-radius: 3px 3px 0 0;
+    transition: height 0.25s ease;
+    min-height: 2px;
+}
+
+.timeline-bar-label {
+    font-size: 0.58rem;
+    color: var(--text-secondary, #888);
+    text-align: center;
+    margin-top: 2px;
+    white-space: nowrap;
+    writing-mode: horizontal-tb;
+    transform: rotate(-30deg) translateX(-4px);
+    transform-origin: top left;
+    line-height: 1;
 }

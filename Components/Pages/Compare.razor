@@ -1,4 +1,5 @@
 @page "/compare"
+@using HandWStat.Services.Navigation
 @inject ReferenceDataService ReferenceDataService
 @inject PlayersApiClient PlayersApiClient
 @inject MatchesApiClient MatchesApiClient
@@ -110,10 +111,6 @@ else
 
     @* ── Subtoolbar ── *@
     <div class="studio-subtoolbar">
-        <button type="button" class="btn btn-ghost btn-sm" @onclick="() => { _filterOpen = true; _ = InvokeAsync(StateHasChanged); }">
-            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;flex-shrink:0"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
-            Filtrer
-        </button>
         @if (CompetitionId.HasValue)
         {
             <span class="cmp-scope-sep">·</span>
@@ -125,7 +122,7 @@ else
             <span>@Season</span>
         }
         <span class="cmp-scope-sep">·</span>
-        <span>Données normalisées / match</span>
+        <span>Valeurs absolues / match</span>
     </div>
 
     @* ── Comparison Bar ── *@
@@ -248,7 +245,11 @@ else
 
                     <div class="cmp-section" style="margin-top:1.75rem">
                         <div class="cmp-label"><span class="cmp-label__text">Comparison Read</span></div>
-                        <div class="team-performer-grid">
+                        @{
+                            var cmpCount = Response.Players.Count;
+                            var cmpCols = cmpCount <= 3 ? cmpCount : cmpCount == 4 ? 2 : 3;
+                        }
+                        <div class="team-performer-grid" style="grid-template-columns: repeat(@cmpCols, minmax(0, 1fr))">
                             @foreach (var cmpPlayer in Response.Players)
                             {
                                 var cmpPosVariant = GetPositionCardVariant(cmpPlayer.PositionCode);
@@ -258,6 +259,7 @@ else
                                 var cmpEffRate = cmpIsGK ? cmpPlayer.GoalkeeperSaveRate : cmpPlayer.ShotSuccessRate;
                                 var cmpSignal = GetPerformerSignal(cmpPlayer);
                                 <article class="team-performer-card @(cmpPosVariant != "" ? $"team-performer-card--{cmpPosVariant}" : "")"
+                                         style="--card-accent: @GetPlayerColor(cmpPlayer.PlayerId)"
                                          @key="cmpPlayer.PlayerId">
                                     <div class="team-performer-card__header">
                                         <div class="team-performer-card__avatar">
@@ -457,6 +459,7 @@ else
                                         <div>
                                             <div class="cmp-profile-entry__name">@(rp.FullName.Split(' ').FirstOrDefault() ?? rp.FullName)</div>
                                             <div class="cmp-profile-entry__traits">@GetProfileTraits(rp)</div>
+                                            <div class="cmp-profile-entry__sample" style="font-size:0.6875rem;color:var(--text-muted);">@rp.MatchesPlayed match@(rp.MatchesPlayed != 1 ? "s" : "")</div>
                                         </div>
                                     </div>
                                 }
@@ -695,6 +698,13 @@ else
     private static readonly string[] _slotColors = ChartPalette.ComparisonColors;
     private List<int?> SelectedPlayerIds { get; set; } = [null, null, null];
     private List<string> PlayerSearchTerms { get; set; } = [string.Empty, string.Empty, string.Empty];
+
+    // C4 — Deep-link: comma-separated player IDs, e.g. ?playerIds=12,34,56
+    [Parameter, SupplyParameterFromQuery(Name = "playerIds")]
+    public string? PlayerIdsFromQuery { get; set; }
+
+    // C4 — Pending deep-link IDs to apply once players are loaded
+    private IReadOnlyList<int>? _pendingDeepLinkIds;
     private IReadOnlyList<string> SeasonOptions => MatchFilterCatalog.GetSeasons(ScopedMatches);
     private IReadOnlyList<string> DayOptions => MatchFilterCatalog.GetDays(ScopedMatches, Season);
     private IReadOnlyList<CompetitionDto> AvailableCompetitions => SmartFilterCatalog.GetCompetitions(
@@ -764,11 +774,19 @@ else
     private bool ShowComparisonTable => ActiveLens == AudienceLens.Analyst;
     private IEnumerable<int> CompareSlots => Enumerable.Range(0, CompareSlotCount);
 
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            CommandBarService.Register(() => { _filterOpen = true; return InvokeAsync(StateHasChanged); });
+        return Task.CompletedTask;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         ApplyGlobalScope();
+        // C4 — Deep-link query params override global scope
+        ParseDeepLinkPlayerIds();
         ScopeService.Changed += HandleGlobalScopeChanged;
-        CommandBarService.Register(() => { _filterOpen = true; return InvokeAsync(StateHasChanged); });
         await RefreshPlayersAsync();
     }
 
@@ -804,6 +822,50 @@ else
         TeamId = ScopeService.Current.TeamId;
         Season = ScopeService.Current.Season;
         Day = ScopeService.Current.Day;
+    }
+
+    // C4 — Parse comma-separated ?playerIds=X,Y,Z query param into pending deep-link IDs.
+    private void ParseDeepLinkPlayerIds()
+    {
+        if (string.IsNullOrWhiteSpace(PlayerIdsFromQuery))
+        {
+            _pendingDeepLinkIds = null;
+            return;
+        }
+
+        _pendingDeepLinkIds = PlayerIdsFromQuery
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => int.TryParse(s, out var id) ? (int?)id : null)
+            .Where(id => id.HasValue && id.Value > 0)
+            .Select(id => id!.Value)
+            .Distinct()
+            .Take(6)
+            .ToList();
+    }
+
+    // C4 — Apply pending deep-link player IDs to SelectedPlayerIds (authoritative).
+    // Call after EnsureCompareSlotCapacity and before SyncSelectedPlayers.
+    private void ApplyPendingDeepLinkIds()
+    {
+        if (_pendingDeepLinkIds is null || _pendingDeepLinkIds.Count == 0)
+            return;
+
+        // Expand slot count if needed
+        if (_pendingDeepLinkIds.Count > CompareSlotCount)
+        {
+            CompareSlotCount = Math.Min(_pendingDeepLinkIds.Count, 6);
+            EnsureCompareSlotCapacity();
+        }
+
+        // Deep-link is authoritative: reset all slots then fill with deep-link IDs
+        for (var i = 0; i < SelectedPlayerIds.Count; i++)
+            SelectedPlayerIds[i] = null;
+
+        for (var i = 0; i < _pendingDeepLinkIds.Count && i < SelectedPlayerIds.Count; i++)
+            SelectedPlayerIds[i] = _pendingDeepLinkIds[i];
+
+        // Consume the pending deep-link (apply once)
+        _pendingDeepLinkIds = null;
     }
 
     private void PublishGlobalScope()
@@ -1004,6 +1066,8 @@ else
                 pageSize: 250);
 
             EnsureCompareSlotCapacity();
+            // C4 — Apply deep-link player IDs (authoritative) before the auto-sync fills slots
+            ApplyPendingDeepLinkIds();
             SyncSelectedPlayers();
             await RefreshComparisonAsync(manageBusyState: false);
         }

@@ -1,5 +1,6 @@
 @page "/position-profiles"
 @inherits PositionProfilesBase
+@using HandWStat.Services.Navigation
 
 <PageTitle>Role benchmark</PageTitle>
 
@@ -105,6 +106,11 @@
                             </div>
 
                             <div class="entity-identity__score"><span>Cohorte</span><strong>@profile.CohortPlayerCount joueuses</strong></div>
+                            <a href="@AnalyticsNavigationService.BuildCompareUri([selected.PlayerId], CompetitionId, Season)"
+                               class="btn btn-ghost btn-sm"
+                               aria-label="Comparer cette joueuse">
+                                Comparer
+                            </a>
                         </header>
 
                         <div class="position-profile-summary-stack">

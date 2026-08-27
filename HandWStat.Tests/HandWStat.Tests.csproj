@@ -93,6 +93,8 @@
     <Compile Include="..\Services\Analytics\CompareAnalyticsBuilder.cs" Link="Services\Analytics\CompareAnalyticsBuilder.cs" />
     <Compile Include="..\Services\Analytics\PositionBenchmarkBuilder.cs" Link="Services\Analytics\PositionBenchmarkBuilder.cs" />
     <Compile Include="..\Services\Analytics\MatchAnalyticsBuilder.cs" Link="Services\Analytics\MatchAnalyticsBuilder.cs" />
+    <Compile Include="..\Services\Analytics\BackendQualityHelper.cs" Link="Services\Analytics\BackendQualityHelper.cs" />
+    <Compile Include="..\Services\Navigation\AnalyticsNavigationService.cs" Link="Services\Navigation\AnalyticsNavigationService.cs" />
     <Compile Include="..\Models\Analytics\MetricDictionaryModels.cs" Link="Models\Analytics\MetricDictionaryModels.cs" />
     <Compile Include="..\Services\Analytics\AnalyticsMetricLineage.cs" Link="Services\Analytics\AnalyticsMetricLineage.cs" />
     <Compile Include="..\Services\Analytics\MetricValueFormatter.cs" Link="Services\Analytics\MetricValueFormatter.cs" />

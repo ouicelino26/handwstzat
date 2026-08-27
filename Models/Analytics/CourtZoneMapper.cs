@@ -44,14 +44,35 @@ public static class CourtZoneMapper
         var key = dto.ZoneCode ?? string.Empty;
         var label = ZoneNameCatalog.GetShotZoneLabel(key);
         var outcomes = MapOutcomes(dto.Outcomes);
+
+        // MetricMode == 1 → GoalkeeperSaveRate: use GK-specific fields
+        int attempts;
+        int successes;
+        double rate;
+        bool sampleReliable;
+        if (dto.MetricMode == 1)
+        {
+            attempts     = dto.ShotsFaced ?? dto.Attempts;
+            successes    = dto.SaveCount  ?? dto.SuccessCount;
+            rate         = attempts > 0 ? (double)successes / attempts * 100.0 : 0.0;
+            sampleReliable = dto.SampleReliable;
+        }
+        else
+        {
+            attempts     = dto.Attempts;
+            successes    = dto.SuccessCount;
+            rate         = dto.SuccessRate;
+            sampleReliable = dto.Attempts >= 5;
+        }
+
         return new CourtZoneStat(
             Key: key,
             Label: label,
-            Rate: dto.SuccessRate,
-            Attempts: dto.Attempts,
-            Successes: dto.SuccessCount,
-            SampleReliable: dto.Attempts >= 5,
-            IsAvailable: dto.Attempts > 0,
+            Rate: rate,
+            Attempts: attempts,
+            Successes: successes,
+            SampleReliable: sampleReliable,
+            IsAvailable: attempts > 0,
             Outcomes: outcomes);
     }
 

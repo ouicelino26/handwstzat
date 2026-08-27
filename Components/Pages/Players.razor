@@ -1,6 +1,7 @@
 @page "/players"
 @using System.Globalization
 @using System.Text
+@using HandWStat.Services.Navigation
 @inject ReferenceDataService ReferenceDataService
 @inject PlayersApiClient PlayersApiClient
 @inject MatchesApiClient MatchesApiClient
@@ -99,31 +100,13 @@ else
             <span class="badge badge-outline" style="font-variant-numeric: tabular-nums;">
                 @PlayerDirectory.Count.ToString("00") joueuses
             </span>
-            <div style="flex:1"></div>
-            <button type="button" class="btn btn-ghost btn-sm" @onclick="OpenFilterDrawer">
-                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;flex-shrink:0"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
-                Filtrer
-            </button>
         </div>
         <div class="page-players__layout @(IsDirectoryDrawerOpen ? string.Empty : "is-list-collapsed")">
 
             @* ── LEFT: player list pane ── *@
-            <aside class="player-list-pane">
+            <aside class="player-list-pane @(IsDirectoryDrawerOpen ? string.Empty : "is-list-collapsed")">
                 <div class="player-list-pane__toolbar">
-                    @if (IsDirectoryDrawerOpen)
-                    {
-                        <span class="player-list-count"><strong>@PlayerDirectory.Count.ToString("00")</strong><small>joueuses</small></span>
-                    }
-                    <button type="button" class="player-list-pane__toggle" @onclick="ToggleDirectoryDrawer" aria-label="@(IsDirectoryDrawerOpen ? "Réduire la liste" : "Ouvrir la liste")">
-                        @if (IsDirectoryDrawerOpen)
-                        {
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-                        }
-                        else
-                        {
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
-                        }
-                    </button>
+                    <span class="player-list-count"><strong>@PlayerDirectory.Count.ToString("00")</strong><small>joueuses</small></span>
                 </div>
                 <div class="player-list-pane__body">
                     @if (IsBusy && PlayerDirectory.Count > 0) { <p class="player-list-pane__loader">Actualisation…</p> }
@@ -137,6 +120,13 @@ else
                                 OnSelectedPlayerChanged="SelectPlayerAsync" />
                 </div>
             </aside>
+
+            <button type="button"
+                    class="player-list-expander"
+                    @onclick="ToggleDirectoryDrawer"
+                    aria-label="@(IsDirectoryDrawerOpen ? "Réduire la liste" : "Ouvrir la liste")">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+            </button>
 
             @* ── RIGHT: player detail pane ── *@
             <div class="player-detail-pane">
@@ -199,6 +189,14 @@ else
                                title="Voir le benchmark de poste pour cette joueuse">
                                 Role benchmark →
                             </a>
+                            @if (SelectedPlayerId.HasValue)
+                            {
+                                <a href="@AnalyticsNavigationService.BuildCompareUri([SelectedPlayerId.Value], CompetitionId, Season)"
+                                   class="btn btn-ghost btn-sm"
+                                   aria-label="Comparer cette joueuse">
+                                    Comparer
+                                </a>
+                            }
                             <button type="button" class="primary-button" @onclick="ExportPlayerSheetAsync"
                                     disabled="@(!CanExportPlayerSheet || IsBusy || IsPlayerSheetExportBusy)">Exporter</button>
                         </div>
@@ -413,16 +411,6 @@ else
                                     </div>
                                 </section>
                             }
-                            @{ var _tileKpis = profile.IsGoalkeeper ? BriefGoalkeeperKpis.Concat(BriefBallKpis).ToList() : BriefOffenseKpis.Concat(BriefDefenseKpis).ToList(); }
-                            <div class="kpi-tile-grid kpi-tile-grid--5">
-                                @foreach (var kpi in _tileKpis)
-                                {
-                                    <div class="kpi-tile kpi-tile--@GetKpiTileClass(kpi.Tone)">
-                                        <span class="kpi-tile__label">@kpi.Label</span>
-                                        <span class="kpi-tile__value">@kpi.Value</span>
-                                    </div>
-                                }
-                            </div>
                         </div>
                     }
 
@@ -671,6 +659,7 @@ else
 
                         @if (!IsTrajectoryLoaded && !IsTrajectoryLoading) { <div class="traj-empty"><p>Aucune donnée de trajectoire disponible.</p></div> }
                         else if (_tSo.Count == 0) { <div class="traj-empty"><p>Aucun match dans cette fenêtre.</p></div> }
+                        else if (_tSo.All(p => p.Availability == "DATA_MISSING")) { <div class="traj-empty"><p>Données non disponibles par match pour cette métrique.</p></div> }
                         else
                         {
                             <div class="chart-container chart-container--lg" role="region" aria-label="@($"Évolution {_tAD?.Label??""} — {_tSo.Count} matchs")">
@@ -723,6 +712,82 @@ else
                                 </div>
                             </section>
                         }
+
+                    @* ── Timeline intra-match (B6) ── *@
+                    <details class="evolution-expert-details" data-testid="b6-timeline-details">
+                    <summary class="evolution-expert-summary">Analyse avancée par période</summary>
+                    <section class="page-panel timeline-section">
+                        <div class="panel-head">
+                            <div>
+                                <p class="section-kicker">Timeline intra-match</p>
+                                <h4>Répartition par tranches de minutes</h4>
+                            </div>
+                        </div>
+                        <div class="evolution-controls">
+                            <div class="filter-chips filter-chips--sm" role="group" aria-label="Granularité temporelle">
+                                <button type="button" class="filter-chip @(TimelineBucketMinutes==5?"is-active":"")"  @onclick="@(async ()=>await OnTimelineBucketChangedAsync(5))">5 min</button>
+                                <button type="button" class="filter-chip @(TimelineBucketMinutes==10?"is-active":"")" @onclick="@(async ()=>await OnTimelineBucketChangedAsync(10))">10 min</button>
+                            </div>
+                            <div class="form-group--inline">
+                                <label class="evolution-ctrl-label">Métrique</label>
+                                <select class="evolution-metric-select" @onchange="OnTimelineMetricChangedAsync">
+                                    @foreach (var _tlm in GetTimelineMetrics(profile.IsGoalkeeper))
+                                    {
+                                        <option value="@_tlm.Code" selected="@(_tlm.Code==TimelineMetric)">@_tlm.Label</option>
+                                    }
+                                </select>
+                            </div>
+                            @if (IsTimelineLoading) { <span class="evolution-loading">Chargement…</span> }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(TimelineErrorMessage))
+                        {
+                            <p class="data-na">Données temporelles indisponibles.</p>
+                        }
+                        else if (IsTimelineLoading && Timeline is null)
+                        {
+                            <div class="traj-empty"><p>Chargement de la timeline…</p></div>
+                        }
+                        else if (Timeline is null || Timeline.Buckets.Count == 0)
+                        {
+                            <div class="traj-empty"><p>Aucune donnée temporelle disponible.</p></div>
+                        }
+                        else
+                        {
+                            var _tlBuckets = Timeline.Buckets.OrderBy(b => b.BucketStartMinute).ToList();
+                            var _tlIsRate  = TimelineMetric is "SHOT_SUCCESS_RATE" or "SAVE_RATE";
+                            var _tlValues  = _tlBuckets.Select(b => GetTimelineBucketValue(b, TimelineMetric)).ToList();
+                            var _tlMax     = _tlValues.Where(v => v.HasValue).Select(v => v!.Value).DefaultIfEmpty(0.0).Max();
+                            if (Timeline.TemporalCoveragePct < 80.0)
+                            {
+                                <p class="court-sample-note">Couverture temporelle @Timeline.TemporalCoveragePct.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)% — événements horodatés limités.</p>
+                            }
+                            <div class="timeline-bars" role="img" aria-label="@($"Timeline {TimelineMetric} — {_tlBuckets.Count} tranches")">
+                                @for (var _tli = 0; _tli < _tlBuckets.Count; _tli++)
+                                {
+                                    var _tlb  = _tlBuckets[_tli];
+                                    var _tlv  = _tlValues[_tli];
+                                    var _tlpct = (_tlMax > 0.0 && _tlv.HasValue) ? _tlv.Value / _tlMax * 100.0 : 0.0;
+                                    <div class="timeline-bar-col">
+                                        <div class="timeline-bar-value">
+                                            @if (_tlv.HasValue)
+                                            { <span>@FormatTimelineValue(_tlv.Value, _tlIsRate)</span> }
+                                            else
+                                            { <span class="data-na">N/A</span> }
+                                        </div>
+                                        <div class="timeline-bar-track">
+                                            @if (_tlv.HasValue && _tlMax > 0.0)
+                                            {
+                                                <div class="timeline-bar-fill" style="height:@(_tlpct.ToString("F0", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                                            }
+                                        </div>
+                                        <div class="timeline-bar-label">@_tlb.Bucket</div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </section>
+                    </details>
+
                     }
 
                     @* COURT *@
@@ -736,11 +801,14 @@ else
                                 <div class="court-studio">
                                     <header class="court-studio__head">
                                         <h3>Zones et déclenchements</h3>
-                                        <div class="filter-chips filter-chips--sm" role="group" aria-label="Type d'attaque">
-                                            <button type="button" class="filter-chip @(CourtAttackType==PlayerCourtAttackType.All?"is-active":"")"        @onclick="()=>SetCourtAttackTypeAsync(PlayerCourtAttackType.All)">Toutes</button>
-                                            <button type="button" class="filter-chip @(CourtAttackType==PlayerCourtAttackType.OpenPlay?"is-active":"")"   @onclick="()=>SetCourtAttackTypeAsync(PlayerCourtAttackType.OpenPlay)">Jeu ouvert</button>
-                                            <button type="button" class="filter-chip @(CourtAttackType==PlayerCourtAttackType.SevenMeter?"is-active":"")" @onclick="()=>SetCourtAttackTypeAsync(PlayerCourtAttackType.SevenMeter)">7 mètres</button>
-                                        </div>
+                                        @if (!(Profile?.IsGoalkeeper ?? false))
+                                        {
+                                            <div class="filter-chips filter-chips--sm" role="group" aria-label="Type d'attaque">
+                                                <button type="button" class="filter-chip @(CourtAttackType==PlayerCourtAttackType.All?"is-active":"")"        @onclick="()=>SetCourtAttackTypeAsync(PlayerCourtAttackType.All)">Toutes</button>
+                                                <button type="button" class="filter-chip @(CourtAttackType==PlayerCourtAttackType.OpenPlay?"is-active":"")"   @onclick="()=>SetCourtAttackTypeAsync(PlayerCourtAttackType.OpenPlay)">Jeu ouvert</button>
+                                                <button type="button" class="filter-chip @(CourtAttackType==PlayerCourtAttackType.SevenMeter?"is-active":"")" @onclick="()=>SetCourtAttackTypeAsync(PlayerCourtAttackType.SevenMeter)">7 mètres</button>
+                                            </div>
+                                        }
                                         <div class="filter-chips filter-chips--sm" role="group" aria-label="Lecture">
                                             <button type="button" class="filter-chip @(CourtDisplayMode==PlayerCourtDisplayMode.Volume?"is-active":"")"     @onclick="()=>CourtDisplayMode=PlayerCourtDisplayMode.Volume">Volume</button>
                                             <button type="button" class="filter-chip @(CourtDisplayMode==PlayerCourtDisplayMode.Efficiency?"is-active":"")" @onclick="()=>CourtDisplayMode=PlayerCourtDisplayMode.Efficiency">Efficacité</button>
@@ -750,23 +818,23 @@ else
                                     <section class="court-stage">
                                         <header class="court-stage__head">
                                             <span>Goal frame</span>
-                                            <h4>Précision par secteur</h4>
+                                            <h4>@((Profile?.IsGoalkeeper ?? false) ? "Zones d'arrêt" : "Précision par secteur")</h4>
                                         </header>
                                         <GoalKpi GoalZones="@CourtShotZones" TriggerZones="@CourtTriggerZones" IsGoalkeeper="@(Profile?.IsGoalkeeper??false)"
                                                  ActiveZoneKey="@ActiveZoneKey" OnZoneSelected="HandleZoneSelectionAsync" HideZeroZones="@HasSpatialFocus"
                                                  IsLoading="@IsSpatialLoading" DisplayMode="@CourtDisplayMode" DisplayModeChanged="@(mode=>CourtDisplayMode=mode)"
-                                                 AttackType="@CourtAttackType" ViewMode="goal" />
+                                                 AttackType="@CourtAttackType" ViewMode="goal" HideModeBar="true" />
                                     </section>
 
                                     <section class="court-stage">
                                         <header class="court-stage__head">
                                             <span>Court map</span>
-                                            <h4>Déclenchements et angles</h4>
+                                            <h4>@((Profile?.IsGoalkeeper ?? false) ? "Zones de déclenchement adverses" : "Déclenchements et angles")</h4>
                                         </header>
-                                        <GoalKpi GoalZones="@CourtShotZones" TriggerZones="@CourtTriggerZones" IsGoalkeeper="@(Profile?.IsGoalkeeper??false)"
+                                        <GoalKpi GoalZones="@CourtShotZones" TriggerZones="@CourtTriggerZones" IsGoalkeeper="false"
                                                  ActiveZoneKey="@ActiveZoneKey" OnZoneSelected="HandleZoneSelectionAsync" HideZeroZones="@HasSpatialFocus"
                                                  IsLoading="@IsSpatialLoading" DisplayMode="@CourtDisplayMode" DisplayModeChanged="@(mode=>CourtDisplayMode=mode)"
-                                                 AttackType="@CourtAttackType" ViewMode="trigger" />
+                                                 AttackType="@CourtAttackType" ViewMode="trigger" HideModeBar="true" />
                                     </section>
                                 </div>
 
@@ -803,6 +871,7 @@ else
                                     </div>
                                     @if (_attemptShare.HasValue || _goalShare.HasValue)
                                     {
+                                        <p class="section-label-expert" style="font-size:0.6875rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:0.25rem;">Analyse avancée</p>
                                         <div class="badge-row">
                                             @if (_attemptShare.HasValue) { <div class="mini-card"><span>Part des tirs</span><strong>@FormatRate(_attemptShare.Value)%</strong></div> }
                                             @if (_goalShare.HasValue) { <div class="mini-card"><span>Part des buts</span><strong>@FormatRate(_goalShare.Value)%</strong></div> }
@@ -1143,6 +1212,15 @@ else
     private long _trajectoryLoadToken;
     private IReadOnlyList<PlayerTrajectoryPoint> TrajectoryPoints { get; set; } = Array.Empty<PlayerTrajectoryPoint>();
 
+    // Timeline state (B6)
+    private long _timelineLoadToken;
+    private bool IsTimelineLoading { get; set; }
+    private bool IsTimelineLoaded { get; set; }
+    private string? TimelineErrorMessage { get; set; }
+    private PlayerTimelineDto? Timeline { get; set; }
+    private int TimelineBucketMinutes { get; set; } = 5;
+    private string TimelineMetric { get; set; } = "SHOT_SUCCESS_RATE";
+
     // Games V2 state
     private PlayerGamesWindow GamesWindow { get; set; } = PlayerGamesWindow.Season;
     private PlayerGamesResultFilter GamesResultFilter { get; set; } = PlayerGamesResultFilter.All;
@@ -1155,6 +1233,16 @@ else
 
     [Parameter, SupplyParameterFromQuery(Name = "playerId")]
     public int? PlayerIdFromQuery { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "teamId")]
+    public int? TeamIdFromQuery { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "season")]
+    public string? SeasonFromQuery { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "competitionId")]
+    public int? CompetitionIdFromQuery { get; set; }
+
     private int? Year { get; set; }
     private string? Season { get; set; }
     private string? Day { get; set; }
@@ -1344,6 +1432,8 @@ else
     protected override async Task OnInitializedAsync()
     {
         ApplyGlobalScope();
+        // C4 — Deep-link query params override global scope on direct navigation
+        ApplyDeepLinkScope();
         ScopeService.Changed += HandleGlobalScopeChanged;
         await LoadAsync(refreshReferenceData: true);
         CommandBarService.Register(() => { OpenFilterDrawer(); return Task.CompletedTask; }, PlayerDirectory.Count > 0 ? (int?)PlayerDirectory.Count : null, "joueuses");
@@ -1431,7 +1521,10 @@ else
         if (section == "zones")
             await EnsureCourtLoadedAsync();
         if (section == "graphs")
+        {
             await EnsureTrajectoryLoadedAsync();
+            await EnsureTimelineLoadedAsync();
+        }
         await InvokeAsync(StateHasChanged);
     }
 
@@ -1506,6 +1599,93 @@ else
         await EnsureTrajectoryLoadedAsync();
     }
 
+    // ── Timeline methods (B6) ─────────────────────────────────────────────────
+
+    private sealed record TimelineMetricDef(string Code, string Label);
+
+    private static IReadOnlyList<TimelineMetricDef> GetTimelineMetrics(bool isGoalkeeper) =>
+        isGoalkeeper
+            ? [new("SAVES", "Arrêts"), new("SAVE_RATE", "Taux arrêt"), new("SHOTS_FACED", "Tirs subis")]
+            : [new("GOALS", "Buts"), new("SHOT_SUCCESS_RATE", "Réussite tir"), new("ASSISTS", "Passes déc."), new("TURNOVERS", "Pertes"), new("INTERCEPTIONS", "Interceptions")];
+
+    private static double? GetTimelineBucketValue(TimelineBucketDto bucket, string metric) =>
+        metric switch
+        {
+            "GOALS"             => (double?)bucket.Goals,
+            "SHOT_SUCCESS_RATE" => bucket.ShotSuccessRate,
+            "ASSISTS"           => (double?)bucket.Assists,
+            "TURNOVERS"         => (double?)bucket.Turnovers,
+            "INTERCEPTIONS"     => (double?)bucket.Interceptions,
+            "SAVES"             => (double?)bucket.Saves,
+            "SAVE_RATE"         => bucket.SaveRate,
+            "SHOTS_FACED"       => (double?)bucket.ShotsFaced,
+            _                   => null
+        };
+
+    private static string FormatTimelineValue(double value, bool isRate) =>
+        isRate ? $"{value:F1}%" : $"{value:F0}";
+
+    private async Task OnTimelineBucketChangedAsync(int bucketMinutes)
+    {
+        if (bucketMinutes == TimelineBucketMinutes) return;
+        TimelineBucketMinutes = bucketMinutes;
+        IsTimelineLoaded = false;
+        Timeline = null;
+        await LoadTimelineAsync();
+    }
+
+    private async Task OnTimelineMetricChangedAsync(ChangeEventArgs e)
+    {
+        var newMetric = e.Value?.ToString() ?? TimelineMetric;
+        if (newMetric == TimelineMetric) return;
+        TimelineMetric = newMetric;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task EnsureTimelineLoadedAsync()
+    {
+        if (IsTimelineLoaded || IsTimelineLoading) return;
+        await LoadTimelineAsync();
+    }
+
+    private async Task LoadTimelineAsync()
+    {
+        if (!SelectedPlayerId.HasValue) return;
+
+        var playerId  = SelectedPlayerId.Value;
+        var loadToken = System.Threading.Interlocked.Increment(ref _timelineLoadToken);
+
+        IsTimelineLoading = true;
+        TimelineErrorMessage = null;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var result = await StatsApiClient.GetPlayerTimelineAsync(playerId, TimelineBucketMinutes, BuildOptions());
+
+            if (loadToken != _timelineLoadToken || !SelectedPlayerId.HasValue || SelectedPlayerId.Value != playerId)
+                return;
+
+            Timeline = result;
+            IsTimelineLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            if (loadToken != _timelineLoadToken) return;
+            TimelineErrorMessage = ex.Message;
+            Timeline = null;
+            Logger.LogWarning(ex, "Failed to load timeline for player {PlayerId}.", playerId);
+        }
+        finally
+        {
+            if (loadToken == _timelineLoadToken && SelectedPlayerId.HasValue && SelectedPlayerId.Value == playerId)
+            {
+                IsTimelineLoading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
     private static string FormatTrajectoryValue(double value, TrajectoryMetricDefinition? def) =>
         def?.Type == TrajectoryMetricType.Rate
             ? $"{value:F1} %"
@@ -1532,6 +1712,7 @@ else
             Chart = new Chart
             {
                 Type = ChartType.Line,
+                Height = "340",
                 Toolbar = new Toolbar { Show = false }
             },
             Stroke = new Stroke { Width = 2 },
@@ -1543,7 +1724,7 @@ else
             },
             Yaxis =
             [
-                new YAxis { Min = 0, Max = isRate ? 100 : null }
+                new YAxis { Min = 0, Max = isRate ? 100 : null, DecimalsInFloat = 1 }
             ],
             Legend = new Legend { Show = true, Position = LegendPosition.Bottom },
             Tooltip = new Tooltip { Enabled = true, Shared = false },
@@ -2023,6 +2204,15 @@ else
         Day = ScopeService.Current.Day;
     }
 
+    // C4 — Apply deep-link query params from URL, overriding global scope.
+    // Called once on init (before the global scope handler is wired up).
+    private void ApplyDeepLinkScope()
+    {
+        if (CompetitionIdFromQuery.HasValue) CompetitionId = CompetitionIdFromQuery.Value;
+        if (TeamIdFromQuery.HasValue) TeamId = TeamIdFromQuery.Value;
+        if (!string.IsNullOrEmpty(SeasonFromQuery)) Season = SeasonFromQuery;
+    }
+
     private void PublishGlobalScope()
     {
         _publishingScope = true;
@@ -2070,8 +2260,15 @@ else
             PerformanceSection = "attack";
             IsTrajectoryLoaded = false;
             TrajectoryPoints = Array.Empty<PlayerTrajectoryPoint>();
-            ActiveTrajectoryMetric = "SHOT_SUCCESS_RATE";
+            ActiveTrajectoryMetric = "GOALS_PER_MATCH";
             TrajectoryWindow = TrajectoryWindow.Last10;
+            // Timeline reset (B6)
+            IsTimelineLoaded = false;
+            IsTimelineLoading = false;
+            Timeline = null;
+            TimelineErrorMessage = null;
+            TimelineBucketMinutes = 5;
+            TimelineMetric = "GOALS_PER_MATCH";
             GamesWindow = PlayerGamesWindow.Season;
             GamesResultFilter = PlayerGamesResultFilter.All;
             GamesDisplayMode = PlayerGamesDisplayMode.Values;
@@ -2141,8 +2338,15 @@ else
             PerformanceSection = Profile?.IsGoalkeeper == true ? "saves" : "attack";
             IsTrajectoryLoaded = false;
             TrajectoryPoints = Array.Empty<PlayerTrajectoryPoint>();
-            ActiveTrajectoryMetric = Profile?.IsGoalkeeper == true ? "SAVE_RATE" : "SHOT_SUCCESS_RATE";
+            ActiveTrajectoryMetric = Profile?.IsGoalkeeper == true ? "SAVES_PER_MATCH" : "GOALS_PER_MATCH";
             TrajectoryWindow = TrajectoryWindow.Last10;
+            // Timeline reset (B6)
+            IsTimelineLoaded = false;
+            IsTimelineLoading = false;
+            Timeline = null;
+            TimelineErrorMessage = null;
+            TimelineBucketMinutes = 5;
+            TimelineMetric = Profile?.IsGoalkeeper == true ? "SAVES_PER_MATCH" : "GOALS_PER_MATCH";
 
             // Games V2 — build rows from already-loaded PlayerMatches
             var isGkForGames = Profile?.IsGoalkeeper ?? false;
@@ -2159,6 +2363,10 @@ else
             GamesSearch = "";
             GamesSelectedMatchId = null;
             GamesSort = "date_desc";
+
+            // Si l'onglet Court est déjà actif, charger les données spatiales pour la nouvelle joueuse
+            if (ActiveSection == "zones")
+                await EnsureCourtLoadedAsync();
         }
         catch (Exception ex)
         {

@@ -274,8 +274,7 @@
 /* ── Performer Grid ── */
 .team-performer-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
-    gap: clamp(0.75rem, 1.4vw, 1rem);
+    gap: 1rem;
 }
 
 /* team-performer-card → wwwroot/app.css (global) */

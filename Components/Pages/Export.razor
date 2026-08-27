@@ -705,13 +705,10 @@
         _refData = await RefData.GetReferenceDataAsync();
         _scope = ExportScopeState.FromSnapshot(ScopeService.Current);
 
-        // Derive seasons/days from initial match pool if scope has context
-        if (_scope.CompetitionId.HasValue || !string.IsNullOrWhiteSpace(_scope.Season))
-        {
-            await LoadMatchesAsync();
-            _availableSeasons = MatchFilterCatalog.GetSeasons(_scope.AvailableMatches);
-            _availableDays = MatchFilterCatalog.GetDays(_scope.AvailableMatches, _scope.Season);
-        }
+        // Always load matches so scope selectors and pickers are populated on first visit
+        await LoadMatchesAsync();
+        _availableSeasons = MatchFilterCatalog.GetSeasons(_scope.AvailableMatches);
+        _availableDays = MatchFilterCatalog.GetDays(_scope.AvailableMatches, _scope.Season);
 
         _validationErrors = RunValidation();
     }
@@ -1130,7 +1127,9 @@
         {
             if (token == _generationToken)
             {
-                _errorMessage = ex.UserMessage;
+                Logger.LogError("Export API error: Status={Status} Code={Code} Message={Message} CorrelationId={CorrelationId}",
+                    ex.StatusCode, ex.TechnicalCode, ex.UserMessage, ex.CorrelationId);
+                _errorMessage = $"[{(int?)ex.StatusCode} {ex.TechnicalCode}] {ex.UserMessage}";
                 _status = ExportGenerationStatus.Error;
             }
         }
@@ -1138,7 +1137,8 @@
         {
             if (token == _generationToken)
             {
-                _errorMessage = $"Erreur inattendue : {ex.Message}";
+                Logger.LogError(ex, "Export unexpected error: {Type} {Message}", ex.GetType().Name, ex.Message);
+                _errorMessage = $"Erreur inattendue ({ex.GetType().Name}) : {ex.Message}";
                 _status = ExportGenerationStatus.Error;
             }
         }

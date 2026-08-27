@@ -129,10 +129,6 @@
     padding: 0.65rem;
 }
 
-/* Déclenchement : terrain orienté face au but (origine → haut de l'image = ligne de fond) */
-.pitch-map-wrap {
-    transform: scaleY(-1);
-}
 
 .goal-map,
 .pitch-map {
