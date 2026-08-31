@@ -172,7 +172,7 @@
                                 </div>
                                 <ul class="picker-list" role="listbox" aria-multiselectable="true"
                                     aria-label="Liste des joueuses" style="height: 50vh; overflow-y: auto;">
-                                    <Virtualize Items="FilteredPlayers" Context="p" OverscanCount="10">
+                                    <Virtualize Items="FilteredPlayers.ToList()" TItem="PlayerListItemDto" Context="p" OverscanCount="10">
                                         @{
                                             var isSelected = _selectedPlayerIds.Contains(p.PlayerId);
                                         }

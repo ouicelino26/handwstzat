@@ -615,7 +615,7 @@ else if (Snapshot is not null)
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <Virtualize Items="FilteredFieldRows" Context="row" OverscanCount="5">
+                                        <Virtualize Items="FilteredFieldRows.ToList()" TItem="DashboardFieldPlayerRow" Context="row" OverscanCount="5">
                                             <tr>
                                                 <td class="col-identity">
                                                     <span class="pt-name">@row.Identity.FullName</span>
@@ -798,7 +798,7 @@ else if (Snapshot is not null)
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <Virtualize Items="FilteredGoalkeeperRows" Context="row" OverscanCount="5">
+                                        <Virtualize Items="FilteredGoalkeeperRows.ToList()" TItem="DashboardGoalkeeperRow" Context="row" OverscanCount="5">
                                             <tr>
                                                 <td class="col-identity">
                                                     <span class="pt-name">@row.Identity.FullName</span>
