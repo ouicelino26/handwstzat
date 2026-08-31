@@ -8,7 +8,7 @@ using Microsoft.JSInterop;
 
 namespace HandWStat.Components.Shared;
 
-public class AnalyseTabPanelBase : ComponentBase
+public class AnalyseTabPanelBase : ComponentBase, IDisposable
 {
     [Parameter]
     public int? PlayerId { get; set; }
@@ -73,6 +73,8 @@ public class AnalyseTabPanelBase : ComponentBase
     protected string AnlzHistogramKey { get; private set; } = string.Empty;
     protected string AnlzRadarKey { get; private set; } = string.Empty;
 
+    private CancellationTokenSource? _cts;
+
     private int? _lastLoadedPlayerId;
     private int? _lastLoadedTeamId;
     private int? _lastLoadedCompetitionId;
@@ -96,12 +98,34 @@ public class AnalyseTabPanelBase : ComponentBase
         _lastLoadedSeason = Season;
         _lastLoadedDay = Day;
 
+        var previous = Interlocked.Exchange(ref _cts, new CancellationTokenSource());
+        previous?.Cancel();
+        previous?.Dispose();
+        var ct = _cts.Token;
+
+        if (ct.IsCancellationRequested) return;
+
         // Set position-aware default dimension before loading
         var position = AnalyticsPositionResolver.Resolve(PositionCode, null, IsGoalkeeper);
         ActiveContextDimension = ContextAnalyticsHelper.GetDefaultDimension(position);
 
-        await LoadProfileAsync();
-        await Task.WhenAll(LoadContextAsync(), LoadClutchAsync(), LoadHalfTimeAsync(), LoadGkScoreStateAsync());
+        await LoadProfileAsync(ct);
+        if (ct.IsCancellationRequested) return;
+
+        await Task.WhenAll(
+            LoadContextAsync(ct),
+            LoadClutchAsync(ct),
+            LoadHalfTimeAsync(ct),
+            LoadGkScoreStateAsync(ct));
+
+        if (!ct.IsCancellationRequested) StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        var current = Interlocked.Exchange(ref _cts, null);
+        current?.Cancel();
+        current?.Dispose();
     }
 
     protected async Task ExportCsvAsync()
@@ -138,7 +162,7 @@ public class AnalyseTabPanelBase : ComponentBase
             string.Join("\n", lines));
     }
 
-    private async Task LoadProfileAsync()
+    private async Task LoadProfileAsync(CancellationToken ct = default)
     {
         if (!PlayerId.HasValue)
         {
@@ -160,9 +184,10 @@ public class AnalyseTabPanelBase : ComponentBase
                 Season = Season
             };
 
-            PositionProfile = await PlayersApiClient.GetPlayerPositionProfileAsync(PlayerId.Value, options);
+            PositionProfile = await PlayersApiClient.GetPlayerPositionProfileAsync(PlayerId.Value, options, ct);
             RebuildPositionProfileDerivedState();
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
@@ -214,7 +239,7 @@ public class AnalyseTabPanelBase : ComponentBase
         ValidateData();
     }
 
-    private async Task LoadContextAsync()
+    private async Task LoadContextAsync(CancellationToken ct = default)
     {
         if (!PlayerId.HasValue)
         {
@@ -236,8 +261,9 @@ public class AnalyseTabPanelBase : ComponentBase
                 season:        Season,
                 day:           Day);
 
-            EventContexts = await StatsApiClient.GetEventContextsAsync(options);
+            EventContexts = await StatsApiClient.GetEventContextsAsync(options, ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex)
         {
             ContextErrorMessage = ex.Message;
@@ -247,11 +273,11 @@ public class AnalyseTabPanelBase : ComponentBase
         finally
         {
             IsContextBusy = false;
-            await InvokeAsync(StateHasChanged);
+            // StateHasChanged is consolidated to a single call in OnParametersSetAsync.
         }
     }
 
-    private async Task LoadClutchAsync()
+    private async Task LoadClutchAsync(CancellationToken ct = default)
     {
         if (!PlayerId.HasValue)
         {
@@ -274,8 +300,9 @@ public class AnalyseTabPanelBase : ComponentBase
                 Season = Season
             };
 
-            ClutchData = await StatsApiClient.GetPlayerClutchAsync(PlayerId.Value, options: options);
+            ClutchData = await StatsApiClient.GetPlayerClutchAsync(PlayerId.Value, options: options, cancellationToken: ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex)
         {
             ClutchErrorMessage = ex.Message;
@@ -285,11 +312,11 @@ public class AnalyseTabPanelBase : ComponentBase
         finally
         {
             IsClutchBusy = false;
-            await InvokeAsync(StateHasChanged);
+            // StateHasChanged is consolidated to a single call in OnParametersSetAsync.
         }
     }
 
-    private async Task LoadHalfTimeAsync()
+    private async Task LoadHalfTimeAsync(CancellationToken ct = default)
     {
         if (!PlayerId.HasValue)
         {
@@ -312,8 +339,9 @@ public class AnalyseTabPanelBase : ComponentBase
                 Season = Season
             };
 
-            HalfTimeData = await StatsApiClient.GetPlayerHalfTimeBreakdownAsync(PlayerId.Value, options);
+            HalfTimeData = await StatsApiClient.GetPlayerHalfTimeBreakdownAsync(PlayerId.Value, options, ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex)
         {
             HalfTimeErrorMessage = ex.Message;
@@ -323,11 +351,11 @@ public class AnalyseTabPanelBase : ComponentBase
         finally
         {
             IsHalfTimeBusy = false;
-            await InvokeAsync(StateHasChanged);
+            // StateHasChanged is consolidated to a single call in OnParametersSetAsync.
         }
     }
 
-    private async Task LoadGkScoreStateAsync()
+    private async Task LoadGkScoreStateAsync(CancellationToken ct = default)
     {
         if (!PlayerId.HasValue || !IsGoalkeeper)
         {
@@ -350,8 +378,9 @@ public class AnalyseTabPanelBase : ComponentBase
                 Season = Season
             };
 
-            GkScoreStateData = await StatsApiClient.GetGkScoreStateAsync(PlayerId.Value, options);
+            GkScoreStateData = await StatsApiClient.GetGkScoreStateAsync(PlayerId.Value, options, ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex)
         {
             GkScoreStateErrorMessage = ex.Message;
@@ -361,7 +390,7 @@ public class AnalyseTabPanelBase : ComponentBase
         finally
         {
             IsGkScoreStateBusy = false;
-            await InvokeAsync(StateHasChanged);
+            // StateHasChanged is consolidated to a single call in OnParametersSetAsync.
         }
     }
 

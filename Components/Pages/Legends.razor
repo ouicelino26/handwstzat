@@ -1,0 +1,301 @@
+@page "/hall-of-legends"
+@page "/legends"
+@inherits LegendsBase
+
+<PageTitle>Hall of Legends · HandWStat</PageTitle>
+
+@if (IsBusy && Snapshot is null)
+{
+    <StateCard Kicker="Chargement"
+               Title="Hall of Legends"
+               Message="Compilation des statistiques toutes saisons confondues."
+               Tone="loading" />
+}
+else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <StateCard Kicker="Erreur"
+               Title="Hall of Legends indisponible"
+               Message="@ErrorMessage"
+               Tone="error" />
+}
+else if (Snapshot is not null)
+{
+    <div class="page-legends" data-workspace="legends">
+
+        @* ── Section 1 : Hero ── *@
+        <header class="legend-hero" aria-label="Hall of Legends">
+            <span class="legend-hero__eyebrow">HandWStat Archives</span>
+            <h1 class="legend-hero__title">Hall<br />of Legends</h1>
+            <p class="legend-hero__sub">Records cumulés toutes saisons confondues</p>
+            @if (Snapshot.Players.Count > 0)
+            {
+                <div class="legend-hero__stats">
+                    <div class="legend-hero__stat">
+                        <span class="legend-hero__stat-value">@Snapshot.Players.Count</span>
+                        <span class="legend-hero__stat-label">athlètes</span>
+                    </div>
+                    <div class="legend-hero__stat-sep" aria-hidden="true"></div>
+                    <div class="legend-hero__stat">
+                        <span class="legend-hero__stat-value">@Snapshot.Players.Sum(p => p.TotalGoals).ToString("N0")</span>
+                        <span class="legend-hero__stat-label">buts au total</span>
+                    </div>
+                    <div class="legend-hero__stat-sep" aria-hidden="true"></div>
+                    <div class="legend-hero__stat">
+                        <span class="legend-hero__stat-value">@Snapshot.Players.Sum(p => p.MatchesPlayed).ToString("N0")</span>
+                        <span class="legend-hero__stat-label">matchs disputés</span>
+                    </div>
+                </div>
+            }
+        </header>
+
+        @if (Snapshot.Players.Count == 0)
+        {
+            <StateCard Kicker="Vide"
+                       Title="Aucune donnée disponible"
+                       Message="Aucun événement enregistré dans la base."
+                       Tone="empty" />
+        }
+        else
+        {
+            @* ── Section 2 : THE LEGEND – #1 featured card ── *@
+            @if (TopLegend is not null)
+            {
+                <section class="legend-the-one-section" aria-label="La légende #1">
+                    <div class="legend-the-one">
+                        <span class="legend-the-one__label" aria-hidden="true">The Legend</span>
+                        <div class="legend-the-one__body">
+                            <div class="legend-the-one__identity">
+                                <span class="legend-the-one__rank">#1 all-time</span>
+                                <h2 class="legend-the-one__name">@TopLegend.FullName</h2>
+                                <span class="legend-the-one__position">
+                                    @(TopLegend.PositionName ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(TopLegend.TeamName))
+                                    {
+                                        <span> · @TopLegend.TeamName</span>
+                                    }
+                                </span>
+                            </div>
+                            <div class="legend-the-one__metric">
+                                <span class="legend-the-one__value">@TopLegend.TotalGoals.ToString("N0")</span>
+                                <span class="legend-the-one__unit">buts</span>
+                            </div>
+                        </div>
+                        <div class="legend-the-one__context">
+                            <span>@TopLegend.MatchesPlayed matchs</span>
+                            @if (TopLegend.SeasonsPlayed > 0)
+                            {
+                                <span aria-hidden="true">·</span>
+                                <span>@TopLegend.SeasonsPlayed saison@(TopLegend.SeasonsPlayed > 1 ? "s" : "")</span>
+                            }
+                            @if (TopLegend.AssistCount > 0)
+                            {
+                                <span aria-hidden="true">·</span>
+                                <span>@TopLegend.AssistCount passes décisives</span>
+                            }
+                        </div>
+                    </div>
+                </section>
+            }
+
+            @* ── Section 3 : Podium historique – top 3 buteuses ── *@
+            @if (PodiumScorers.Count > 0)
+            {
+                <section class="legend-podium-section" aria-label="Podium historique buteuses">
+                    <header class="legend-section-head">
+                        <span class="legend-section-kicker">Buteuses all-time</span>
+                        <h3 class="legend-section-title">Podium historique</h3>
+                    </header>
+                    <div class="legend-podium legend-podium--@PodiumScorers.Count">
+                        @for (int i = 0; i < PodiumScorers.Count; i++)
+                        {
+                            var rank = i + 1;
+                            var p = PodiumScorers[i];
+                            <div class="legend-podium__card legend-podium__card--rank-@rank" aria-label="@rank. @p.FullName">
+                                <span class="legend-podium__medal" aria-label="Rang @rank">
+                                    @if (rank == 1)
+                                    {
+                                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1l2.39 4.85 5.35.78-3.87 3.77.91 5.32L10 13.27l-4.78 2.51.91-5.32L2.26 6.63l5.35-.78z"/></svg>
+                                    }
+                                    else
+                                    {
+                                        <span>#@rank</span>
+                                    }
+                                </span>
+                                <div class="legend-podium__score">
+                                    <span class="legend-podium__value">@p.TotalGoals</span>
+                                    <span class="legend-podium__unit">buts</span>
+                                </div>
+                                <strong class="legend-podium__name">@p.FullName</strong>
+                                <div class="legend-podium__meta">
+                                    @p.MatchesPlayed matchs
+                                    @if (p.SeasonsPlayed > 0)
+                                    {
+                                        <span> · @p.SeasonsPlayed sais.</span>
+                                    }
+                                </div>
+                                <span class="legend-podium__team">
+                                    @(p.TeamName ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(p.PositionName))
+                                    {
+                                        <span> · @p.PositionName</span>
+                                    }
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            @* ── Sections 4 + 5 : Wall of Legends + tab-bar ── *@
+            <section class="legend-wall-section" aria-label="Wall of Legends">
+                <header class="legend-section-head">
+                    <span class="legend-section-kicker">Classements all-time</span>
+                    <h3 class="legend-section-title">Wall of Legends</h3>
+                </header>
+
+                <nav class="legend-tab-bar" role="tablist" aria-label="Catégories">
+                    <button type="button" role="tab"
+                            aria-selected="@(ActiveSection == "scorers")"
+                            class="legend-tab @(ActiveSection == "scorers" ? "is-active" : string.Empty)"
+                            @onclick='() => SetSection("scorers")'>Buteuses</button>
+                    <button type="button" role="tab"
+                            aria-selected="@(ActiveSection == "assists")"
+                            class="legend-tab @(ActiveSection == "assists" ? "is-active" : string.Empty)"
+                            @onclick='() => SetSection("assists")'>Passeuses</button>
+                    <button type="button" role="tab"
+                            aria-selected="@(ActiveSection == "defense")"
+                            class="legend-tab @(ActiveSection == "defense" ? "is-active" : string.Empty)"
+                            @onclick='() => SetSection("defense")'>Défenseuses</button>
+                    <button type="button" role="tab"
+                            aria-selected="@(ActiveSection == "goalkeepers")"
+                            class="legend-tab @(ActiveSection == "goalkeepers" ? "is-active" : string.Empty)"
+                            @onclick='() => SetSection("goalkeepers")'>Gardiennes</button>
+                </nav>
+
+                <div class="legend-wall" role="list">
+                    @{
+                        var col = ActiveColumnDef;
+                        var players = WallPlayers;
+                    }
+                    @for (int i = 0; i < players.Count; i++)
+                    {
+                        var rank = i + 1;
+                        var player = players[i];
+                        <div class="legend-player-card @(rank <= 3 ? "legend-player-card--top" : string.Empty)" role="listitem">
+                            <span class="legend-player-card__rank">@rank</span>
+                            <div class="legend-player-card__identity">
+                                <strong class="legend-player-card__name">@player.FullName</strong>
+                                <span class="legend-player-card__meta">
+                                    @(player.TeamName ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(player.PositionName))
+                                    {
+                                        <span> · @player.PositionName</span>
+                                    }
+                                    @if (player.SeasonsPlayed > 0)
+                                    {
+                                        <span> · @player.SeasonsPlayed sais.</span>
+                                    }
+                                </span>
+                            </div>
+                            <div class="legend-player-card__metric">
+                                <span class="legend-player-card__value">@col.Value(player)</span>
+                                <span class="legend-player-card__unit">@col.Label</span>
+                            </div>
+                            <span class="legend-player-card__context">@col.Sub(player)</span>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            @* ── Section 5 : Record Book ── *@
+            <section class="legend-records-section" aria-label="Record Book">
+                <header class="legend-section-head">
+                    <span class="legend-section-kicker">Records absolus</span>
+                    <h3 class="legend-section-title">Record Book</h3>
+                </header>
+                @{
+                    var recTopScorer    = Snapshot.Players.Where(p => !p.IsGoalkeeper).OrderByDescending(p => p.TotalGoals).FirstOrDefault();
+                    var recTopPasser    = Snapshot.Players.OrderByDescending(p => p.AssistCount).FirstOrDefault();
+                    var recTopDefender  = Snapshot.Players.Where(p => !p.IsGoalkeeper).OrderByDescending(p => p.InterceptionCount).FirstOrDefault();
+                    var recTopGk        = Snapshot.Players.Where(p => p.IsGoalkeeper).OrderByDescending(p => p.SaveCount).FirstOrDefault();
+                    var recMostMatches  = Snapshot.Players.OrderByDescending(p => p.MatchesPlayed).FirstOrDefault();
+                    var recMostSeasons  = Snapshot.Players.Where(p => p.SeasonsPlayed > 0).OrderByDescending(p => p.SeasonsPlayed).FirstOrDefault();
+                }
+                <div class="legend-records">
+                    @if (recTopScorer is not null)
+                    {
+                        <div class="legend-record">
+                            <span class="legend-record__label">Buteuse record</span>
+                            <div class="legend-record__figure">
+                                <span class="legend-record__value">@recTopScorer.TotalGoals</span>
+                                <span class="legend-record__unit">buts</span>
+                            </div>
+                            <span class="legend-record__holder">@recTopScorer.FullName</span>
+                            <span class="legend-record__context">@recTopScorer.MatchesPlayed matchs</span>
+                        </div>
+                    }
+                    @if (recTopPasser is not null)
+                    {
+                        <div class="legend-record">
+                            <span class="legend-record__label">Passeuse record</span>
+                            <div class="legend-record__figure">
+                                <span class="legend-record__value">@recTopPasser.AssistCount</span>
+                                <span class="legend-record__unit">passes</span>
+                            </div>
+                            <span class="legend-record__holder">@recTopPasser.FullName</span>
+                            <span class="legend-record__context">@recTopPasser.MatchesPlayed matchs · @recTopPasser.TotalGoals buts</span>
+                        </div>
+                    }
+                    @if (recTopDefender is not null && recTopDefender.InterceptionCount > 0)
+                    {
+                        <div class="legend-record">
+                            <span class="legend-record__label">Défenseuse record</span>
+                            <div class="legend-record__figure">
+                                <span class="legend-record__value">@recTopDefender.InterceptionCount</span>
+                                <span class="legend-record__unit">interceptions</span>
+                            </div>
+                            <span class="legend-record__holder">@recTopDefender.FullName</span>
+                            <span class="legend-record__context">@recTopDefender.MatchesPlayed matchs</span>
+                        </div>
+                    }
+                    @if (recTopGk is not null)
+                    {
+                        <div class="legend-record">
+                            <span class="legend-record__label">Gardienne record</span>
+                            <div class="legend-record__figure">
+                                <span class="legend-record__value">@recTopGk.SaveCount</span>
+                                <span class="legend-record__unit">arrêts</span>
+                            </div>
+                            <span class="legend-record__holder">@recTopGk.FullName</span>
+                            <span class="legend-record__context">@recTopGk.GoalkeeperSaveRate.ToString("0.#") % d'arrêts</span>
+                        </div>
+                    }
+                    @if (recMostMatches is not null)
+                    {
+                        <div class="legend-record">
+                            <span class="legend-record__label">Plus de matchs</span>
+                            <div class="legend-record__figure">
+                                <span class="legend-record__value">@recMostMatches.MatchesPlayed</span>
+                                <span class="legend-record__unit">matchs</span>
+                            </div>
+                            <span class="legend-record__holder">@recMostMatches.FullName</span>
+                            <span class="legend-record__context">@recMostMatches.TotalGoals buts · @recMostMatches.AssistCount passes</span>
+                        </div>
+                    }
+                    @if (recMostSeasons is not null)
+                    {
+                        <div class="legend-record">
+                            <span class="legend-record__label">Longévité record</span>
+                            <div class="legend-record__figure">
+                                <span class="legend-record__value">@recMostSeasons.SeasonsPlayed</span>
+                                <span class="legend-record__unit">saison@(recMostSeasons.SeasonsPlayed > 1 ? "s" : "")</span>
+                            </div>
+                            <span class="legend-record__holder">@recMostSeasons.FullName</span>
+                            <span class="legend-record__context">@recMostSeasons.MatchesPlayed matchs</span>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+    </div>
+}

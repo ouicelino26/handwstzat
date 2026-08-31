@@ -1,0 +1,778 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Hall of Legends — scoped styles
+   Built entirely on HandWStat design tokens.
+   Champagne (--paper-*) reserved exclusively for #1 / THE LEGEND.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Page shell ── */
+.page-legends {
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+    padding-bottom: 5rem;
+    animation: scene-enter 220ms ease both;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Section 1 — Hero
+   ═══════════════════════════════════════════════════════════════════ */
+
+.legend-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: clamp(2.5rem, 5vw, 4.5rem) 0 clamp(2rem, 3.5vw, 3rem);
+    position: relative;
+    border-bottom: 1px solid var(--line);
+}
+
+/* Faint decorative line behind the title */
+.legend-hero::before {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--signal-500), transparent 60%);
+    opacity: 0.35;
+}
+
+.legend-hero__eyebrow {
+    font-family: var(--font-body);
+    font-size: 0.6rem;
+    font-weight: 850;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--signal-500);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-hero__eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 1.5rem;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+}
+
+.legend-hero__title {
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 7vw, 6rem);
+    font-weight: 800;
+    line-height: 0.86;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    margin: 0;
+}
+
+.legend-hero__sub {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0.15rem 0 0;
+}
+
+.legend-hero__stats {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.legend-hero__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.legend-hero__stat-value {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--text);
+}
+
+.legend-hero__stat-label {
+    font-size: 0.57rem;
+    font-weight: 750;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.legend-hero__stat-sep {
+    width: 1px;
+    height: 2.2rem;
+    background: var(--line-strong);
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Section 2 — THE LEGEND card (#1 featured)
+   Champagne accent used here exclusively.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.legend-the-one-section {
+    /* intentionally no extra wrapper styling */
+}
+
+.legend-the-one {
+    position: relative;
+    border: 1px solid rgba(240, 238, 229, 0.12); /* paper-100 alpha */
+    background:
+        linear-gradient(140deg, rgba(247, 245, 237, 0.045) 0%, transparent 42%),
+        linear-gradient(220deg, rgba(239, 196, 104, 0.07) 0%, transparent 42%),
+        var(--ink-900);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    padding: clamp(1.8rem, 3.5vw, 3rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    transition: box-shadow var(--transition-base);
+}
+
+.legend-the-one:hover {
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.35);
+}
+
+/* Top shine line — champagne shimmer */
+.legend-the-one::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 5%, rgba(247, 245, 237, 0.28) 40%, transparent 90%);
+}
+
+/* Decorative ghost number */
+.legend-the-one::after {
+    content: '1';
+    position: absolute;
+    right: 1.5rem;
+    top: -1.5rem;
+    font-family: var(--font-display);
+    font-size: clamp(12rem, 22vw, 18rem);
+    font-weight: 900;
+    line-height: 1;
+    color: rgba(247, 245, 237, 0.028);
+    pointer-events: none;
+    user-select: none;
+}
+
+.legend-the-one__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: fit-content;
+    font-size: 0.54rem;
+    font-weight: 850;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(247, 245, 237, 0.55);
+    border: 1px solid rgba(247, 245, 237, 0.14);
+    border-radius: 99px;
+    padding: 0.28rem 0.75rem;
+}
+
+.legend-the-one__label::before {
+    content: '';
+    display: inline-block;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: rgba(247, 245, 237, 0.45);
+}
+
+.legend-the-one__body {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.legend-the-one__identity {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.legend-the-one__rank {
+    font-size: 0.63rem;
+    font-weight: 850;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--signal-500);
+}
+
+.legend-the-one__name {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 4.2rem);
+    font-weight: 750;
+    line-height: 0.88;
+    letter-spacing: -0.025em;
+    color: var(--paper-50);
+    margin: 0;
+    word-break: break-word;
+}
+
+.legend-the-one__position {
+    font-size: 0.73rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
+
+.legend-the-one__metric {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+    flex-shrink: 0;
+}
+
+.legend-the-one__value {
+    font-family: var(--font-display);
+    font-size: clamp(3.5rem, 9vw, 7.5rem);
+    font-weight: 850;
+    font-variant-numeric: tabular-nums;
+    line-height: 0.8;
+    color: var(--paper-100);
+}
+
+.legend-the-one__unit {
+    font-size: 0.7rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(240, 238, 229, 0.38);
+    text-align: right;
+}
+
+.legend-the-one__context {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.73rem;
+    color: var(--text-muted);
+    border-top: 1px solid rgba(247, 245, 237, 0.07);
+    padding-top: 1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Shared section head
+   ═══════════════════════════════════════════════════════════════════ */
+
+.legend-section-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 1.4rem;
+}
+
+.legend-section-kicker {
+    font-size: 0.6rem;
+    font-weight: 850;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--signal-500);
+}
+
+.legend-section-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 2.5vw, 2rem);
+    font-weight: 650;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Section 3 — Podium historique
+   Layout: #2 left · #1 center (tallest) · #3 right
+   CSS `order` places them visually despite DOM order 1,2,3.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.legend-podium {
+    display: grid;
+    grid-template-columns: 1fr 1.18fr 1fr;
+    align-items: end;
+    gap: 0.75rem;
+}
+
+.legend-podium__card {
+    position: relative;
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-raised) 86%, transparent);
+    border-radius: var(--radius-md);
+    padding: 1.35rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    min-height: 9rem;
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+    overflow: hidden;
+}
+
+.legend-podium__card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft);
+}
+
+/* ── Rank 1 — center, tallest, amber tint ── */
+.legend-podium__card--rank-1 {
+    order: 2;
+    min-height: 14rem;
+    background:
+        linear-gradient(145deg, rgba(239, 196, 104, 0.1) 0%, transparent 50%),
+        color-mix(in srgb, var(--surface-raised) 86%, transparent);
+    border-color: rgba(239, 196, 104, 0.22);
+    padding: 1.75rem 1.35rem;
+}
+
+/* Amber shimmer at top */
+.legend-podium__card--rank-1::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(239, 196, 104, 0.55), transparent);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+/* ── Rank 2 — left ── */
+.legend-podium__card--rank-2 {
+    order: 1;
+    min-height: 11rem;
+}
+
+/* ── Rank 3 — right ── */
+.legend-podium__card--rank-3 {
+    order: 3;
+}
+
+/* medal / rank indicator */
+.legend-podium__medal {
+    display: flex;
+    align-items: center;
+    font-size: 0.62rem;
+    font-weight: 850;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.legend-podium__card--rank-1 .legend-podium__medal {
+    color: #efc468; /* warning-400 — amber gold */
+}
+
+.legend-podium__card--rank-1 .legend-podium__medal svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: #efc468;
+}
+
+.legend-podium__card--rank-2 .legend-podium__medal,
+.legend-podium__card--rank-3 .legend-podium__medal {
+    color: var(--text-muted);
+}
+
+.legend-podium__score {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-top: 0.15rem;
+}
+
+.legend-podium__value {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.5vw, 3.2rem);
+    font-weight: 820;
+    font-variant-numeric: tabular-nums;
+    line-height: 0.88;
+    color: var(--text);
+}
+
+.legend-podium__card--rank-1 .legend-podium__value {
+    color: var(--paper-100);
+    font-size: clamp(2.5rem, 5.5vw, 4rem);
+}
+
+.legend-podium__unit {
+    font-size: 0.63rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+.legend-podium__name {
+    font-family: var(--font-display);
+    font-size: clamp(0.95rem, 2vw, 1.25rem);
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text);
+    display: block;
+    margin-top: 0.25rem;
+    word-break: break-word;
+}
+
+.legend-podium__card--rank-1 .legend-podium__name {
+    color: var(--paper-50);
+    font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+}
+
+.legend-podium__meta {
+    font-size: 0.67rem;
+    color: var(--text-muted);
+}
+
+.legend-podium__team {
+    font-size: 0.63rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Section 4 — Tab bar
+   ═══════════════════════════════════════════════════════════════════ */
+
+.legend-tab-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1.25rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.legend-tab-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.legend-tab {
+    font-size: 0.78rem;
+    font-weight: 650;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.7rem 1.1rem;
+    margin-bottom: -1px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+    outline: none;
+}
+
+.legend-tab:hover {
+    color: var(--text-body);
+}
+
+.legend-tab:focus-visible {
+    outline: 2px solid var(--signal-500);
+    outline-offset: -2px;
+    border-radius: var(--radius-xs);
+}
+
+.legend-tab.is-active {
+    color: var(--text);
+    border-bottom-color: var(--signal-500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Section 4 — Wall of Legends (player card list)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.legend-wall {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.legend-player-card {
+    display: grid;
+    grid-template-columns: 2.75rem 1fr auto 7rem;
+    align-items: center;
+    gap: 0 1rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--surface-raised) 55%, transparent);
+    transition:
+        background var(--transition-fast),
+        border-color var(--transition-fast),
+        transform var(--transition-fast);
+    cursor: default;
+}
+
+.legend-player-card:hover {
+    background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+    border-color: var(--line-strong);
+    transform: translateX(2px);
+}
+
+.legend-player-card--top {
+    border-color: rgba(255, 91, 46, 0.15);
+}
+
+.legend-player-card__rank {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.legend-player-card--top .legend-player-card__rank {
+    color: var(--signal-500);
+}
+
+.legend-player-card__identity {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    min-width: 0;
+}
+
+.legend-player-card__name {
+    font-size: 0.84rem;
+    font-weight: 680;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.legend-player-card--top .legend-player-card__name {
+    color: var(--paper-50);
+}
+
+.legend-player-card__meta {
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.legend-player-card__metric {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.08rem;
+}
+
+.legend-player-card__value {
+    font-family: var(--font-display);
+    font-size: 1.45rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 0.95;
+    color: var(--text);
+}
+
+.legend-player-card--top .legend-player-card__value {
+    color: var(--court-400);
+}
+
+.legend-player-card__unit {
+    font-size: 0.55rem;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+.legend-player-card__context {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Section 5 — Record Book
+   ═══════════════════════════════════════════════════════════════════ */
+
+.legend-records {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: 0.75rem;
+}
+
+.legend-record {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto auto auto auto;
+    gap: 0.22rem;
+    padding: 1.15rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+    overflow: hidden;
+    transition:
+        border-color var(--transition-fast),
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.legend-record:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* Signal accent stripe at top */
+.legend-record::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: var(--signal-500);
+    opacity: 0.35;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.legend-record__label {
+    font-size: 0.57rem;
+    font-weight: 850;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--signal-500);
+    margin-bottom: 0.1rem;
+}
+
+.legend-record__figure {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-top: 0.2rem;
+}
+
+.legend-record__value {
+    font-family: var(--font-display);
+    font-size: 2.4rem;
+    font-weight: 820;
+    font-variant-numeric: tabular-nums;
+    line-height: 0.88;
+    color: var(--text);
+}
+
+.legend-record__unit {
+    font-size: 0.63rem;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.legend-record__holder {
+    font-size: 0.8rem;
+    font-weight: 650;
+    color: var(--text-body);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 0.55rem;
+}
+
+.legend-record__context {
+    font-size: 0.63rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+    .legend-the-one__body {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.25rem;
+    }
+    .legend-the-one__metric {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-legends {
+        gap: 2.5rem;
+    }
+
+    .legend-hero__title {
+        font-size: clamp(2.5rem, 10vw, 4rem);
+    }
+
+    /* Stack podium: #1 on top, then #2, #3 */
+    .legend-podium {
+        grid-template-columns: 1fr;
+    }
+    .legend-podium__card--rank-1 { order: 1; min-height: auto; }
+    .legend-podium__card--rank-2 { order: 2; min-height: auto; }
+    .legend-podium__card--rank-3 { order: 3; min-height: auto; }
+
+    /* Hide context column on narrow screens */
+    .legend-player-card {
+        grid-template-columns: 2.25rem 1fr auto;
+    }
+    .legend-player-card__context {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .legend-hero__stats {
+        gap: 1.25rem;
+    }
+    .legend-tab {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.72rem;
+    }
+    .legend-records {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 380px) {
+    .legend-records {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Reduced motion
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+    .page-legends {
+        animation: none;
+    }
+    .legend-the-one,
+    .legend-podium__card,
+    .legend-player-card,
+    .legend-record {
+        transition-duration: 0.01ms;
+    }
+}

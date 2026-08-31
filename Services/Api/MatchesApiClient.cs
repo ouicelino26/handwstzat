@@ -58,6 +58,9 @@ public sealed class MatchesApiClient : ApiClientBase
                 competitionId, teamId, playerId, from, to, year, season, day,
                 page, pageSize, cancellationToken);
             all.AddRange(batch);
+            // `< pageSize` also covers the batch.Count == 0 case (0 < 500).
+            // Trade-off: if the total is an exact multiple of pageSize, one extra empty request
+            // is made. Acceptable because no TotalCount field is available on this endpoint.
             if (batch.Count < pageSize) break;
             page++;
         }

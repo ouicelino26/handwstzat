@@ -8,7 +8,10 @@ public sealed class HandWStatVersionHandler : DelegatingHandler
     public HandWStatVersionHandler(
         IAppVersionProvider versionProvider,
         HandWStat.Configuration.UpdateSettings settings)
-        : this(versionProvider, settings, new HttpClientHandler())
+        : this(versionProvider, settings, new HttpClientHandler
+        {
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Brotli
+        })
     {
     }
 

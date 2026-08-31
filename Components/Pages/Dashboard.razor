@@ -36,7 +36,7 @@ else if (Snapshot is not null)
             </section>
         }
 
-        @if (Snapshot.Players.Count == 0 || Snapshot.Spotlight.PlayerId <= 0)
+        @if (!IsSpotlightLoading && Snapshot.Players.Count == 0)
         {
             <StateCard Kicker="Aucune joueuse"
                        Title="Aucune joueuse dans cette sélection"
@@ -80,7 +80,7 @@ else if (Snapshot is not null)
 
                     <div class="signal-matrix signal-matrix--six">
                         <div class="signal-matrix__item">
-                            <span class="signal-matrix__count">@Snapshot.Players.Count.ToString("N0")</span>
+                            <span class="signal-matrix__count">@(IsSpotlightLoading ? "..." : Snapshot.Players.Count.ToString("N0"))</span>
                             <span class="signal-matrix__label">Joueuses</span>
                         </div>
                         <div class="signal-matrix__item">
@@ -309,7 +309,14 @@ else if (Snapshot is not null)
             @if (ActiveDashboardSection == "spotlight")
             {
                 <div class="tab-panel active">
-                    @if (Snapshot.Spotlight.PlayerId <= 0)
+                    @if (IsSpotlightLoading && Snapshot.Spotlight.PlayerId <= 0)
+                    {
+                        <StateCard Kicker="Chargement"
+                                   Title="Profil joueuse en cours de chargement"
+                                   Message="Les statistiques de la joueuse suivie arrivent dans quelques instants."
+                                   Tone="loading" />
+                    }
+                    else if (Snapshot.Spotlight.PlayerId <= 0)
                     {
                         <StateCard Kicker="Aucune joueuse"
                                    Title="Aucune joueuse suivie"
@@ -471,7 +478,7 @@ else if (Snapshot is not null)
                         }
                         else
                         {
-                            <div class="pt-table-wrap" role="region" aria-label="Tableau joueuses de champ">
+                            <div class="pt-table-wrap" role="region" aria-label="Tableau joueuses de champ" style="height: 60vh; overflow-y: auto;">
                                 <table class="analytics-table analytics-table--@FieldView" role="grid">
                                     <caption class="sr-only">Tableau analytique des joueuses de champ — vue @FieldView</caption>
                                     <thead>
@@ -608,9 +615,8 @@ else if (Snapshot is not null)
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var (row, idx) in FilteredFieldRows.Select((r, i) => (r, i)))
-                                        {
-                                            <tr class="@(idx % 2 != 0 ? "row-alt" : string.Empty)">
+                                        <Virtualize Items="FilteredFieldRows" Context="row" OverscanCount="5">
+                                            <tr>
                                                 <td class="col-identity">
                                                     <span class="pt-name">@row.Identity.FullName</span>
                                                     <span class="pt-position-badge">@row.Identity.PositionLabel</span>
@@ -660,7 +666,7 @@ else if (Snapshot is not null)
                                                     <td><span class="data-unavailable" title="Non disponible en source V1">—</span></td>
                                                 }
                                             </tr>
-                                        }
+                                        </Virtualize>
                                     </tbody>
                                 </table>
                             </div>
@@ -697,7 +703,7 @@ else if (Snapshot is not null)
                         }
                         else
                         {
-                            <div class="pt-table-wrap" role="region" aria-label="Tableau gardiennes">
+                            <div class="pt-table-wrap" role="region" aria-label="Tableau gardiennes" style="height: 60vh; overflow-y: auto;">
                                 <table class="analytics-table analytics-table--gk-@GoalkeeperView" role="grid">
                                     <caption class="sr-only">Tableau analytique des gardiennes — vue @GoalkeeperView</caption>
                                     <thead>
@@ -792,9 +798,8 @@ else if (Snapshot is not null)
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var (row, idx) in FilteredGoalkeeperRows.Select((r, i) => (r, i)))
-                                        {
-                                            <tr class="@(idx % 2 != 0 ? "row-alt" : string.Empty)">
+                                        <Virtualize Items="FilteredGoalkeeperRows" Context="row" OverscanCount="5">
+                                            <tr>
                                                 <td class="col-identity">
                                                     <span class="pt-name">@row.Identity.FullName</span>
                                                 </td>
@@ -825,7 +830,7 @@ else if (Snapshot is not null)
                                                     <td><span class="@CountToneClass(row.Goalkeeper.MissedShots, 15, 30, lowerIsBetter: true)">@row.Goalkeeper.MissedShots</span></td>
                                                 }
                                             </tr>
-                                        }
+                                        </Virtualize>
                                     </tbody>
                                 </table>
                             </div>

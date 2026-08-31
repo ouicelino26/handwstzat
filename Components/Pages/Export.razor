@@ -171,10 +171,11 @@
                                     <button type="button" class="picker-action" @onclick="ClearPlayerSelection">Aucune</button>
                                 </div>
                                 <ul class="picker-list" role="listbox" aria-multiselectable="true"
-                                    aria-label="Liste des joueuses">
-                                    @foreach (var p in FilteredPlayers)
-                                    {
-                                        var isSelected = _selectedPlayerIds.Contains(p.PlayerId);
+                                    aria-label="Liste des joueuses" style="height: 50vh; overflow-y: auto;">
+                                    <Virtualize Items="FilteredPlayers" Context="p" OverscanCount="10">
+                                        @{
+                                            var isSelected = _selectedPlayerIds.Contains(p.PlayerId);
+                                        }
                                         <li class="picker-item @(isSelected ? "is-selected" : "")"
                                             role="option"
                                             aria-selected="@isSelected"
@@ -189,7 +190,7 @@
                                                 {<span class="picker-item__pos"> · @p.PositionCode</span>}
                                             </span>
                                         </li>
-                                    }
+                                    </Virtualize>
                                     @if (FilteredPlayers.Count == 0 && !_scope.PlayersLoading)
                                     {
                                         <li class="picker-empty">Aucune joueuse trouvée.</li>
@@ -564,6 +565,7 @@
     private string? _generatedAtUtc;
 
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _scopeLoadCts;
     private bool _showExportSuccessToast = false;
     private string _exportSuccessMessage = "";
 
@@ -591,10 +593,18 @@
         ? $"{((_generatedFileSizeRaw.Value + 512) / 1024):N0} Ko"
         : null;
 
+    // Cache key fields for FilteredPlayers — invalidated when search, target, or available list changes.
+    private (string search, ExportTargetType target, IReadOnlyList<PlayerListItemDto> available) _filteredPlayersCacheKey;
+    private IReadOnlyList<PlayerListItemDto>? _filteredPlayersCache;
+
     private IReadOnlyList<PlayerListItemDto> FilteredPlayers
     {
         get
         {
+            var key = (_playerSearch, _target, _scope.AvailablePlayers);
+            if (_filteredPlayersCache is not null && key == _filteredPlayersCacheKey)
+                return _filteredPlayersCache;
+
             IEnumerable<PlayerListItemDto> players = _scope.AvailablePlayers;
             if (_target == ExportTargetType.Goalkeepers)
             {
@@ -609,7 +619,9 @@
                     || (p.PositionName?.Contains(term, StringComparison.OrdinalIgnoreCase) == true)
                     || (p.PositionCode?.Contains(term, StringComparison.OrdinalIgnoreCase) == true));
             }
-            return players.ToList();
+            _filteredPlayersCache = players.ToList();
+            _filteredPlayersCacheKey = key;
+            return _filteredPlayersCache;
         }
     }
 
@@ -719,6 +731,9 @@
         ScopeService.Changed -= OnGlobalScopeChanged;
         _cts?.Cancel();
         _cts?.Dispose();
+        var scopeCts = Interlocked.Exchange(ref _scopeLoadCts, null);
+        scopeCts?.Cancel();
+        scopeCts?.Dispose();
     }
 
     private void OnGlobalScopeChanged()
@@ -779,7 +794,13 @@
 
     private async Task RefreshScopeDataAsync()
     {
-        await LoadMatchesAsync();
+        var previous = Interlocked.Exchange(ref _scopeLoadCts, new CancellationTokenSource());
+        previous?.Cancel();
+        previous?.Dispose();
+        var ct = _scopeLoadCts.Token;
+
+        await LoadMatchesAsync(ct);
+        if (ct.IsCancellationRequested) return;
         _availableSeasons = MatchFilterCatalog.GetSeasons(_scope.AvailableMatches);
         _availableDays = MatchFilterCatalog.GetDays(_scope.AvailableMatches, _scope.Season);
 
@@ -971,7 +992,7 @@
 
     // ── Lazy loading ───────────────────────────────────────────────────────────
 
-    private async Task LoadPlayersAsync()
+    private async Task LoadPlayersAsync(CancellationToken ct = default)
     {
         _scope.PlayersLoading = true;
         StateHasChanged();
@@ -982,10 +1003,10 @@
                 teamId: _scope.TeamId,
                 season: _scope.Season,
                 pageSize: 300,
-                cancellationToken: CancellationToken.None);
+                cancellationToken: ct);
             _scope.AvailablePlayers = players.OrderBy(p => p.FullName).ToList();
         }
-        catch (OperationCanceledException) { _scope.AvailablePlayers = []; }
+        catch (OperationCanceledException) { _scope.AvailablePlayers = []; return; }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Failed to load players for export scope.");
@@ -994,7 +1015,7 @@
         finally { _scope.PlayersLoading = false; }
     }
 
-    private async Task LoadMatchesAsync()
+    private async Task LoadMatchesAsync(CancellationToken ct = default)
     {
         _scope.MatchesLoading = true;
         StateHasChanged();
@@ -1005,10 +1026,10 @@
                 teamId: _scope.TeamId,
                 season: _scope.Season,
                 pageSize: 300,
-                cancellationToken: CancellationToken.None);
+                cancellationToken: ct);
             _scope.AvailableMatches = matches.OrderByDescending(m => m.Date).ToList();
         }
-        catch (OperationCanceledException) { _scope.AvailableMatches = []; }
+        catch (OperationCanceledException) { _scope.AvailableMatches = []; return; }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Failed to load matches for export scope.");

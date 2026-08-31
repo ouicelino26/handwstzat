@@ -795,6 +795,8 @@ else
                     {
                         @if (IsSpatialLoading && Spatial is null)
                         { <StateCard Kicker="Chargement" Title="Rechargement spatial" Message="La carte but et declenchements se recalculent pour cette joueuse." Tone="loading" CssClass="empty-card-inline" /> }
+                        else if (!string.IsNullOrWhiteSpace(CourtErrorMessage))
+                        { <StateCard Kicker="Erreur" Title="Données spatiales indisponibles" Message="@CourtErrorMessage" Tone="error" CssClass="empty-card-inline" /> }
 
                         <div class="court-tab-grid">
                             <section class="court-map-panel">
@@ -1133,6 +1135,8 @@ else
     private bool IsFilterDrawerOpen { get; set; }
     private bool IsPlayerSheetExportBusy { get; set; }
     private string? ErrorMessage { get; set; }
+    private CancellationTokenSource? _loadCts;
+    private readonly SemaphoreSlim _loadGate = new(1, 1);
     private CancellationTokenSource? _searchDebounceCts;
     private static readonly TimeSpan SearchDebounceDelay = TimeSpan.FromMilliseconds(300);
     private static readonly IReadOnlyDictionary<string, string> FlagFileByKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -1200,6 +1204,7 @@ else
     private long SpatialLoadToken;
     private bool _publishingScope;
     private PlayerCourtAttackType CourtAttackType { get; set; } = PlayerCourtAttackType.All;
+    private string? CourtErrorMessage { get; set; }
     private PlayerCourtDisplayMode CourtDisplayMode { get; set; } = PlayerCourtDisplayMode.Volume;
     private PlayerCourtScene CourtScene { get; set; } = PlayerCourtScene.ShotZones;
     private bool IsCourtLoaded { get; set; }
@@ -1800,7 +1805,13 @@ else
             Spatial = spatial;
             SpatialFocusKey = focusZoneKey;
             ActiveZoneKey = ResolveActiveZoneKey(focusZoneKey);
-            ErrorMessage = null;
+            CourtErrorMessage = null;
+        }
+        catch (ApiRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            AuthService.Logout();
+            NavigationManager.NavigateTo("/");
+            return;
         }
         catch (Exception ex)
         {
@@ -1809,7 +1820,7 @@ else
                 return;
             }
 
-            ErrorMessage = ex.Message;
+            CourtErrorMessage = ex.Message;
         }
         finally
         {
@@ -2086,6 +2097,14 @@ else
             return;
         }
 
+        var next = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _loadCts, next);
+        previous?.Cancel();
+        previous?.Dispose();
+        var ct = next.Token;
+
+        if (!await _loadGate.WaitAsync(0)) return; // skip if load already in progress
+
         var loadStartedAt = DateTimeOffset.UtcNow;
 
         try
@@ -2146,7 +2165,7 @@ else
                 Day = null;
             }
 
-            PlayerDirectory = await StatsApiClient.GetPlayersAsync(BuildOptions());
+            PlayerDirectory = await StatsApiClient.GetPlayersAsync(BuildOptions(), ct);
 
             if (PlayerIdFromQuery.HasValue && PlayerDirectory.Any(player => player.PlayerId == PlayerIdFromQuery.Value))
             {
@@ -2162,12 +2181,23 @@ else
 
             await LoadPlayerDetailsAsync(manageBusyState: false);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Expected — a newer load was requested while this one was in progress.
+        }
+        catch (ApiRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            AuthService.Logout();
+            NavigationManager.NavigateTo("/");
+            return;
+        }
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
         }
         finally
         {
+            _loadGate.Release();
             await BusyUiHelper.ExitAsync(() => IsBusy = false, () => InvokeAsync(StateHasChanged), loadStartedAt);
         }
     }
@@ -2176,6 +2206,10 @@ else
     {
         CommandBarService.Clear();
         ScopeService.Changed -= HandleGlobalScopeChanged;
+        var loadCts = Interlocked.Exchange(ref _loadCts, null);
+        loadCts?.Cancel();
+        loadCts?.Dispose();
+        _loadGate.Dispose();
         var cts = Interlocked.Exchange(ref _searchDebounceCts, null);
         cts?.Cancel();
         cts?.Dispose();
@@ -2254,6 +2288,7 @@ else
             IsSpatialLoading = false;
             PlayerMatches = [];
             IsCourtLoaded = false;
+            CourtErrorMessage = null;
             CourtAttackType = PlayerCourtAttackType.All;
             CourtDisplayMode = PlayerCourtDisplayMode.Volume;
             CourtScene = PlayerCourtScene.ShotZones;
@@ -2331,6 +2366,7 @@ else
                 BuildLeagueScope());
             SpatialFocusKey = null;
             IsCourtLoaded = false;
+            CourtErrorMessage = null;
             CourtAttackType = PlayerCourtAttackType.All;
             CourtDisplayMode = PlayerCourtDisplayMode.Volume;
             CourtScene = PlayerCourtScene.ShotZones;
