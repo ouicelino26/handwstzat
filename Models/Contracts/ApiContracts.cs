@@ -110,6 +110,9 @@ public class PlayerGlobalStatsDto : PlayerListItemDto
     public double ShotSuccessRate { get; set; }
     public double PenaltySuccessRate { get; set; }
     public double GoalkeeperSaveRate { get; set; }
+
+    /// <summary>Number of distinct seasons in which the player appeared. Populated only by the legends endpoint.</summary>
+    public int SeasonsPlayed { get; set; }
 }
 
 public class PlayerOffenseStatsDto : PlayerListItemDto
@@ -426,8 +429,8 @@ public class ZoneStatDto
     public int FailureCount { get; set; }
     public double SuccessRate { get; set; }
     public List<ZoneOutcomeDto> Outcomes { get; set; } = [];
-    // B1.2 — GK zone fields: MetricMode == 1 means GoalkeeperSaveRate
-    public int MetricMode { get; set; }
+    // B1.2 — GK zone fields: "GoalkeeperSaveRate" means GK mode
+    public string MetricMode { get; set; } = "ShotSuccess";
     public int? ShotsFaced { get; set; }
     public int? SaveCount { get; set; }
     public int? GoalsConceded { get; set; }

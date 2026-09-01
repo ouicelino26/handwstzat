@@ -45,12 +45,12 @@ public static class CourtZoneMapper
         var label = ZoneNameCatalog.GetShotZoneLabel(key);
         var outcomes = MapOutcomes(dto.Outcomes);
 
-        // MetricMode == 1 → GoalkeeperSaveRate: use GK-specific fields
+        // MetricMode == "GoalkeeperSaveRate" → use GK-specific fields
         int attempts;
         int successes;
         double rate;
         bool sampleReliable;
-        if (dto.MetricMode == 1)
+        if (dto.MetricMode == "GoalkeeperSaveRate")
         {
             attempts     = dto.ShotsFaced ?? dto.Attempts;
             successes    = dto.SaveCount  ?? dto.SuccessCount;
