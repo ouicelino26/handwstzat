@@ -63,21 +63,32 @@ else if (Snapshot is not null)
                 <section class="legend-the-one-section" aria-label="La légende #1">
                     <div class="legend-the-one">
                         <span class="legend-the-one__label" aria-hidden="true">The Legend</span>
-                        <div class="legend-the-one__body">
-                            <div class="legend-the-one__identity">
-                                <span class="legend-the-one__rank">#1 all-time</span>
-                                <h2 class="legend-the-one__name">@TopLegend.FullName</h2>
-                                <span class="legend-the-one__position">
-                                    @(TopLegend.PositionName ?? "—")
-                                    @if (!string.IsNullOrWhiteSpace(TopLegend.TeamName))
-                                    {
-                                        <span> · @TopLegend.TeamName</span>
-                                    }
-                                </span>
+                        @{
+                            var heroPhoto = PlayerPhotoAssetResolver.Resolve(TopLegend.PlayerPhoto, TopLegend.PlayerId, TopLegend.FullName, TopLegend.TeamName);
+                            var heroMeta  = string.IsNullOrWhiteSpace(TopLegend.PositionCode ?? TopLegend.PositionName)
+                                ? (TopLegend.TeamName ?? "—")
+                                : $"{TopLegend.PositionCode ?? TopLegend.PositionName} · {TopLegend.TeamName ?? "—"}";
+                            var heroKpi   = TopLegend.IsGoalkeeper ? TopLegend.SaveCount : TopLegend.TotalGoals;
+                            var heroUnit  = TopLegend.IsGoalkeeper ? "arr." : "buts";
+                        }
+                        <div class="player-row legend-the-one__player-row" aria-label="@TopLegend.FullName — #1 all-time">
+                            <div class="player-row__avatar @(heroPhoto is null ? "is-placeholder" : string.Empty)">
+                                @if (!string.IsNullOrWhiteSpace(heroPhoto))
+                                {
+                                    <img src="@heroPhoto" alt="@($"Portrait de {TopLegend.FullName}")" loading="lazy" />
+                                }
+                                else
+                                {
+                                    @GetInitials(TopLegend.FullName)
+                                }
                             </div>
-                            <div class="legend-the-one__metric">
-                                <span class="legend-the-one__value">@TopLegend.TotalGoals.ToString("N0")</span>
-                                <span class="legend-the-one__unit">buts</span>
+                            <div class="player-row__identity">
+                                <div class="player-row__name">@TopLegend.FullName</div>
+                                <div class="player-row__meta">@heroMeta</div>
+                            </div>
+                            <div class="player-row__kpi">
+                                @heroKpi
+                                <small>@heroUnit</small>
                             </div>
                         </div>
                         <div class="legend-the-one__context">

@@ -187,6 +187,12 @@ public class LegendsBase : ComponentBase, IDisposable
         }
     }
 
+    protected static string GetInitials(string? fullName)
+    {
+        var parts = (fullName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Take(2).Select(p => char.ToUpperInvariant(p[0])));
+    }
+
     public void Dispose()
     {
         var current = Interlocked.Exchange(ref _cts, null);
