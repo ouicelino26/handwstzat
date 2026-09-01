@@ -11,6 +11,79 @@
 
 <PageTitle>Squads</PageTitle>
 
+@if (AuthService.Session.IsAuthenticated && _filterOpen)
+{
+    <div class="filter-drawer-overlay" @onclick="CloseFilterDrawer" role="dialog" aria-modal="true" aria-label="Filtres équipes">
+        <div class="filter-drawer" @onclick:stopPropagation="true">
+            <header class="filter-drawer__head">
+                <h3 class="filter-drawer__title">Filtres</h3>
+                <button type="button" class="filter-drawer__close" @onclick="CloseFilterDrawer">×</button>
+            </header>
+            <div class="filter-drawer__body">
+                <div class="filter-section">
+                    <span class="filter-section__label">Équipe</span>
+                    <select class="form-select" @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Sélectionner une équipe…</option>
+                        @foreach (var team in AvailableTeams)
+                        {
+                            <option value="@team.TeamId">@team.TeamName</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-section">
+                    <span class="filter-section__label">Compétition</span>
+                    <select class="form-select" @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var competition in AvailableCompetitions)
+                        {
+                            <option value="@competition.CompetitionId">@competition.CompetitionName</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-section">
+                    <span class="filter-section__label">Saison</span>
+                    <select class="form-select" @bind="Season" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var season in SeasonOptions)
+                        {
+                            <option value="@season">@season</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-section">
+                    <span class="filter-section__label">Journée</span>
+                    <select class="form-select" @bind="Day" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var day in DayOptions)
+                        {
+                            <option value="@day">@day</option>
+                        }
+                    </select>
+                </div>
+                @if (ActiveSection == "roster")
+                {
+                    <div class="filter-section">
+                        <span class="filter-section__label">Poste effectif</span>
+                        <select class="form-select" @bind="PositionId" @bind:after="OnRosterScopeChangedAsync">
+                            <option value="">Tous</option>
+                            @foreach (var position in AvailablePositions)
+                            {
+                                <option value="@position.Id">@position.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
+            </div>
+            <footer class="filter-drawer__foot">
+                <div class="filter-drawer__foot-actions">
+                    <button type="button" class="ghost-button" @onclick="async () => { await ResetAsync(); CloseFilterDrawer(); }">Réinitialiser</button>
+                    <button type="button" class="primary-button" @onclick="CloseFilterDrawer">Appliquer</button>
+                </div>
+            </footer>
+        </div>
+    </div>
+}
+
 <div class="squad-workspace" data-workspace="squads">
     @if (!AuthService.Session.IsAuthenticated)
     {
@@ -18,79 +91,6 @@
     }
     else
     {
-
-        @if (_filterOpen)
-        {
-            <div class="filter-drawer-overlay" @onclick="CloseFilterDrawer" role="dialog" aria-modal="true" aria-label="Filtres équipes">
-                <div class="filter-drawer" @onclick:stopPropagation="true">
-                    <header class="filter-drawer__head">
-                        <h3 class="filter-drawer__title">Filtres</h3>
-                        <button type="button" class="filter-drawer__close" @onclick="CloseFilterDrawer">×</button>
-                    </header>
-                    <div class="filter-drawer__body">
-                        <div class="filter-section">
-                            <span class="filter-section__label">Équipe</span>
-                            <select class="form-select" @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Sélectionner une équipe…</option>
-                                @foreach (var team in AvailableTeams)
-                                {
-                                    <option value="@team.TeamId">@team.TeamName</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="filter-section">
-                            <span class="filter-section__label">Compétition</span>
-                            <select class="form-select" @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var competition in AvailableCompetitions)
-                                {
-                                    <option value="@competition.CompetitionId">@competition.CompetitionName</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="filter-section">
-                            <span class="filter-section__label">Saison</span>
-                            <select class="form-select" @bind="Season" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var season in SeasonOptions)
-                                {
-                                    <option value="@season">@season</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="filter-section">
-                            <span class="filter-section__label">Journée</span>
-                            <select class="form-select" @bind="Day" @bind:after="OnScopeSelectionChangedAsync">
-                                <option value="">Toutes</option>
-                                @foreach (var day in DayOptions)
-                                {
-                                    <option value="@day">@day</option>
-                                }
-                            </select>
-                        </div>
-                        @if (ActiveSection == "roster")
-                        {
-                            <div class="filter-section">
-                                <span class="filter-section__label">Poste effectif</span>
-                                <select class="form-select" @bind="PositionId" @bind:after="OnRosterScopeChangedAsync">
-                                    <option value="">Tous</option>
-                                    @foreach (var position in AvailablePositions)
-                                    {
-                                        <option value="@position.Id">@position.Name</option>
-                                    }
-                                </select>
-                            </div>
-                        }
-                    </div>
-                    <footer class="filter-drawer__foot">
-                        <div class="filter-drawer__foot-actions">
-                            <button type="button" class="ghost-button" @onclick="async () => { await ResetAsync(); CloseFilterDrawer(); }">Réinitialiser</button>
-                            <button type="button" class="primary-button" @onclick="CloseFilterDrawer">Appliquer</button>
-                        </div>
-                    </footer>
-                </div>
-            </div>
-        }
 
         @if (!string.IsNullOrWhiteSpace(ErrorMessage))
         {

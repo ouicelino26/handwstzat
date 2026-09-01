@@ -199,4 +199,9 @@ public sealed class StatsApiClient : ApiClientBase
             .Add("season", season);
         return GetAsync<PlayerAnalyticsSnapshotDto>($"api/analytics/players/{playerId}", query, cancellationToken);
     }
+
+    public Task<IReadOnlyList<PlayerGlobalStatsDto>> GetLegendsAsync(CancellationToken cancellationToken = default)
+    {
+        return GetListAsync<PlayerGlobalStatsDto>("api/Stats/legends", ApiQueryBuilder.FromStatsOptions(null), cancellationToken);
+    }
 }

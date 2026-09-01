@@ -51,4 +51,7 @@ public sealed class V1AnalyticsGateway : IAnalyticsGateway
 
     public Task<ComparePlayersResponseDto?> ComparePlayersAsync(ComparePlayersRequestDto request, CancellationToken cancellationToken) =>
         _client.ComparePlayersAsync(request, cancellationToken);
+
+    public Task<IReadOnlyList<PlayerGlobalStatsDto>> GetLegendsAsync(CancellationToken cancellationToken) =>
+        _client.GetLegendsAsync(cancellationToken);
 }

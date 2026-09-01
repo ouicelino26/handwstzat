@@ -6479,7 +6479,7 @@ html[data-handwstat-platform="android"] .context-lens-open .studio-scrim {
 
 @keyframes scene-enter {
     from { opacity: 0; transform: translateY(0.45rem); }
-    to { opacity: 1; transform: translateY(0); }
+    to { opacity: 1; transform: none; }
 }
 
 @keyframes command-enter {

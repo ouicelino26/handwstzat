@@ -201,6 +201,163 @@ public sealed class StatsDashboardService
         }
     }
 
+    public async Task<DashboardSnapshot> LoadCoreAsync(
+        DashboardFilterState filters,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_authService.Session.IsAuthenticated)
+            throw new InvalidOperationException("Connexion requise pour ouvrir l'interface live.");
+
+        try
+        {
+            var queryOptions = filters.ToStatsQueryOptions();
+            var rankingMetric = NormalizeRankingMetric(filters.RankingMetric);
+            var rankingTop = Math.Clamp(filters.Top, 3, 12);
+
+            var overviewTask = _analyticsGateway.GetOverviewAsync(queryOptions, cancellationToken);
+            var topScorersTask = _analyticsGateway.GetRankingsAsync("goals", queryOptions, rankingTop, cancellationToken);
+            var efficiencyTask = _analyticsGateway.GetRankingsAsync("shotsuccess", queryOptions, rankingTop, cancellationToken);
+            var requestedTask = _analyticsGateway.GetRankingsAsync(rankingMetric, queryOptions, rankingTop, cancellationToken);
+            var interceptionsTask = _analyticsGateway.GetRankingsAsync("interceptions", queryOptions, rankingTop, cancellationToken);
+            var recentMatchesTask = _matchesApiClient.GetMatchesAsync(
+                competitionId: filters.CompetitionId,
+                teamId: filters.TeamId,
+                from: filters.From,
+                to: filters.To,
+                year: filters.Year,
+                season: filters.Season,
+                day: filters.Day,
+                page: 1,
+                pageSize: 6,
+                cancellationToken: cancellationToken);
+
+            await Task.WhenAll(overviewTask, topScorersTask, efficiencyTask, requestedTask, interceptionsTask, recentMatchesTask);
+
+            var overviewDto = await overviewTask;
+            if (overviewDto is null)
+                _logger.LogWarning("Overview API returned null for query {Query}; counters will show zero.", queryOptions);
+            var overview = overviewDto ?? new StatsOverviewDto();
+            var topScorers = await topScorersTask;
+            var efficiency = await efficiencyTask;
+            var requested = await requestedTask;
+            var interceptions = await interceptionsTask;
+            var recentMatches = await recentMatchesTask;
+
+            return new DashboardSnapshot
+            {
+                Overview = _snapshotBuilder.BuildOverview(overview),
+                Players = [],
+                GlobalBoards = DashboardGlobalBoards.Empty,
+                TeamOfTheDay = TeamOfTheDaySnapshotDto.Empty("Ouvrez la section Equipe de la journee pour charger cette analyse."),
+                TopScorers = MapRanking(topScorers),
+                EfficiencyRanking = MapRanking(efficiency),
+                RequestedRanking = MapRanking(requested),
+                InterceptionRanking = MapRanking(interceptions),
+                RequestedRankingLabel = GetRankingLabel(rankingMetric),
+                RecentMatches = MapMatches(recentMatches),
+                Spotlight = CreateEmptySpotlight(),
+                DataOrigin = "Donnees synchronisees",
+                WarningMessage = null,
+                IsDemo = false
+            };
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (ApiRequestException) { throw; }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Impossible de charger les dernieres donnees statistiques.", ex);
+        }
+    }
+
+    public async Task<DashboardSnapshot> LoadPlayersAndSpotlightAsync(
+        DashboardFilterState filters,
+        DashboardSnapshot coreSnapshot,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_authService.Session.IsAuthenticated)
+            throw new InvalidOperationException("Connexion requise pour ouvrir l'interface live.");
+
+        try
+        {
+            var queryOptions = filters.ToStatsQueryOptions();
+            var playerStats = await _analyticsGateway.GetPlayersAsync(queryOptions, cancellationToken);
+            var players = _snapshotBuilder.BuildPlayerDirectory(playerStats);
+
+            var selectedPlayerId = ResolveSelectedPlayerId(
+                filters.SpotlightPlayerId,
+                playerStats,
+                coreSnapshot.TopScorers,
+                coreSnapshot.RequestedRanking);
+
+            var globalBoardsTask = LoadGlobalBoardsAsync(queryOptions, playerStats, cancellationToken);
+
+            if (!selectedPlayerId.HasValue)
+            {
+                return coreSnapshot with
+                {
+                    Players = players,
+                    GlobalBoards = await globalBoardsTask,
+                    WarningMessage = "Aucune donnee statistique ne correspond aux filtres actuels."
+                };
+            }
+
+            var profileTask = _playersApiClient.GetPlayerProfileAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+            var globalTask = _analyticsGateway.GetPlayerGlobalAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+            var offenseTask = _analyticsGateway.GetPlayerOffenseAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+            var technicalTask = _analyticsGateway.GetPlayerTechnicalAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+            var defenseTask = _analyticsGateway.GetPlayerDefenseAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+            var passingTask = _analyticsGateway.GetPlayerPassingAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+            var sanctionsTask = _analyticsGateway.GetPlayerSanctionsAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+            var goalkeeperTask = _analyticsGateway.GetPlayerGoalkeeperAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+            var spatialTask = _analyticsGateway.GetPlayerSpatialAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+            var playerMatchesTask = _playersApiClient.GetPlayerMatchesAsync(selectedPlayerId.Value, queryOptions, cancellationToken);
+
+            await Task.WhenAll(
+                profileTask, globalTask, offenseTask, technicalTask, defenseTask,
+                passingTask, sanctionsTask, goalkeeperTask, spatialTask, playerMatchesTask, globalBoardsTask);
+
+            var selectedDirectory = playerStats.FirstOrDefault(player => player.PlayerId == selectedPlayerId.Value);
+            var profile = await profileTask ?? CreateProfileFallback(selectedDirectory, selectedPlayerId.Value);
+            var global = await globalTask ?? CreateGlobalFallback(profile);
+            var offense = await offenseTask ?? CreateOffenseFallback(profile, global);
+            var defense = await defenseTask ?? CreateDefenseFallback(profile);
+            var passing = await passingTask ?? CreatePassingFallback(profile);
+            var sanctions = await sanctionsTask ?? CreateSanctionsFallback(profile);
+            var goalkeeper = await goalkeeperTask ?? CreateGoalkeeperFallback(profile);
+            var technical = await technicalTask ?? CreateTechnicalFallback(profile, global, offense, defense, passing, sanctions, goalkeeper);
+            var spatial = await spatialTask;
+            var playerMatches = await playerMatchesTask;
+            var globalBoards = await globalBoardsTask;
+
+            return coreSnapshot with
+            {
+                Players = players,
+                GlobalBoards = globalBoards,
+                Spotlight = new PlayerSpotlight
+                {
+                    Profile = profile,
+                    Global = global,
+                    Offense = offense,
+                    Defense = defense,
+                    Passing = passing,
+                    Sanctions = sanctions,
+                    Goalkeeper = goalkeeper,
+                    Technical = technical,
+                    Matches = playerMatches,
+                    GoalZones = MapGoalZones(spatial?.Zones, spatial?.EventsByZone),
+                    TriggerZones = MapTriggerZones(spatial?.Triggers),
+                    Distribution = BuildDistribution(profile, global, offense, passing, goalkeeper)
+                }
+            };
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (ApiRequestException) { throw; }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Impossible de charger les dernieres donnees statistiques.", ex);
+        }
+    }
+
     public async Task<(IReadOnlyList<PlayerRankingItem> Ranking, string Label)> LoadRequestedRankingAsync(
         DashboardFilterState filters,
         CancellationToken cancellationToken = default)
@@ -423,6 +580,26 @@ public sealed class StatsDashboardService
         {
             return bestRanked;
         }
+
+        return players.FirstOrDefault()?.PlayerId;
+    }
+
+    private static int? ResolveSelectedPlayerId(
+        int? explicitPlayerId,
+        IReadOnlyList<PlayerGlobalStatsDto> players,
+        IReadOnlyList<PlayerRankingItem> topScorers,
+        IReadOnlyList<PlayerRankingItem> requestedRanking)
+    {
+        if (explicitPlayerId.HasValue && players.Any(player => player.PlayerId == explicitPlayerId.Value))
+            return explicitPlayerId.Value;
+
+        var bestRanked = topScorers
+            .Concat(requestedRanking)
+            .Select(r => r.PlayerId)
+            .FirstOrDefault(id => id.GetValueOrDefault() > 0);
+
+        if (bestRanked.GetValueOrDefault() > 0)
+            return bestRanked;
 
         return players.FirstOrDefault()?.PlayerId;
     }

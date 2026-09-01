@@ -12,6 +12,66 @@
 
 <PageTitle>Matchs</PageTitle>
 
+@if (AuthService.Session.IsAuthenticated && _filterOpen)
+{
+    <div class="filter-drawer-overlay" @onclick="CloseMatchFilterDrawer" role="dialog" aria-modal="true" aria-label="Filtres matchs">
+        <div class="filter-drawer" @onclick:stopPropagation="true">
+            <header class="filter-drawer__head">
+                <h3 class="filter-drawer__title">Filtres</h3>
+                <button type="button" class="filter-drawer__close" @onclick="CloseMatchFilterDrawer">×</button>
+            </header>
+            <div class="filter-drawer__body">
+                <div class="filter-section">
+                    <span class="filter-section__label">Compétition</span>
+                    <select class="form-select" @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var competition in AvailableCompetitions)
+                        {
+                            <option value="@competition.CompetitionId">@competition.CompetitionName</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-section">
+                    <span class="filter-section__label">Équipe</span>
+                    <select class="form-select" @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var team in AvailableTeams)
+                        {
+                            <option value="@team.TeamId">@team.TeamName</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-section">
+                    <span class="filter-section__label">Saison</span>
+                    <select class="form-select" value="@Season" @onchange="OnSeasonChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var season in SeasonOptions)
+                        {
+                            <option value="@season">@season</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-section">
+                    <span class="filter-section__label">Journée</span>
+                    <select class="form-select" value="@Day" @onchange="OnDayChangedAsync">
+                        <option value="">Toutes</option>
+                        @foreach (var day in DayOptions)
+                        {
+                            <option value="@day">@day</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <footer class="filter-drawer__foot">
+                <div class="filter-drawer__foot-actions">
+                    <button type="button" class="ghost-button" @onclick="async () => { await ResetAsync(); CloseMatchFilterDrawer(); }">Réinitialiser</button>
+                    <button type="button" class="primary-button" @onclick="CloseMatchFilterDrawer">Appliquer</button>
+                </div>
+            </footer>
+        </div>
+    </div>
+}
+
 @if (!AuthService.Session.IsAuthenticated)
 {
     <div class="matches-auth-wall">
@@ -942,65 +1002,6 @@ else
         </div>
     </div>
 
-    @if (_filterOpen)
-    {
-        <div class="filter-drawer-overlay" @onclick="CloseMatchFilterDrawer" role="dialog" aria-modal="true" aria-label="Filtres matchs">
-            <div class="filter-drawer" @onclick:stopPropagation="true">
-                <header class="filter-drawer__head">
-                    <h3 class="filter-drawer__title">Filtres</h3>
-                    <button type="button" class="filter-drawer__close" @onclick="CloseMatchFilterDrawer">×</button>
-                </header>
-                <div class="filter-drawer__body">
-                    <div class="filter-section">
-                        <span class="filter-section__label">Compétition</span>
-                        <select class="form-select" @bind="CompetitionId" @bind:after="OnScopeSelectionChangedAsync">
-                            <option value="">Toutes</option>
-                            @foreach (var competition in AvailableCompetitions)
-                            {
-                                <option value="@competition.CompetitionId">@competition.CompetitionName</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="filter-section">
-                        <span class="filter-section__label">Équipe</span>
-                        <select class="form-select" @bind="TeamId" @bind:after="OnScopeSelectionChangedAsync">
-                            <option value="">Toutes</option>
-                            @foreach (var team in AvailableTeams)
-                            {
-                                <option value="@team.TeamId">@team.TeamName</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="filter-section">
-                        <span class="filter-section__label">Saison</span>
-                        <select class="form-select" value="@Season" @onchange="OnSeasonChangedAsync">
-                            <option value="">Toutes</option>
-                            @foreach (var season in SeasonOptions)
-                            {
-                                <option value="@season">@season</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="filter-section">
-                        <span class="filter-section__label">Journée</span>
-                        <select class="form-select" value="@Day" @onchange="OnDayChangedAsync">
-                            <option value="">Toutes</option>
-                            @foreach (var day in DayOptions)
-                            {
-                                <option value="@day">@day</option>
-                            }
-                        </select>
-                    </div>
-                </div>
-                <footer class="filter-drawer__foot">
-                    <div class="filter-drawer__foot-actions">
-                        <button type="button" class="ghost-button" @onclick="async () => { await ResetAsync(); CloseMatchFilterDrawer(); }">Réinitialiser</button>
-                        <button type="button" class="primary-button" @onclick="CloseMatchFilterDrawer">Appliquer</button>
-                    </div>
-                </footer>
-            </div>
-        </div>
-    }
 }
 
 @code {

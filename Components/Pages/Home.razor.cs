@@ -41,6 +41,7 @@ public class HomeBase : ComponentBase, IDisposable
     private CancellationTokenSource? _dashboardLoadCts;
     private CancellationTokenSource? _rankingLoadCts;
     private CancellationTokenSource? _teamOfTheDayLoadCts;
+    private CancellationTokenSource? _playersLoadCts;
 
     protected DashboardSnapshot? Snapshot { get; set; }
 
@@ -65,6 +66,8 @@ public class HomeBase : ComponentBase, IDisposable
     protected bool IsTeamOfTheDayLoaded { get; set; }
 
     protected bool IsTeamOfTheDayLoading { get; set; }
+
+    protected bool IsSpotlightLoading { get; private set; }
 
     protected IReadOnlyList<RankingMetricOption> RankingMetrics => RankingMetricCatalog.Default;
 
@@ -163,17 +166,8 @@ public class HomeBase : ComponentBase, IDisposable
         }
 
         ApplyGlobalScope();
-        if (string.IsNullOrWhiteSpace(Filters.Season))
-            Filters.Season = DeriveCurrentSeason();
         ScopeService.Changed += HandleGlobalScopeChanged;
         await LoadSnapshotAsync(forceRefresh: true);
-    }
-
-    private static string DeriveCurrentSeason()
-    {
-        var now = DateTime.UtcNow;
-        var startYear = now.Month <= 8 ? now.Year - 1 : now.Year;
-        return $"{startYear}-{startYear + 1}";
     }
 
     protected async Task RefreshAsync()
@@ -219,6 +213,7 @@ public class HomeBase : ComponentBase, IDisposable
         CancelAndDispose(ref _dashboardLoadCts);
         CancelAndDispose(ref _rankingLoadCts);
         CancelAndDispose(ref _teamOfTheDayLoadCts);
+        CancelAndDispose(ref _playersLoadCts);
         CommandBarService.Clear();
     }
 
@@ -522,11 +517,15 @@ public class HomeBase : ComponentBase, IDisposable
         previous?.Cancel();
         previous?.Dispose();
         CancelAndDispose(ref _teamOfTheDayLoadCts);
+        CancelAndDispose(ref _playersLoadCts);
         IsTeamOfTheDayLoaded = false;
+        IsSpotlightLoading = false;
         OnDashboardRefreshing();
         var loadStartedAt = DateTimeOffset.UtcNow;
         var timestamp = Stopwatch.GetTimestamp();
         var acquired = false;
+        var loadCancelled = false;
+        DashboardSnapshot? coreSnapshotForBg = null;
 
         try
         {
@@ -557,9 +556,9 @@ public class HomeBase : ComponentBase, IDisposable
                 await LoadFilterScopesAsync(next.Token);
             }
 
-            if (!string.IsNullOrWhiteSpace(Filters.Season) && !SeasonOptions.Contains(Filters.Season, StringComparer.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(Filters.Season) || !SeasonOptions.Contains(Filters.Season, StringComparer.OrdinalIgnoreCase))
             {
-                Filters.Season = null;
+                Filters.Season = SeasonOptions.FirstOrDefault();
             }
 
             if (!string.IsNullOrWhiteSpace(Filters.Day) && !DayOptions.Contains(Filters.Day, StringComparer.OrdinalIgnoreCase))
@@ -567,26 +566,32 @@ public class HomeBase : ComponentBase, IDisposable
                 Filters.Day = null;
             }
 
-            Snapshot = await DashboardService.LoadDashboardAsync(Filters, forceRefresh, next.Token);
+            Snapshot = await DashboardService.LoadCoreAsync(Filters, next.Token);
             next.Token.ThrowIfCancellationRequested();
             DashboardGeneratedAt = DateTimeOffset.UtcNow;
-            Filters.SpotlightPlayerId = Snapshot.Spotlight.PlayerId > 0 ? Snapshot.Spotlight.PlayerId : null;
-            SelectedZoneKey = ResolveActiveZoneKey();
+            IsSpotlightLoading = true;
+            coreSnapshotForBg = Snapshot;
             OnDashboardLoaded();
 
 #if DEBUG
             Logger.LogInformation(
-                "Dashboard charge en {ElapsedMilliseconds} ms pour {MatchCount} matchs.",
+                "Dashboard (core) charge en {ElapsedMilliseconds} ms pour {MatchCount} matchs.",
                 Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds,
                 Snapshot.Overview.MatchCount);
 #endif
         }
         catch (OperationCanceledException) when (next.IsCancellationRequested)
         {
-            // Expected when a new filter supersedes this request or the component is disposed.
+            loadCancelled = true;
         }
         catch (ApiRequestException ex)
         {
+            if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                AuthService.Logout();
+                Navigation.NavigateTo("/");
+                return;
+            }
             ErrorMessage = string.IsNullOrWhiteSpace(ex.CorrelationId)
                 ? ex.UserMessage
                 : $"{ex.UserMessage} Reference : {ex.CorrelationId}.";
@@ -616,6 +621,54 @@ public class HomeBase : ComponentBase, IDisposable
             }
 
             next.Dispose();
+        }
+
+        if (coreSnapshotForBg is not null && !loadCancelled)
+        {
+            var playersCts = new CancellationTokenSource();
+            _playersLoadCts = playersCts;
+            _ = LoadPlayersAndSpotlightInBackgroundAsync(Filters, coreSnapshotForBg, playersCts);
+        }
+    }
+
+    private async Task LoadPlayersAndSpotlightInBackgroundAsync(
+        DashboardFilterState filters,
+        DashboardSnapshot coreSnapshot,
+        CancellationTokenSource cts)
+    {
+        DashboardSnapshot? full = null;
+        try
+        {
+            full = await DashboardService.LoadPlayersAndSpotlightAsync(filters, coreSnapshot, cts.Token);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
+        catch (ApiRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            await InvokeAsync(() => { AuthService.Logout(); Navigation.NavigateTo("/"); });
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Background players/spotlight load failed.");
+        }
+        finally
+        {
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _playersLoadCts, null, cts), cts))
+            {
+                await InvokeAsync(() =>
+                {
+                    IsSpotlightLoading = false;
+                    if (full is not null)
+                    {
+                        Snapshot = full;
+                        Filters.SpotlightPlayerId = full.Spotlight.PlayerId > 0 ? full.Spotlight.PlayerId : null;
+                        SelectedZoneKey = ResolveActiveZoneKey();
+                    }
+                    StateHasChanged();
+                });
+            }
+
+            cts.Dispose();
         }
     }
 

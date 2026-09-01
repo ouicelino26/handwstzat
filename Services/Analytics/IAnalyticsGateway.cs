@@ -31,4 +31,6 @@ public interface IAnalyticsGateway
     Task<PlayerSpatialStatsDto?> GetPlayerSpatialAsync(int playerId, StatsQueryOptionsDto options, CancellationToken cancellationToken);
 
     Task<ComparePlayersResponseDto?> ComparePlayersAsync(ComparePlayersRequestDto request, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<PlayerGlobalStatsDto>> GetLegendsAsync(CancellationToken cancellationToken);
 }

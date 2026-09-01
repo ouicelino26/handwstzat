@@ -62,6 +62,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<TeamOfTheDayService>();
         builder.Services.AddSingleton<DashboardSnapshotBuilder>();
         builder.Services.AddSingleton<StatsDashboardService>();
+        builder.Services.AddSingleton<LegendsService>();
         builder.Services.AddSingleton<AnalysisScopeService>();
         builder.Services.AddSingleton<GlobalSearchService>();
         builder.Services.AddSingleton<CommandBarService>();
