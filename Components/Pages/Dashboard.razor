@@ -36,7 +36,7 @@ else if (Snapshot is not null)
             </section>
         }
 
-        @if (!IsSpotlightLoading && Snapshot.Players.Count == 0)
+        @if (!IsBusy && !IsSpotlightLoading && Snapshot.Players.Count == 0)
         {
             <StateCard Kicker="Aucune joueuse"
                        Title="Aucune joueuse dans cette sélection"
